@@ -44,6 +44,9 @@ namespace StarfieldEra
                 Icon(header,new Vector2(500+i*172,-62),new Vector2(26,28),i+1,colors[i]);
                 resources[i]=Label(names[i],header,"",new Vector2(536+i*172,-62),new Vector2(133,32),20,ink);
             }
+            var buildButton=Button("Build menu",header,"G 建造",1390,()=>game.Construction.Open(),out _);
+            var buildRect=buildButton.GetComponent<RectTransform>();buildRect.anchoredPosition=new Vector2(1390,-10);buildRect.sizeDelta=new Vector2(180,38);
+            var buildText=buildButton.GetComponentInChildren<TextMeshProUGUI>();buildText.rectTransform.anchoredPosition=new Vector2(8,-4);buildText.rectTransform.sizeDelta=new Vector2(164,30);
             RectTransform card = Panel("Objective", new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -140), new Vector2(365, 190), new Color(.06f, .16f, .15f, .94f));
             HudOrnament.Border(card);
             Label("Objective title", card, "晨风村 · 复兴之旅", new Vector2(20, -16), new Vector2(290, 32), 24, new Color(1, .88f, .62f));
@@ -66,7 +69,7 @@ namespace StarfieldEra
             buyButton = Button("Buy", bottom, "B  种子 · 5 金币", 646, game.BuySeed, out buyLabel);
             Button("Journal", bottom, "Q  冒险日志", 852, ()=>game.Adventure.Hud.Show("journal"), out _);
             Button("Map", bottom, "M  旅途地图", 1058, ()=>game.Adventure.Hud.Show("map"), out _);
-            Label("Movement hint", bottom, "WASD 移动 · C 伙伴 · T 种子\nI 行囊 · 滚轮缩放 · 自动保存", new Vector2(1280, -104), new Vector2(300, 52), 16, new Color(.86f,.84f,.72f));
+            Label("Movement hint", bottom, "WASD 移动 · C 伙伴 · T 种子\nG 建造 · I 行囊 · 自动保存", new Vector2(1280, -104), new Vector2(300, 52), 16, new Color(.86f,.84f,.72f));
             var adventureHud = gameObject.AddComponent<AdventureHud>();
             adventureHud.Create(game.Adventure,font);
         }
@@ -76,7 +79,7 @@ namespace StarfieldEra
             FarmState state = game.State;
             int selected = game.SelectedPlot;
             CropState crop = selected < 0 ? null : state.plots[selected];
-            string signature = game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{state.energy}/{state.selectedCrop}/{state.SelectedSeeds}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
+            string signature = game.Construction.Hint+"/"+game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{state.energy}/{state.selectedCrop}/{state.SelectedSeeds}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
             if (signature == previous) return;
             previous = signature;
             var a=state.adventure;
@@ -94,6 +97,7 @@ namespace StarfieldEra
             if(selected>=12 && !a.expandedFarm)target.text="南侧农田 · 需要扩建农场";
             buyLabel.text="B "+FarmState.CropNames[state.selectedCrop]+" · "+state.SeedCost+"金";
             if(game.Adventure.Target!=null || game.Adventure.InBattle) target.text=game.Adventure.TargetHint;
+            if(game.Construction.Active)target.text=game.Construction.Hint;
             actionLabel.text = game.Adventure.Target!=null ? "E  交互" : crop != null && crop.Ready ? "E  收获" : "E  种植";
             actionButton.interactable = !game.Adventure.InBattle && (game.Adventure.Target!=null || (crop != null && (crop.Ready || (!crop.planted && state.SelectedSeeds > 0 && (selected<12||a.expandedFarm)))));
             waterButton.interactable = !game.Adventure.InBattle && crop != null && crop.planted && !crop.watered && !crop.Ready;

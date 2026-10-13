@@ -13,6 +13,7 @@ namespace StarfieldEra
         public FarmState State { get; private set; }
         public FarmWorld World { get; private set; }
         public AdventureGame Adventure { get; private set; }
+        public HexConstruction Construction { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
         public bool NearHouse => World != null && Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f;
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
@@ -33,6 +34,7 @@ namespace StarfieldEra
             if(State.adventure==null) State.adventure=new AdventureState();
             Adventure=gameObject.AddComponent<AdventureGame>();
             Adventure.Initialize(this);
+            Construction=gameObject.AddComponent<HexConstruction>();Construction.Initialize(this);
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
@@ -65,6 +67,7 @@ namespace StarfieldEra
             UpdateSelection();
             if (keyboard != null)
             {
+                if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
                 if (keyboard.tKey.wasPressedThisFrame) CycleCrop();
@@ -78,10 +81,10 @@ namespace StarfieldEra
                     if(keyboard.digit4Key.wasPressedThisFrame)Adventure.BattleAction(3);
                 }
                 if (keyboard.eKey.wasPressedThisFrame) Interact();
-                if (keyboard.rKey.wasPressedThisFrame) Water();
+                if (keyboard.rKey.wasPressedThisFrame) {if(Construction.Active)Construction.Rotate();else Water();}
                 if (keyboard.fKey.wasPressedThisFrame) Sleep();
                 if (keyboard.bKey.wasPressedThisFrame) BuySeed();
-                if (keyboard.escapeKey.wasPressedThisFrame) { if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
+                if (keyboard.escapeKey.wasPressedThisFrame) { Construction.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
             }
             hud.Refresh();
         }

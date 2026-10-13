@@ -15,6 +15,7 @@ namespace StarfieldEra
 
         readonly List<Renderer> tiles = new List<Renderer>();
         Mesh tileMesh;
+        readonly Dictionary<Vector2Int,Renderer> cells=new Dictionary<Vector2Int,Renderer>();
         readonly Dictionary<Material,Material> surfaces = new Dictionary<Material,Material>();
         Material Surface(Material source)
         {
@@ -42,10 +43,34 @@ namespace StarfieldEra
                 if (variant < 0) variant += 3;
                 renderer.sharedMaterials = new[] { Surface(meadow[variant]), edge };
                 tiles.Add(renderer);
+                cells[new Vector2Int(column,row)]=renderer;
             }
             // Continuous support beneath the narrow tile seams keeps walking smooth.
             var support = gameObject.AddComponent<BoxCollider>();
             support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(HalfWidth*2, .8f, HalfDepth*2);
+        }
+
+        public bool Contains(Vector2Int cell)=>cells.ContainsKey(cell);
+        public bool IsDry(Vector2Int cell)
+        {
+            if(!cells.TryGetValue(cell,out var renderer))return false;
+            string name=renderer.sharedMaterials[0].name;
+            return !name.StartsWith("Lake") && !name.StartsWith("Pond");
+        }
+        public bool TryCell(Vector3 position,out Vector2Int cell)
+        {
+            cell=default;float nearest=float.MaxValue;
+            int row=Mathf.RoundToInt((position.z-.15f)/RowSpacing);
+            for(int r=row-1;r<=row+1;r++)
+            {
+                int column=Mathf.RoundToInt((position.x-.5f)/ColumnSpacing-.5f*(r&1));
+                for(int c=column-1;c<=column+1;c++)
+                {
+                    var delta=position-Center(c,r);delta.y=0;
+                    if(delta.sqrMagnitude<nearest){nearest=delta.sqrMagnitude;cell=new Vector2Int(c,r);}
+                }
+            }
+            return cells.ContainsKey(cell)&&nearest<=Radius*Radius;
         }
 
         public void PaintBox(Vector3 center, Vector3 size, Material material)

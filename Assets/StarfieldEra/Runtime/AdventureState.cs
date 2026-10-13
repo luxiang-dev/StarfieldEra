@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace StarfieldEra
 {
@@ -12,6 +13,7 @@ namespace StarfieldEra
         public bool expandedFarm, mill, observatory, mountainWon, marshWon;
         public int toolLevel, meals, deliveries;
         public int deliveredDay=-1;
+        public List<PlacedBuilding> buildings = new List<PlacedBuilding>();
         public int[] bossDay = {-1,-1,-1};
         public bool[] companions = new bool[3];
         public int activeCompanion;
@@ -22,6 +24,7 @@ namespace StarfieldEra
         public AdventureState() { for (int i=0;i<32;i++) gatheredDay[i]=-1; discovered[0]=true; }
         public void Upgrade()
         {
+            if(buildings==null)buildings=new List<PlacedBuilding>();
             if(gatheredDay!=null && gatheredDay.Length==12)
             {var expanded=new int[32];for(int i=0;i<32;i++)expanded[i]=-1;Array.Copy(gatheredDay,expanded,12);gatheredDay=expanded;}
             if(discovered!=null && discovered.Length==4)
@@ -32,9 +35,10 @@ namespace StarfieldEra
         public int CompanionCount => companions.Count(x=>x);
         public bool Valid() => wood>=0 && stone>=0 && berries>=0 && fish>=0 && crystals>=0 && science>=0 &&
             quest>=0 && quest<=6 && companions!=null && companions.Length==3 && gatheredDay!=null && gatheredDay.Length==32 &&
-            discovered!=null && discovered.Length==8 && activeCompanion>=0 && activeCompanion<3 && victories>=0 && toolLevel>=0 && toolLevel<=1 && meals>=0 && deliveries>=0 && bossDay!=null && bossDay.Length==3;
+            discovered!=null && discovered.Length==8 && activeCompanion>=0 && activeCompanion<3 && victories>=0 && toolLevel>=0 && toolLevel<=1 && meals>=0 && deliveries>=0 && bossDay!=null && bossDay.Length==3 && buildings!=null && buildings.Count<=80 && buildings.All(b=>b!=null&&b.kind>=0&&b.kind<4&&b.rotation>=0&&b.rotation<6&&b.row>=-20&&b.row<=20&&b.column>=-23&&b.column<=22&&Math.Abs(HexWorldGrid.Center(b.column,b.row).x)<=HexWorldGrid.HalfWidth-1&&Math.Abs(HexWorldGrid.Center(b.column,b.row).z)<=HexWorldGrid.HalfDepth-1) && buildings.Select(b=>b.column+":"+b.row).Distinct().Count()==buildings.Count;
         public void NewDay(FarmState farm)
         {
+            foreach(var b in buildings){if(b.kind==0)wood+=2;else if(b.kind==1)stone+=2;else if(b.kind==2)science++;}
             if(workshop) wood+=2;
             if(library) science+=2;
             if(mill)farm.coins+=6;

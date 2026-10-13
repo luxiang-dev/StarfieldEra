@@ -9,6 +9,7 @@ namespace StarfieldEra
         public TMPro.TMP_FontAsset labelFont;
         public AdventureWorld Adventure { get; private set; }
         public HexWorldGrid HexGrid { get; private set; }
+        public Mesh ConstructionOutline => selectionMesh;
         public Transform Player { get; private set; }
         public CharacterController Controller { get; private set; }
         public Camera View { get; private set; }

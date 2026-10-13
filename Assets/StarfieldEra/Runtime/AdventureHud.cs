@@ -84,6 +84,13 @@ namespace StarfieldEra
                 for(int i=0;i<4;i++){int region=start+i;Action(AdventureContent.Regions[region]+(s.discovered[region]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[region]);}
                 Page(mode=="map"?"下一页 · 四个远方区域":"上一页 · 村庄周边",()=>Show(mode=="map"?"map2":"map"));
             }
+            else if(mode=="build")
+            {
+                title.text="六边形建造 · 自由选址";
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场木+2，采石场石+2，学舍知+1。\n营地可料理，选择后在空地放置。\n\n左键建造，R旋转；右键或Esc取消。\n绿色可建，红色不可建。\n水面、农田、人物旁不能建。";
+                for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
+                Page("拆除自建建筑 · 返还一半资源",()=>game.Game.Construction.Choose(4));
+            }
             else if(mode=="supplies")
             {
                 title.text="行囊 · 料理与种子";
