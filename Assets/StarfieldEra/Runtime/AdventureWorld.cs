@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace StarfieldEra
 {
-    public enum EncounterKind { Wood, Stone, Berry, Fish, Elder, Town, Companion, Guardian }
+    public enum EncounterKind { Wood, Stone, Berry, Fish, Elder, Town, Companion, Guardian, Market, Camp, Crystal }
     public sealed class WorldEncounter
     {
         public int id;
@@ -17,12 +17,12 @@ namespace StarfieldEra
     public sealed class AdventureWorld : MonoBehaviour
     {
         public readonly List<WorldEncounter> Encounters = new List<WorldEncounter>();
-        public readonly Vector3[] RegionCenters = {new Vector3(-5,0,6),new Vector3(13,0,0),new Vector3(-12,0,-8),new Vector3(10,0,13)};
+        public readonly Vector3[] RegionCenters = {new Vector3(-5,0,6),new Vector3(13,0,0),new Vector3(-12,0,-8),new Vector3(10,0,13),new Vector3(24,0,-24),new Vector3(27,0,27),new Vector3(-29,0,22),new Vector3(-28,0,-20)};
         public Transform Follower { get; private set; }
         public int Region { get; private set; }
         FarmWorld world;
         Material timber, masonry, green, cream, blue, gold, purple;
-        Transform workshop, library, windmill;
+        Transform workshop, library, windmill, mill, observatory;
         readonly List<TextMeshPro> signs = new List<TextMeshPro>();
         readonly List<Transform> creatures = new List<Transform>();
         float zoom=10;
@@ -119,8 +119,61 @@ namespace StarfieldEra
             }
             var guardian=Marker("遗迹守卫 · 岩甲兽",new Vector3(9.8f,0,10),EncounterKind.Guardian,0);
             Creature(guardian,3);
+            BuildFrontier();
             Follower=new GameObject("Travelling companion").transform;Follower.SetParent(transform);
             Follower.gameObject.SetActive(false);
+        }
+
+        void BuildFrontier()
+        {
+            var plains=world.Mat("Golden plains","ACAF67");
+            var mountain=world.Mat("White rock mountains","A2ACA2");
+            var marsh=world.Mat("Glowing marsh","496B67");
+            Patch("Plains region",RegionCenters[4],new Vector3(28,0,24),plains);
+            Patch("Mountain region",RegionCenters[5],new Vector3(28,0,24),mountain);
+            Patch("Marsh region",RegionCenters[6],new Vector3(23,0,27),marsh);
+            Patch("Outpost region",RegionCenters[7],new Vector3(22,0,24),green);
+            Patch("Southern road",new Vector3(12,0,-15),new Vector3(2.5f,0,27),cream);
+            Patch("Northern road",new Vector3(17,0,23),new Vector3(2.5f,0,26),cream);
+            Patch("Outpost road",new Vector3(-21,0,-6),new Vector3(30,0,2.5f),cream);
+            Patch("Marsh road",new Vector3(-20,0,16),new Vector3(32,0,2.5f),cream);
+            var random=new System.Random(629);
+            for(int region=4;region<8;region++)
+            {
+                var center=RegionCenters[region];
+                for(int i=0;i<24;i++)
+                {
+                    var pos=center+new Vector3(-9+(float)random.NextDouble()*18,0,-8+(float)random.NextDouble()*16);
+                    if(Vector3.Distance(pos,center)<3)continue;
+                    if(region==5)world.Cone("Mountain crag",pos,new Vector3(2.5f,2+i%4,2.5f),i%2==0?mountain:masonry);
+                    else Tree(pos,2.5f+i%4*.55f);
+                }
+                for(int i=0;i<5;i++)
+                {
+                    int id=12+(region-4)*5+i;
+                    var kind=region==5?(i==4?EncounterKind.Crystal:EncounterKind.Stone):region==6?(i==4?EncounterKind.Fish:EncounterKind.Berry):i%2==0?EncounterKind.Wood:EncounterKind.Berry;
+                    var pos=center+new Vector3(-5+i*2.5f,0,i%2==0?-4:4);
+                    var root=Marker(kind==EncounterKind.Crystal?"晶石矿":kind==EncounterKind.Stone?"山地矿石":kind==EncounterKind.Wood?"林地倒木":kind==EncounterKind.Fish?"湿地钓点":"野生浆果",pos,kind,id);
+                    var art=StoreVisuals.Current;
+                    var prefab=art?(kind==EncounterKind.Stone?art.ore:kind==EncounterKind.Wood?art.fallenLog:kind==EncounterKind.Crystal||kind==EncounterKind.Fish?null:art.shrub):null;
+                    if(prefab)art.Place(prefab,root,pos,kind==EncounterKind.Wood?.5f:1,0,2);
+                    else world.Cone("Frontier resource",pos,new Vector3(1,1.2f,1),kind==EncounterKind.Crystal?purple:green).SetParent(root,true);
+                }
+            }
+            House("Outpost market",new Vector3(-28,0,-22),3.5f,gold);
+            var trader=Marker("远行商人",new Vector3(-28,0,-18),EncounterKind.Market,0);Villager(trader,cream,gold);
+            trader=Marker("平原商人",new Vector3(24,0,-24),EncounterKind.Market,0);Villager(trader,cream,blue);
+            foreach(var pos in new[]{new Vector3(-25,0,-19),new Vector3(22,0,-22),new Vector3(-27,0,20)})
+            {
+                var camp=Marker("营地 · 料理与补给",pos,EncounterKind.Camp,0);
+                world.Cone("Camp tent",pos+Vector3.forward,new Vector3(2,1.7f,2),gold).SetParent(camp,true);
+                world.Shape("Campfire",PrimitiveType.Cylinder,pos+Vector3.up*.1f,new Vector3(.7f,.1f,.7f),masonry).SetParent(camp,true);
+            }
+            var summit=Marker("白岩守卫",new Vector3(27,0,26),EncounterKind.Guardian,1);Creature(summit,3);
+            var mire=Marker("幽光守卫",new Vector3(-29,0,23),EncounterKind.Guardian,2);Creature(mire,3);
+            mill=House("Southern mill",new Vector3(-1,0,-12.5f),3,gold);
+            observatory=House("Observatory",new Vector3(-14,0,13.5f),3.5f,purple);
+            mill.gameObject.SetActive(false);observatory.gameObject.SetActive(false);
         }
 
         void Patch(string name,Vector3 pos,Vector3 size,Material material)
@@ -147,7 +200,7 @@ namespace StarfieldEra
             world.Shape("Village door",PrimitiveType.Cube,pos+new Vector3(0,.7f,-size*.41f),new Vector3(.65f,1.4f,.08f),timber).SetParent(root,true);
             world.Shape("Village window",PrimitiveType.Cube,pos+new Vector3(-size*.3f,1.3f,-size*.41f),new Vector3(.5f,.6f,.09f),blue).SetParent(root,true);
             var art=StoreVisuals.Current;
-            if(art) art.Replace(name=="Workshop"?art.workshop:name=="Library"?art.library:art.market,root,3.1f);
+            if(art) art.Replace(name=="Workshop"||name=="Southern mill"?art.workshop:name=="Library"||name=="Observatory"?art.library:art.market,root,3.1f);
             return root;
         }
         Transform Marker(string label,Vector3 pos,EncounterKind kind,int id)
@@ -191,6 +244,7 @@ namespace StarfieldEra
         {
             workshop.gameObject.SetActive(state.workshop);windmill.gameObject.SetActive(state.workshop);
             library.gameObject.SetActive(state.library);
+            mill.gameObject.SetActive(state.mill);observatory.gameObject.SetActive(state.observatory);
             for(int i=0;i<3;i++)creatures[i].gameObject.SetActive(!state.companions[i]);
             if(state.CompanionCount>0)
             {
@@ -208,13 +262,13 @@ namespace StarfieldEra
         {
             if(world==null || world.View==null)return;
             Vector3 player=world.Player.position;
-            Region=player.z>9&&player.x>3?3:player.x>8?1:player.x<-7&&player.z<-3?2:0;
+            Region=player.z<-16&&player.x>10?4:player.z>20&&player.x>0?5:player.x<-22&&player.z>8?6:player.x<-22&&player.z<-6?7:player.z>9&&player.x>3?3:player.x>8?1:player.x<-7&&player.z<-3?2:0;
             Vector3 target=player+new Vector3(12,17,-17);
             world.View.transform.position=Vector3.Lerp(world.View.transform.position,target,Time.deltaTime*4);
             world.View.transform.rotation=Quaternion.Euler(39, -35,0);
             world.View.transform.LookAt(player+Vector3.up*.2f);
             var mouse=UnityEngine.InputSystem.Mouse.current;
-            if(mouse!=null)zoom=Mathf.Clamp(zoom-mouse.scroll.ReadValue().y*.008f,7,18);
+            if(mouse!=null)zoom=Mathf.Clamp(zoom-mouse.scroll.ReadValue().y*.008f,7,30);
             world.View.orthographicSize=Mathf.Lerp(world.View.orthographicSize,zoom,Time.deltaTime*5);
             foreach(var sign in signs)
             {

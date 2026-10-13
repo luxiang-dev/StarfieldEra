@@ -7,6 +7,7 @@ namespace StarfieldEra
     public sealed class HexWorldGrid : MonoBehaviour
     {
         public const float Radius = 1.15f;
+        public const float HalfWidth=42, HalfDepth=36;
         public const float RowSpacing = Radius * 1.5f;
         public static float ColumnSpacing => Mathf.Sqrt(3) * Radius;
         public static Vector3 Center(int column, int row) =>
@@ -28,11 +29,11 @@ namespace StarfieldEra
         {
             tileMesh = Prism(Radius - .008f, .65f, "Hex terrain tile");
             var meadow = new[] {world.Mat("Hex meadow A", "87A653"),world.Mat("Hex meadow B", "90AD5F"),world.Mat("Hex meadow C", "819C50")};
-            for (int row = -10; row <= 10; row++)
-            for (int column = -11; column <= 10; column++)
+            for (int row = -20; row <= 20; row++)
+            for (int column = -23; column <= 22; column++)
             {
                 var position = Center(column, row);
-                if (position.x < -20 || position.x > 20 || position.z < -18 || position.z > 18) continue;
+                if (position.x < -HalfWidth+1 || position.x > HalfWidth-1 || position.z < -HalfDepth+1 || position.z > HalfDepth-1) continue;
                 var go = new GameObject($"Hex [{column}, {row}]", typeof(MeshFilter), typeof(MeshRenderer));
                 go.transform.SetParent(transform, false); go.transform.localPosition = position;
                 go.GetComponent<MeshFilter>().sharedMesh = tileMesh;
@@ -44,7 +45,7 @@ namespace StarfieldEra
             }
             // Continuous support beneath the narrow tile seams keeps walking smooth.
             var support = gameObject.AddComponent<BoxCollider>();
-            support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(42, .8f, 38);
+            support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(HalfWidth*2, .8f, HalfDepth*2);
         }
 
         public void PaintBox(Vector3 center, Vector3 size, Material material)

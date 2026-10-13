@@ -49,3 +49,5 @@
 中文字体来自 Noto Sans CJK 的字符子集，授权与修改说明见 `Assets/StarfieldEra/Art/FontLicense.txt`。可玩内容与路线见 [ContentGuide](Docs/ContentGuide.md)。本轮以内容扩展为主，仅做编译检查与简短试玩；`Builds` 中先前生成的可执行文件仍是上一版农场原型，试玩本次内容请使用 Unity Play，或自行重新构建。
 
 已接入六个免费 Asset Store 美术包：角色动画、森林植被、集市、工坊与怪物。资源原件保留本地，其他机器需自行领取并导入，详见 [美术接入说明](Docs/AssetStoreSelection.md)。
+
+大陆扩展：1681个六边形地块、八个区域、24块农田，新增三种作物、体力与料理、贸易、建设和守卫挑战。操作与费用见 [大陆扩展说明](Docs/FrontierExpansion.md)。

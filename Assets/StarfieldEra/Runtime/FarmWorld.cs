@@ -18,7 +18,7 @@ namespace StarfieldEra
         readonly Transform[] crops = new Transform[FarmState.PlotCount];
         readonly List<Material> materials = new List<Material>();
         Mesh cone, soilMesh, selectionMesh;
-        Material dry, wet, leaf, ripe;
+        Material dry, wet, leaf, ripe, berryFruit, wheatFruit;
         Transform selection;
 
         public void Generate()
@@ -35,6 +35,7 @@ namespace StarfieldEra
             wet = Mat("Watered soil", "49382B");
             leaf = Mat("Crop leaves", "77A34D");
             ripe = Mat("Golden turnip", "EAB84D");
+            berryFruit=Mat("Crop berries","9D4E59");wheatFruit=Mat("Wheat ears","DCC180");
             cone = CreateCone();
 
             HexGrid = new GameObject("Hex world map").AddComponent<HexWorldGrid>();
@@ -58,7 +59,7 @@ namespace StarfieldEra
 
             for (int i = 0; i < FarmState.PlotCount; i++)
             {
-                Vector3 pos = HexWorldGrid.Center(i % 4, i / 4 - 2) + Vector3.up * .075f;
+                Vector3 pos = HexWorldGrid.Center(i % 4, i<12?i / 4 - 2:(i-12)/4-5) + Vector3.up * .075f;
                 PlotPositions[i] = pos;
                 var plot = new GameObject("Hex plot " + (i + 1), typeof(MeshFilter), typeof(MeshRenderer));
                 plot.transform.SetParent(transform, false); plot.transform.position = pos;
@@ -101,7 +102,7 @@ namespace StarfieldEra
             for (int i = 0; i < 13; i++)
             {
                 float x = -7 + (float)random.NextDouble() * 14;
-                float z = -8.7f + (float)random.NextDouble();
+                float z = -11.7f + (float)random.NextDouble();
                 var boundary = Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
                 if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
             }
@@ -174,9 +175,16 @@ namespace StarfieldEra
             {
                 CropState crop = state.plots[i];
                 var soil = crop.watered ? wet : dry;
+                if(i>=12 && !state.adventure.expandedFarm)soil=dry;
                 soils[i].sharedMaterials = new[] {soil, soil};
                 crops[i].gameObject.SetActive(crop.planted);
-                crops[i].localScale = Vector3.one * (crop.Ready ? 1 : .35f + crop.growth * .3f);
+                crops[i].localScale = Vector3.one * (crop.Ready ? 1 : .3f + .7f * crop.growth/crop.RequiredDays);
+                foreach(var part in crops[i].GetComponentsInChildren<Renderer>())
+                {
+                    if(part.name!="Turnip")continue;
+                    part.sharedMaterial=crop.kind==0?ripe:crop.kind==1?wheatFruit:berryFruit;
+                    part.transform.localScale=crop.kind==1?new Vector3(.16f,.65f,.16f):Vector3.one*.35f;
+                }
             }
         }
 

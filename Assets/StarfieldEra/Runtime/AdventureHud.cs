@@ -49,27 +49,60 @@ namespace StarfieldEra
             var s=game.State;
             if(mode=="battle")
             {
-                title.text="星辉遗迹 · 回合 "+game.Turn;
-                body.text=AdventureContent.Names[s.activeCompanion]+" 体力 "+game.AllyHP+" / "+game.AllyMaxHP+"\n\n岩甲兽 体力 "+game.EnemyHP+" / 42\n\n"+game.BattleLog+"\n\n技能冷却："+game.Cooldown+" 回合\n守卫每三回合会发动重击，适时防御。";
+                title.text=game.EnemyName+" · 回合 "+game.Turn;
+                body.text=AdventureContent.Names[s.activeCompanion]+" 体力 "+game.AllyHP+" / "+game.AllyMaxHP+"\n\n"+game.EnemyName+" 体力 "+game.EnemyHP+" / "+game.EnemyMaxHP+"\n\n"+game.BattleLog+"\n\n技能冷却："+game.Cooldown+" 回合\n守卫每三回合会发动重击，适时防御。";
                 Action("1  普通攻击",0,()=>game.BattleAction(0));
                 Action("2  伙伴技能",1,()=>game.BattleAction(1));
                 Action("3  防御与回复",2,()=>game.BattleAction(2));
                 Action("4  撤退",3,()=>game.BattleAction(3));
             }
-            else if(mode=="town")
+            else if(mode=="town" || mode=="town2")
             {
                 title.text="晨风村 · 建设与科技";
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   知识 "+s.science+"\n\n工坊：每天生产两份木材。\n书院：每天积累两点知识，需先建工坊。\n灌溉：每天自动浇水六块农田。\n星辉学：增强伙伴的战斗能力，需先学灌溉。\n\n建设和研究须站在议事牌旁。";
-                Action(s.workshop?"工坊 · 已建造":"工坊 · 木6 石4 金15",0,()=>game.BuildOrResearch("workshop"),!s.workshop);
-                Action(s.library?"书院 · 已建造":"书院 · 木8 石6 金20",1,()=>game.BuildOrResearch("library"),!s.library);
-                Action(s.irrigation?"灌溉 · 已研究":"灌溉 · 知4 木4 石4",2,()=>game.BuildOrResearch("irrigation"),!s.irrigation);
-                Action(s.lore?"星辉学 · 已研究":"星辉学 · 知6 晶1",3,()=>game.BuildOrResearch("lore"),!s.lore);
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   知识 "+s.science+"\n\n工坊每天木+2，书院知识+2。\n农场扩建解锁南侧12块农田；磨坊每天金+6。\n工具让采集木材和石料每次多两份。\n观星台每天知识+4，需先击败白岩守卫。\n\n建设须站在城镇议事牌旁。";
+                if(mode=="town")
+                {
+                    Action(s.workshop?"工坊 · 已建造":"工坊 · 木6 石4 金15",0,()=>game.BuildOrResearch("workshop"),!s.workshop);
+                    Action(s.library?"书院 · 已建造":"书院 · 木8 石6 金20",1,()=>game.BuildOrResearch("library"),!s.library);
+                    Action(s.irrigation?"灌溉 · 已研究":"灌溉 · 知4 木4 石4",2,()=>game.BuildOrResearch("irrigation"),!s.irrigation);
+                    Action(s.lore?"星辉学 · 已研究":"星辉学 · 知6 晶1",3,()=>game.BuildOrResearch("lore"),!s.lore);
+                }
+                else
+                {
+                    Action(s.expandedFarm?"农场 · 已扩建":"扩建农场 · 木8 石6 金30",0,()=>game.BuildOrResearch("farm"),!s.expandedFarm);
+                    Action(s.mill?"磨坊 · 已建造":"磨坊 · 木10 石8 金30",1,()=>game.BuildOrResearch("mill"),!s.mill);
+                    Action(s.toolLevel>0?"工具 · 已升级":"工具 · 木6 石5 金25",2,()=>game.BuildOrResearch("tools"),s.toolLevel==0);
+                    Action(s.observatory?"观星台 · 已建造":"观星台 · 木18 石14 晶3 知20",3,()=>game.BuildOrResearch("observatory"),!s.observatory);
+                }
+                Page(mode=="town"?"下一页 · 开垦与观星":"上一页 · 村庄基础",()=>Show(mode=="town"?"town2":"town"));
             }
-            else if(mode=="map")
+            else if(mode=="map" || mode=="map2")
             {
-                title.text="旅途地图";
-                body.text="中央：晨风村与农场。\n东侧：青苔森林，采集木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，石料、晶石与守卫。\n\n步行发现区域后，可以在这里快速旅行。\n鼠标滚轮缩放，WASD 相对镜头移动。";
-                for(int i=0;i<4;i++){int region=i;Action(AdventureContent.Regions[i]+(s.discovered[i]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[i]);}
+                title.text="星野大陆 · 旅途地图";
+                body.text=mode=="map"?"中央：晨风村、24块农田与议事牌。\n东侧：青苔森林，木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，晶石与守卫。\n\n先步行发现，再解锁快速旅行。":"东南：金穗平原，营地与商人。\n东北远方：白岩山地，矿石与新守卫。\n西北：幽光湿地，浆果、钓鱼与守卫。\n西南远方：远行驿站，贸易与营地。\n\n鼠标滚轮可缩放到大陆视野。";
+                int start=mode=="map"?0:4;
+                for(int i=0;i<4;i++){int region=start+i;Action(AdventureContent.Regions[region]+(s.discovered[region]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[region]);}
+                Page(mode=="map"?"下一页 · 四个远方区域":"上一页 · 村庄周边",()=>Show(mode=="map"?"map2":"map"));
+            }
+            else if(mode=="supplies")
+            {
+                title.text="行囊 · 料理与种子";
+                var farm=game.Game.State;
+                body.text="体力 "+farm.energy+" / 30   料理 "+s.meals+"\n\n金萝卜种子 "+farm.seeds+" · 两天成熟\n小麦种子 "+farm.wheatSeeds+" · 三天成熟，售24金币\n浆果种子 "+farm.berrySeeds+" · 四天成熟，可重复收获\n\n每四天有雨，自动浇水。种田耗体力1，采集2。\n营地与小屋可料理，使用料理回复12体力。";
+                Action("制作料理 · 浆果3 鲜鱼1",0,()=>game.Supply("cook"));
+                Action("使用料理 · 回复体力12",1,()=>game.Supply("eat"),s.meals>0&&farm.energy<30);
+                Action("T 切换种子 · 当前 "+FarmState.CropNames[farm.selectedCrop],2,game.Game.CycleCrop);
+                Action("查看贸易订单",3,()=>Show("market"));
+            }
+            else if(mode=="market")
+            {
+                title.text="远行贸易 · 每日订单";
+                var farm=game.Game.State;
+                body.text="金币 "+farm.coins+"   贸易完成 "+s.deliveries+" 次\n\n种子："+FarmState.CropNames[farm.selectedCrop]+" · "+farm.SeedCost+"金币\n按 T 切换种子。\n\n订单：木6 石4 鲜鱼2，奖励金35、知2。\n每天限一次，必须站在平原或驿站商人身边。";
+                Action("购买当前种子",0,()=>game.Supply("seeds"));
+                Action("出售木材5 · 金币12",1,()=>game.Supply("wood"));
+                Action("出售鲜鱼2 · 金币10",2,()=>game.Supply("fish"));
+                Action(s.deliveredDay==farm.day?"今日订单已完成":"提交每日贸易订单",3,()=>game.Supply("delivery"),s.deliveredDay!=farm.day);
             }
             else
             {
@@ -82,6 +115,7 @@ namespace StarfieldEra
                 Action("查看建设与研究",2,()=>Show("town"));
             }
         }
+        void Page(string text,UnityEngine.Events.UnityAction callback) => AddButton(actions,text,new Vector2(24,-246),new Vector2(400,32),callback);
         void Action(string label,int row,UnityEngine.Events.UnityAction callback,bool enabled=true)
         {
             var button=AddButton(actions,label,new Vector2(24,-292-row*48),new Vector2(400,40),callback);

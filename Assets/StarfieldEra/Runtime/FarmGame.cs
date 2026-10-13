@@ -29,7 +29,7 @@ namespace StarfieldEra
             World.materialTemplate = worldMaterial;
             World.labelFont = interfaceFont;
             World.Generate();
-            World.Player.position = new Vector3(Mathf.Clamp(State.playerX, -20, 20), .25f, Mathf.Clamp(State.playerZ, -18, 18));
+            World.Player.position = new Vector3(Mathf.Clamp(State.playerX, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1), .25f, Mathf.Clamp(State.playerZ, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1));
             if(State.adventure==null) State.adventure=new AdventureState();
             Adventure=gameObject.AddComponent<AdventureGame>();
             Adventure.Initialize(this);
@@ -59,14 +59,16 @@ namespace StarfieldEra
             World.Controller.Move((move * 4 + Vector3.up * gravity) * Time.deltaTime);
             Vector3 position = World.Player.position;
             // Physical island edge is complemented by bounds so no input can walk off it.
-            position.x = Mathf.Clamp(position.x, -20, 20);
-            position.z = Mathf.Clamp(position.z, -18, 18);
+            position.x = Mathf.Clamp(position.x, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1);
+            position.z = Mathf.Clamp(position.z, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1);
             World.Player.position = position;
             UpdateSelection();
             if (keyboard != null)
             {
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
+                if (keyboard.tKey.wasPressedThisFrame) CycleCrop();
+                if (keyboard.iKey.wasPressedThisFrame) Adventure.Hud.Show("supplies");
                 if (keyboard.cKey.wasPressedThisFrame) Adventure.CycleCompanion();
                 if (Adventure.InBattle)
                 {
@@ -105,16 +107,18 @@ namespace StarfieldEra
             if(Adventure.InBattle)return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
             if (SelectedPlot < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
+            if(SelectedPlot>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}
+            if(State.energy<1){Notify("体力不足，回小屋休息或在营地使用料理。");return;}
             CropState crop = State.plots[SelectedPlot];
             if (crop.Ready)
             {
-                State.Harvest(SelectedPlot);
-                Changed("收获金萝卜并售出！金币 +12。可以在小屋购买新种子。");
+                int kind=crop.kind;State.Harvest(SelectedPlot);
+                Changed("收获"+FarmState.CropNames[kind]+"并售出！浆果田会继续生长。可以在小屋购买新种子。");
             }
             else if (!crop.planted)
             {
                 if (!State.Plant(SelectedPlot)) { Notify("种子不足，走到小屋旁按 B 购买。"); return; }
-                Changed("已种下金萝卜。按 R 浇水，再回小屋休息。");
+                Changed("已种下"+FarmState.CropNames[State.selectedCrop]+(State.Rainy?"。雨水已浇灌，按 T 切换种子类型。":"。按 R 浇水，按 T 切换种子类型。"));
             }
             else Notify(crop.watered ? "今天已浇水。回小屋休息，等待作物成长。" : "作物需要水，按 R 浇水。");
         }
@@ -123,7 +127,7 @@ namespace StarfieldEra
         {
             if(Adventure.InBattle)return;
             if (SelectedPlot < 0) { Notify("走近已播种的农田才能浇水。"); return; }
-            if (!State.Water(SelectedPlot)) { Notify("空田无需浇水；成熟作物可以收获，每天只需浇水一次。"); return; }
+            if (!State.Water(SelectedPlot)) { Notify("体力不足，或农田今天无需浇水。成熟作物可以收获。"); return; }
             Changed("浇水完成！湿润的农田会在夜间成长。");
         }
 
@@ -139,16 +143,22 @@ namespace StarfieldEra
         public void BuySeed()
         {
             if(Adventure.InBattle)return;
-            if (!NearHouse) { Notify("种子商店在小屋门前，走近后按 B。"); return; }
-            if (!State.BuySeed()) { Notify("金币不足：一颗种子需要 5 金币。"); return; }
-            Changed("购买种子 +1，金币 -5。");
+            if (!NearHouse && !(Adventure.Target!=null && Adventure.Target.kind==EncounterKind.Market)) { Notify("种子商店在小屋门前，也可以与远行商人交易。"); return; }
+            if (!State.BuySeed()) { Notify("金币不足：当前种子需要 "+State.SeedCost+" 金币。"); return; }
+            Changed("购买"+FarmState.CropNames[State.selectedCrop]+"种子 +1。按 T 切换作物。");
+        }
+
+        public void CycleCrop()
+        {
+            if(Adventure.InBattle)return;
+            State.selectedCrop=(State.selectedCrop+1)%3;
+            Changed("当前种子："+FarmState.CropNames[State.selectedCrop]+"。余量 "+State.SelectedSeeds+"，购买价 "+State.SeedCost+" 金币。");
         }
 
         void Changed(string message)
         {
-            Message = message;
             World.RefreshCrops(State);
-            Persist();
+            Adventure.Commit(message);
             hud.Refresh();
         }
 
