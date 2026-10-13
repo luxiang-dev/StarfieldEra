@@ -11,6 +11,26 @@ namespace StarfieldEra.Editor
     {
         public const string ScenePath = "Assets/Scenes/FarmPrototype.unity";
 
+        [MenuItem("StarfieldEra/Refresh Chinese Font")]
+        public static void RefreshFont()
+        {
+            AssetDatabase.ImportAsset("Assets/StarfieldEra/Art/FarmChinese.otf", ImportAssetOptions.ForceUpdate);
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/StarfieldEra/Art/FarmChinese.asset");
+            var serialized = new SerializedObject(font);
+            serialized.FindProperty("m_SourceFontFile").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>("Assets/StarfieldEra/Art/FarmChinese.otf");
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+            font.isMultiAtlasTexturesEnabled = true;
+            font.ClearFontAssetData();
+            if (!font.TryAddCharacters(File.ReadAllText("Assets/StarfieldEra/Art/Glyphs.txt"), out string missing))
+                throw new System.InvalidOperationException("Font is missing glyphs: " + missing);
+            foreach (var texture in font.atlasTextures)
+                if (!AssetDatabase.Contains(texture)) AssetDatabase.AddObjectToAsset(texture, font);
+            font.atlasPopulationMode = AtlasPopulationMode.Static;
+            EditorUtility.SetDirty(font);
+            AssetDatabase.SaveAssets();
+        }
+
         [MenuItem("StarfieldEra/Create Farm Prototype")]
         public static void Create()
         {

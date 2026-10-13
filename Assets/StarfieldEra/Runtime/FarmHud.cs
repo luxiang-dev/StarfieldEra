@@ -29,14 +29,14 @@ namespace StarfieldEra
             events.transform.SetParent(transform);
             events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
 
-            RectTransform header = Panel("Header", new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 1), Vector2.zero, new Vector2(0, 94), new Color(.95f, .94f, .86f, .97f));
+            RectTransform header = Panel("Header", new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 1), Vector2.zero, new Vector2(0, 116), new Color(.95f, .94f, .86f, .97f));
             Label("Title", header, "星野纪元", new Vector2(30, -16), new Vector2(340, 42), 31, ink);
-            Label("Subtitle", header, "STARFIELD ERA  /  农场日常", new Vector2(32, -61), new Vector2(420, 25), 15, ink);
-            counters = Label("Counters", header, "", new Vector2(520, -30), new Vector2(1020, 42), 23, ink);
+            Label("Subtitle", header, "STARFIELD ERA  /  经营 · 探索 · 伙伴", new Vector2(32, -61), new Vector2(420, 25), 15, ink);
+            counters = Label("Counters", header, "", new Vector2(490, -20), new Vector2(1070, 88), 18, ink);
 
-            RectTransform card = Panel("Objective", new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -118), new Vector2(330, 144), new Color(.16f, .24f, .25f, .94f));
-            Label("Objective title", card, "第一份收成", new Vector2(20, -16), new Vector2(290, 32), 24, new Color(1, .88f, .62f));
-            objective = Label("Objective body", card, "", new Vector2(20, -58), new Vector2(292, 72), 17, Color.white);
+            RectTransform card = Panel("Objective", new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -140), new Vector2(345, 165), new Color(.16f, .24f, .25f, .94f));
+            Label("Objective title", card, "晨风村 · 复兴之旅", new Vector2(20, -16), new Vector2(290, 32), 24, new Color(1, .88f, .62f));
+            objective = Label("Objective body", card, "", new Vector2(20, -58), new Vector2(310, 94), 17, Color.white);
 
             RectTransform bottom = Panel("Action bar", Vector2.zero, new Vector2(1, 0), Vector2.zero, Vector2.zero, new Vector2(0, 180), new Color(.95f, .94f, .86f, .97f));
             target = Label("Target", bottom, "", new Vector2(28, -14), new Vector2(1540, 32), 23, ink);
@@ -45,7 +45,11 @@ namespace StarfieldEra
             waterButton = Button("Water", bottom, "R  浇水", 234, game.Water, out _);
             sleepButton = Button("Sleep", bottom, "F  结束一天", 440, game.Sleep, out _);
             buyButton = Button("Buy", bottom, "B  种子 · 5 金币", 646, game.BuySeed, out _);
-            Label("Movement hint", bottom, "WASD / 方向键移动\n操作与退出时自动保存", new Vector2(1135, -104), new Vector2(430, 52), 17, ink);
+            Button("Journal", bottom, "Q  冒险日志", 852, ()=>game.Adventure.Hud.Show("journal"), out _);
+            Button("Map", bottom, "M  旅途地图", 1058, ()=>game.Adventure.Hud.Show("map"), out _);
+            Label("Movement hint", bottom, "WASD 移动 · C 切换伙伴\n滚轮缩放 · 自动保存", new Vector2(1280, -104), new Vector2(300, 52), 16, ink);
+            var adventureHud = gameObject.AddComponent<AdventureHud>();
+            adventureHud.Create(game.Adventure,font);
         }
 
         public void Refresh()
@@ -53,19 +57,22 @@ namespace StarfieldEra
             FarmState state = game.State;
             int selected = game.SelectedPlot;
             CropState crop = selected < 0 ? null : state.plots[selected];
-            string signature = $"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
+            string signature = game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
             if (signature == previous) return;
             previous = signature;
-            counters.text = $"春日 · 第 {state.day} 天      金币 {state.coins}      种子 {state.seeds}      收获 {state.harvests}";
-            objective.text = state.harvests > 0 ? "已完成！\n继续种田，积累城镇发展的资源。" : "种下金萝卜，每天浇水。\n在小屋休息两晚，再回田里收获。";
+            var a=state.adventure;
+            counters.text = $"{AdventureContent.Regions[game.World.Adventure.Region]} · 第 {state.day} 天   金币 {state.coins}   种子 {state.seeds}   伙伴 {a.CompanionCount}/3\n木材 {a.wood}   石料 {a.stone}   浆果 {a.berries}   鲜鱼 {a.fish}   晶石 {a.crystals}   知识 {a.science}";
+            objective.text = AdventureContent.Quests[a.quest];
             message.text = game.Message + (game.SaveHealthy ? "" : "  保存失败，请检查磁盘权限。");
             target.text = crop == null ? (game.NearHouse ? "小屋 · 休息与种子商店" : "探索农场 · 走近农田或小屋") :
                 $"农田 {selected + 1} · " + (!crop.planted ? "空田" : crop.Ready ? "金萝卜成熟，可以收获" : $"金萝卜 {crop.growth}/2 · " + (crop.watered ? "今天已浇水" : "等待浇水"));
-            actionLabel.text = crop != null && crop.Ready ? "E  收获 · +12" : "E  种植";
-            actionButton.interactable = crop != null && (crop.Ready || (!crop.planted && state.seeds > 0));
-            waterButton.interactable = crop != null && crop.planted && !crop.watered && !crop.Ready;
-            sleepButton.interactable = game.NearHouse;
-            buyButton.interactable = game.NearHouse && state.coins >= FarmState.SeedPrice;
+            if(game.Adventure.Target!=null || game.Adventure.InBattle) target.text=game.Adventure.TargetHint;
+            actionLabel.text = game.Adventure.Target!=null ? "E  交互" : crop != null && crop.Ready ? "E  收获 · +12" : "E  种植";
+            actionButton.interactable = !game.Adventure.InBattle && (game.Adventure.Target!=null || (crop != null && (crop.Ready || (!crop.planted && state.seeds > 0))));
+            waterButton.interactable = !game.Adventure.InBattle && crop != null && crop.planted && !crop.watered && !crop.Ready;
+            sleepButton.interactable = !game.Adventure.InBattle && game.NearHouse;
+            buyButton.interactable = !game.Adventure.InBattle && game.NearHouse && state.coins >= FarmState.SeedPrice;
+            game.Adventure.Hud.Refresh();
         }
 
         RectTransform Panel(string name, Vector2 min, Vector2 max, Vector2 pivot, Vector2 position, Vector2 size, Color color)

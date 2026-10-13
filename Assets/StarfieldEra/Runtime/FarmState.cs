@@ -25,6 +25,7 @@ namespace StarfieldEra
         public int coins = 20;
         public int seeds = 12;
         public int harvests;
+        public AdventureState adventure = new AdventureState();
         public float playerX = -1;
         public float playerZ = -3;
         public CropState[] plots = new CropState[PlotCount];
@@ -74,12 +75,14 @@ namespace StarfieldEra
                 crop.watered = false;
             }
             day++;
+            adventure?.NewDay(this);
         }
 
         bool ValidIndex(int index) => index >= 0 && index < PlotCount;
 
         public bool IsValid()
         {
+            if (adventure != null && !adventure.Valid()) return false;
             if (version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
                 plots == null || plots.Length != PlotCount || float.IsNaN(playerX) || float.IsNaN(playerZ) ||
                 float.IsInfinity(playerX) || float.IsInfinity(playerZ)) return false;
@@ -105,6 +108,7 @@ namespace StarfieldEra
                 if (!File.Exists(path)) return false;
                 var candidate = JsonUtility.FromJson<FarmState>(File.ReadAllText(path));
                 if (candidate == null || !candidate.IsValid()) return false;
+                if (candidate.adventure == null) candidate.adventure = new AdventureState();
                 state = candidate;
                 return true;
             }

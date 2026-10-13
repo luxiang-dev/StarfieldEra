@@ -1,0 +1,106 @@
+using TMPro;
+using UnityEngine;
+
+namespace StarfieldEra
+{
+    public sealed class AdventureHud : MonoBehaviour
+    {
+        AdventureGame game;
+        TMP_FontAsset font;
+        RectTransform panel;
+        TextMeshProUGUI title,body;
+        Transform actions;
+        string mode="";
+        int previousRevision=-1,previousDay=-1;
+        public void Create(AdventureGame adventure,TMP_FontAsset asset)
+        {
+            game=adventure;font=asset;game.Hud=this;
+            var go=new GameObject("Adventure panel",typeof(RectTransform),typeof(UnityEngine.UI.Image));
+            panel=go.GetComponent<RectTransform>();panel.SetParent(transform,false);
+            panel.anchorMin=panel.anchorMax=panel.pivot=Vector2.one;
+            panel.anchoredPosition=new Vector2(-24,-130);panel.sizeDelta=new Vector2(450,550);
+            go.GetComponent<UnityEngine.UI.Image>().color=new Color(.12f,.2f,.23f,.98f);
+            title=Text("Panel title",panel,new Vector2(24,-20),new Vector2(390,40),27,new Color(1,.86f,.58f));
+            body=Text("Panel content",panel,new Vector2(24,-80),new Vector2(400,210),17,new Color(.93f,.95f,.87f));
+            actions=new GameObject("Panel actions",typeof(RectTransform)).transform;actions.SetParent(panel,false);
+            var actionRect=(RectTransform)actions;actionRect.anchorMin=actionRect.anchorMax=actionRect.pivot=new Vector2(0,1);
+            actionRect.anchoredPosition=Vector2.zero;actionRect.sizeDelta=new Vector2(450,550);
+            AddButton(panel,"关闭",new Vector2(322,-492),new Vector2(100,38),Hide);
+            panel.gameObject.SetActive(false);
+        }
+        public void Show(string next)
+        {
+            if(game.InBattle&&next!="battle")return;
+            if(panel.gameObject.activeSelf&&mode==next&&next!="battle"){Hide();return;}
+            mode=next;panel.gameObject.SetActive(true);Rebuild();
+        }
+        public void Hide(){if(game.InBattle)return;panel.gameObject.SetActive(false);mode="";}
+        public void Refresh()
+        {
+            if(!panel.gameObject.activeSelf)return;
+            if(previousRevision==game.Revision&&previousDay==game.Game.State.day)return;
+            Rebuild();
+        }
+        void Rebuild()
+        {
+            previousRevision=game.Revision;previousDay=game.Game.State.day;
+            for(int i=actions.childCount-1;i>=0;i--) {actions.GetChild(i).gameObject.SetActive(false);Destroy(actions.GetChild(i).gameObject);}
+            var s=game.State;
+            if(mode=="battle")
+            {
+                title.text="星辉遗迹 · 回合 "+game.Turn;
+                body.text=AdventureContent.Names[s.activeCompanion]+" 体力 "+game.AllyHP+" / "+game.AllyMaxHP+"\n\n岩甲兽 体力 "+game.EnemyHP+" / 42\n\n"+game.BattleLog+"\n\n技能冷却："+game.Cooldown+" 回合\n守卫每三回合会发动重击，适时防御。";
+                Action("1  普通攻击",0,()=>game.BattleAction(0));
+                Action("2  伙伴技能",1,()=>game.BattleAction(1));
+                Action("3  防御与回复",2,()=>game.BattleAction(2));
+                Action("4  撤退",3,()=>game.BattleAction(3));
+            }
+            else if(mode=="town")
+            {
+                title.text="晨风村 · 建设与科技";
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   知识 "+s.science+"\n\n工坊：每天生产两份木材。\n书院：每天积累两点知识，需先建工坊。\n灌溉：每天自动浇水六块农田。\n星辉学：增强伙伴的战斗能力，需先学灌溉。\n\n建设和研究须站在议事牌旁。";
+                Action(s.workshop?"工坊 · 已建造":"工坊 · 木6 石4 金15",0,()=>game.BuildOrResearch("workshop"),!s.workshop);
+                Action(s.library?"书院 · 已建造":"书院 · 木8 石6 金20",1,()=>game.BuildOrResearch("library"),!s.library);
+                Action(s.irrigation?"灌溉 · 已研究":"灌溉 · 知4 木4 石4",2,()=>game.BuildOrResearch("irrigation"),!s.irrigation);
+                Action(s.lore?"星辉学 · 已研究":"星辉学 · 知6 晶1",3,()=>game.BuildOrResearch("lore"),!s.lore);
+            }
+            else if(mode=="map")
+            {
+                title.text="旅途地图";
+                body.text="中央：晨风村与农场。\n东侧：青苔森林，采集木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，石料、晶石与守卫。\n\n步行发现区域后，可以在这里快速旅行。\n鼠标滚轮缩放，WASD 相对镜头移动。";
+                for(int i=0;i<4;i++){int region=i;Action(AdventureContent.Regions[i]+(s.discovered[i]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[i]);}
+            }
+            else
+            {
+                title.text="冒险日志 · 村庄复兴";
+                string friends="";
+                for(int i=0;i<3;i++)if(s.companions[i])friends+=AdventureContent.Names[i]+" · "+AdventureContent.Roles[i]+"\n";
+                body.text=AdventureContent.Quests[s.quest]+"\n\n收获 "+game.Game.State.harvests+" / 3   伙伴 "+s.CompanionCount+" / 3\n\n"+(friends==""?"森林的苗芽鹿喜欢浆果，去东侧找它吧！\n":friends)+"\n每日采集点会在休息后恢复。\n完成委托要回村长身边领取奖励。";
+                Action("C  切换随行伙伴",0,game.CycleCompanion);
+                Action("M  打开旅途地图",1,()=>Show("map"));
+                Action("查看建设与研究",2,()=>Show("town"));
+            }
+        }
+        void Action(string label,int row,UnityEngine.Events.UnityAction callback,bool enabled=true)
+        {
+            var button=AddButton(actions,label,new Vector2(24,-292-row*48),new Vector2(400,40),callback);
+            button.interactable=enabled;
+        }
+        TextMeshProUGUI Text(string name,Transform parent,Vector2 pos,Vector2 size,float point,Color color)
+        {
+            var go=new GameObject(name,typeof(RectTransform),typeof(TextMeshProUGUI));var rect=go.GetComponent<RectTransform>();
+            rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;
+            var label=go.GetComponent<TextMeshProUGUI>();label.font=font;label.fontSize=point;label.color=color;label.raycastTarget=false;label.enableAutoSizing=false;
+            return label;
+        }
+        UnityEngine.UI.Button AddButton(Transform parent,string label,Vector2 pos,Vector2 size,UnityEngine.Events.UnityAction callback)
+        {
+            var go=new GameObject(label,typeof(RectTransform),typeof(UnityEngine.UI.Image),typeof(UnityEngine.UI.Button));
+            var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;
+            var image=go.GetComponent<UnityEngine.UI.Image>();image.color=new Color(.27f,.43f,.39f);image.raycastTarget=true;
+            var button=go.GetComponent<UnityEngine.UI.Button>();button.targetGraphic=image;button.onClick.AddListener(callback);
+            var text=Text("Caption",go.transform,new Vector2(6,-6),new Vector2(size.x-12,size.y-12),17,Color.white);text.text=label;text.alignment=TextAlignmentOptions.Center;
+            return button;
+        }
+    }
+}

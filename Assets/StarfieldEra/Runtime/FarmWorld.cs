@@ -6,6 +6,8 @@ namespace StarfieldEra
     public sealed class FarmWorld : MonoBehaviour
     {
         public Material materialTemplate;
+        public TMPro.TMP_FontAsset labelFont;
+        public AdventureWorld Adventure { get; private set; }
         public Transform Player { get; private set; }
         public CharacterController Controller { get; private set; }
         public Camera View { get; private set; }
@@ -34,8 +36,8 @@ namespace StarfieldEra
             ripe = Mat("Golden turnip", "EAB84D");
             cone = CreateCone();
 
-            Shape("Island", PrimitiveType.Cube, new Vector3(0, -.65f, 0), new Vector3(23, 1.2f, 21), stone, true);
-            Shape("Meadow", PrimitiveType.Cube, new Vector3(0, -.08f, 0), new Vector3(22.7f, .18f, 20.7f), grass, true);
+            Shape("Island", PrimitiveType.Cube, new Vector3(0, -.65f, 0), new Vector3(42, 1.2f, 38), stone, true);
+            Shape("Meadow", PrimitiveType.Cube, new Vector3(0, -.08f, 0), new Vector3(41.7f, .18f, 37.7f), grass, true);
             Shape("Village lane", PrimitiveType.Cube, new Vector3(-2, .025f, 2.6f), new Vector3(14, .04f, 1.6f), sand);
             Shape("Farm lane", PrimitiveType.Cube, new Vector3(-2, .03f, -2), new Vector3(1.4f, .05f, 8), sand);
 
@@ -136,7 +138,7 @@ namespace StarfieldEra
             View.transform.position = new Vector3(18, 23, -25);
             View.transform.LookAt(new Vector3(0, 0, 0));
             View.orthographic = true;
-            View.orthographicSize = 13.8f;
+            View.orthographicSize = 10f;
             View.nearClipPlane = .1f;
             View.farClipPlane = 100;
             View.clearFlags = CameraClearFlags.SolidColor;
@@ -150,6 +152,8 @@ namespace StarfieldEra
             sun.shadows = LightShadows.Soft;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(.68f, .74f, .72f);
+            Adventure = gameObject.AddComponent<AdventureWorld>();
+            Adventure.Build(this);
         }
 
         public void RefreshCrops(FarmState state)
@@ -169,7 +173,7 @@ namespace StarfieldEra
             if (index >= 0) selection.position = PlotPositions[index];
         }
 
-        Material Mat(string name, string hex)
+        public Material Mat(string name, string hex)
         {
             ColorUtility.TryParseHtmlString("#" + hex, out Color color);
             var material = new Material(materialTemplate) { name = name, color = color };
@@ -178,7 +182,7 @@ namespace StarfieldEra
             return material;
         }
 
-        Transform Shape(string name, PrimitiveType type, Vector3 position, Vector3 scale, Material material, bool solid = false)
+        public Transform Shape(string name, PrimitiveType type, Vector3 position, Vector3 scale, Material material, bool solid = false)
         {
             var go = GameObject.CreatePrimitive(type);
             go.name = name;
@@ -191,7 +195,7 @@ namespace StarfieldEra
             return go.transform;
         }
 
-        Transform Cone(string name, Vector3 position, Vector3 scale, Material material)
+        public Transform Cone(string name, Vector3 position, Vector3 scale, Material material)
         {
             var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(transform);
