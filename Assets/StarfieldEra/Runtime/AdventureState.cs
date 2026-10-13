@@ -35,7 +35,7 @@ namespace StarfieldEra
         public int CompanionCount => companions.Count(x=>x);
         public bool Valid() => wood>=0 && stone>=0 && berries>=0 && fish>=0 && crystals>=0 && science>=0 &&
             quest>=0 && quest<=6 && companions!=null && companions.Length==3 && gatheredDay!=null && gatheredDay.Length==32 &&
-            discovered!=null && discovered.Length==8 && activeCompanion>=0 && activeCompanion<3 && victories>=0 && toolLevel>=0 && toolLevel<=1 && meals>=0 && deliveries>=0 && bossDay!=null && bossDay.Length==3 && buildings!=null && buildings.Count<=80 && buildings.All(b=>b!=null&&b.kind>=0&&b.kind<4&&b.rotation>=0&&b.rotation<6&&b.row>=-20&&b.row<=20&&b.column>=-23&&b.column<=22&&Math.Abs(HexWorldGrid.Center(b.column,b.row).x)<=HexWorldGrid.HalfWidth-1&&Math.Abs(HexWorldGrid.Center(b.column,b.row).z)<=HexWorldGrid.HalfDepth-1) && buildings.Select(b=>b.column+":"+b.row).Distinct().Count()==buildings.Count;
+            discovered!=null && discovered.Length==8 && activeCompanion>=0 && activeCompanion<3 && victories>=0 && toolLevel>=0 && toolLevel<=1 && meals>=0 && deliveries>=0 && bossDay!=null && bossDay.Length==3 && buildings!=null && buildings.Count<=80 && buildings.All(b=>b!=null&&b.kind>=0&&b.kind<4&&b.rotation>=0&&b.rotation<6&&b.row>=-20&&b.row<=20&&b.column>=-23&&b.column<=22&&Math.Abs(HexWorldGrid.Center(b.column,b.row).x)<=HexWorldGrid.HalfWidth-1&&Math.Abs(HexWorldGrid.Center(b.column,b.row).z)<=HexWorldGrid.HalfDepth-1) && buildings.Select(b=>b.column+":"+b.row).Distinct().Count()==buildings.Count && BuildingFootprints.Valid(buildings);
         public void NewDay(FarmState farm)
         {
             foreach(var b in buildings){if(b.kind==0)wood+=2;else if(b.kind==1)stone+=2;else if(b.kind==2)science++;}

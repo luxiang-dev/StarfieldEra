@@ -26,7 +26,7 @@ namespace StarfieldEra
             actions=new GameObject("Panel actions",typeof(RectTransform)).transform;actions.SetParent(panel,false);
             var actionRect=(RectTransform)actions;actionRect.anchorMin=actionRect.anchorMax=actionRect.pivot=new Vector2(0,1);
             actionRect.anchoredPosition=Vector2.zero;actionRect.sizeDelta=new Vector2(450,550);
-            AddButton(panel,"关闭",new Vector2(322,-492),new Vector2(100,38),Hide);
+            AddButton(panel,"关闭",new Vector2(322,-492),new Vector2(100,38),()=>{if(mode=="building"||mode=="confirm-demolition")game.Game.Construction.ClearInspection();Hide();});
             panel.gameObject.SetActive(false);
         }
         public void Show(string next)
@@ -87,9 +87,40 @@ namespace StarfieldEra
             else if(mode=="build")
             {
                 title.text="六边形建造 · 自由选址";
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场木+2，采石场石+2，学舍知+1。\n营地可料理，选择后在空地放置。\n\n左键建造，R旋转；右键或Esc取消。\n绿色可建，红色不可建。\n水面、农田、人物旁不能建。";
-                for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场木+2，采石场石+2，学舍知+1。\n林场、采石场7格；学舍4格，营地3格。\n\n左键建造，R旋转；右键或Esc取消。\n绿色可建，红色不可建。\n全部占地须可建，点击建筑查看详情。";
+                for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" "+BuildingFootprints.Counts[i]+"格 · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
                 Page("拆除自建建筑 · 返还一半资源",()=>game.Game.Construction.Choose(4));
+            }
+            else if(mode=="building" || mode=="confirm-demolition")
+            {
+                var info=game.Game.Construction.Inspected;
+                if(!info){title.text="建筑详情";body.text="点击建筑或任意占地格查看详情。";Action("打开建造菜单",0,game.Game.Construction.Open);return;}
+                title.text=info.displayName+" · 建筑详情";
+                var b=info.record;
+                if(b==null)
+                {
+                    body.text="状态：固定村庄建筑\n\n"+info.description+"\n\n点击自建建筑可查看占地、产出、花费与拆除。";
+                    Action("查看城镇建设与研究",0,()=>Show("town"));
+                    Action("查看行囊与料理",1,()=>Show("supplies"));
+                }
+                else
+                {
+                    string output=b.kind==0?"每天木材 +2":b.kind==1?"每天石料 +2":b.kind==2?"每天知识 +1":"可制作料理，需走近营地";
+                    int count=BuildingFootprints.Cells(b).Count;
+                    if(mode=="confirm-demolition")
+                    {
+                        body.text="确认拆除这座"+info.displayName+"？\n\n占地 "+count+" 格，拆除后释放全部地块。\n返还木材 "+HexConstruction.WoodCost[b.kind]/2+"、石料 "+HexConstruction.StoneCost[b.kind]/2+"、金币 "+HexConstruction.GoldCost[b.kind]/2+"。\n\n每日产出与营地功能将停止。";
+                        Action("确认拆除并返还资源",0,game.Game.Construction.DemolishInspected);
+                        Action("返回建筑详情",1,()=>Show("building"));
+                    }
+                    else
+                    {
+                        body.text="状态：运行中   占地 "+count+" 格\n坐标 ["+b.column+","+b.row+"]   朝向 "+b.rotation*60+"度\n\n"+output+"\n花费：木"+HexConstruction.WoodCost[b.kind]+" 石"+HexConstruction.StoneCost[b.kind]+" 金"+HexConstruction.GoldCost[b.kind]+"\n建造："+(b.builtDay>0?"第"+b.builtDay+"天":"原有存档建筑")+"\n\n"+(b.footprintVersion==0?"周围有障碍，旧占地保留；可拆除重建。":"黄色边框表示建筑完整占地。");
+                        Action("拆除建筑 · 返还一半资源",0,()=>Show("confirm-demolition"));
+                        Action("继续建造",1,game.Game.Construction.Open);
+                        if(b.kind==3)Action("查看料理与补给",2,()=>Show("supplies"));
+                    }
+                }
             }
             else if(mode=="supplies")
             {
@@ -122,6 +153,7 @@ namespace StarfieldEra
                 Action("查看建设与研究",2,()=>Show("town"));
             }
         }
+        public void DismissBuildingDetails(){if(mode=="building"||mode=="confirm-demolition")Hide();}
         void Page(string text,UnityEngine.Events.UnityAction callback) => AddButton(actions,text,new Vector2(24,-246),new Vector2(400,32),callback);
         void Action(string label,int row,UnityEngine.Events.UnityAction callback,bool enabled=true)
         {

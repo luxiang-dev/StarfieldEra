@@ -29,6 +29,7 @@ namespace StarfieldEra.Editor
             catalog.villager = Character("Elder", true);
             catalog.tree = Prefab("PT_Pine_Tree_03_green.prefab");
             catalog.rock = Prefab("PT_Generic_Rock_01.prefab");
+            catalog.quarry = Prefab("Stone_Mine.prefab");
             catalog.grass = Prefab("PT_Grass_02.prefab");
             catalog.flower = Prefab("PT_Poppy_02.prefab");
             catalog.shrub = Prefab("PT_Generic_Shrub_01.prefab");
