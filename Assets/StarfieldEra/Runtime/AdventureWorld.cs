@@ -77,6 +77,7 @@ namespace StarfieldEra
                 var root=Marker("倒木",pos,EncounterKind.Wood,i);
                 var log=world.Shape("Fallen log",PrimitiveType.Cylinder,pos+Vector3.up*.3f,new Vector3(.65f,.85f,.65f),timber);
                 log.rotation=Quaternion.Euler(0,0,90);log.SetParent(root,true);
+                if(StoreVisuals.Current)StoreVisuals.Current.Replace(StoreVisuals.Current.fallenLog,root,.7f,false,2.4f);
             }
             for(int i=0;i<3;i++)
             {
@@ -84,6 +85,7 @@ namespace StarfieldEra
                 var root=Marker("矿石",pos,EncounterKind.Stone,6+i);
                 world.Shape("Ore",PrimitiveType.Sphere,pos+Vector3.up*.35f,new Vector3(1.1f,.85f,1),masonry).SetParent(root,true);
                 world.Cone("Ore fleck",pos+Vector3.up*.6f,new Vector3(.4f,.6f,.4f),purple).SetParent(root,true);
+                if(StoreVisuals.Current)StoreVisuals.Current.Replace(StoreVisuals.Current.ore,root,1.1f);
             }
             for(int i=0;i<2;i++)
             {
@@ -91,6 +93,17 @@ namespace StarfieldEra
                 var root=Marker("浆果丛",pos,EncounterKind.Berry,9+i);
                 world.Shape("Berry bush",PrimitiveType.Sphere,pos+Vector3.up*.55f,new Vector3(1.3f,1.1f,1.3f),green).SetParent(root,true);
                 for(int j=0;j<4;j++) world.Shape("Berry",PrimitiveType.Sphere,pos+new Vector3((j%2)*.55f-.25f,.9f,(j/2)*.55f-.25f),Vector3.one*.22f,purple).SetParent(root,true);
+            }
+            var art=StoreVisuals.Current;
+            if(art)
+            {
+                var random=new System.Random(218);
+                for(int i=0;i<65;i++)
+                {
+                    var pos=new Vector3(9+(float)random.NextDouble()*10,0,-7+(float)random.NextDouble()*16);
+                    art.Place(i%8==0?art.flower:art.grass,transform,pos,i%8==0?.55f:.35f);
+                }
+                for(int i=0;i<14;i++)art.Place(i%4==0?art.flower:art.shrub,transform,new Vector3(-17+i*2.2f,0,16.2f),i%4==0?.6f:.85f);
             }
             Marker("湖岸钓点",new Vector3(-11.5f,0,-8),EncounterKind.Fish,11);
             var elder=Marker("村长 · 阿岚",new Vector3(-5,0,8.8f),EncounterKind.Elder,0);
@@ -113,6 +126,7 @@ namespace StarfieldEra
         void Patch(string name,Vector3 pos,Vector3 size,Material material) => world.Shape(name,PrimitiveType.Cube,pos,size,material);
         void Tree(Vector3 pos,float height)
         {
+            if (StoreVisuals.Current && StoreVisuals.Current.tree) { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, pos, height + 1); return; }
             world.Shape("Forest trunk",PrimitiveType.Cylinder,pos+Vector3.up*.6f,new Vector3(.3f,.6f,.3f),timber,true);
             world.Cone("Forest canopy",pos+Vector3.up*.8f,new Vector3(2.1f,height,2.1f),green);
             world.Cone("Canopy tier",pos+Vector3.up*1.8f,new Vector3(1.6f,height*.7f,1.6f),green);
@@ -128,6 +142,8 @@ namespace StarfieldEra
             }
             world.Shape("Village door",PrimitiveType.Cube,pos+new Vector3(0,.7f,-size*.41f),new Vector3(.65f,1.4f,.08f),timber).SetParent(root,true);
             world.Shape("Village window",PrimitiveType.Cube,pos+new Vector3(-size*.3f,1.3f,-size*.41f),new Vector3(.5f,.6f,.09f),blue).SetParent(root,true);
+            var art=StoreVisuals.Current;
+            if(art) art.Replace(name=="Workshop"?art.workshop:name=="Library"?art.library:art.market,root,3.1f);
             return root;
         }
         Transform Marker(string label,Vector3 pos,EncounterKind kind,int id)
@@ -143,12 +159,16 @@ namespace StarfieldEra
         }
         void Villager(Transform root,Material skin,Material clothes)
         {
+            if(StoreVisuals.Current && StoreVisuals.Current.Replace(StoreVisuals.Current.villager,root,1.85f,true))return;
             world.Shape("Villager coat",PrimitiveType.Capsule,root.position+Vector3.up*.7f,new Vector3(.65f,.6f,.65f),clothes).SetParent(root,true);
             world.Shape("Villager head",PrimitiveType.Sphere,root.position+Vector3.up*1.5f,Vector3.one*.45f,skin).SetParent(root,true);
             world.Shape("Village hat",PrimitiveType.Cylinder,root.position+Vector3.up*1.8f,new Vector3(.8f,.08f,.8f),gold).SetParent(root,true);
         }
         void Creature(Transform root,int species)
         {
+            var art=StoreVisuals.Current;
+            var prefab=art?(species==3?art.guardian:(art.companions!=null && species<art.companions.Length?art.companions[species]:null)):null;
+            if(art && art.Replace(prefab,root,species==3?2.2f:1.1f))return;
             Material fur=species==0?green:species==1?blue:species==2?gold:masonry;
             Vector3 pos=root.position;
             world.Shape("Creature body",PrimitiveType.Sphere,pos+Vector3.up*.45f,new Vector3(.95f,.65f,1.3f),fur).SetParent(root,true);

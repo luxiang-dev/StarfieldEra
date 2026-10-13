@@ -113,3 +113,20 @@ InitTestScene*.unity*
 .env
 .env.*
 *.log
+
+# Licensed Asset Store art stays local
+/Assets/ithappy/
+/Assets/ithappy.meta
+/Assets/Kevin Iglesias/
+/Assets/Kevin Iglesias.meta
+/Assets/Bublik/
+/Assets/Bublik.meta
+/Assets/MedievalMarketDemo/
+/Assets/MedievalMarketDemo.meta
+/Assets/RPGMonsterCouplePBRPolyart/
+/Assets/RPGMonsterCouplePBRPolyart.meta
+/Assets/Polytope Studio/
+/Assets/Polytope Studio.meta
+/Assets/StarfieldEra/Resources/StoreVisuals.asset*
+/Assets/StarfieldEra/LocalStoreArt/
+/Assets/StarfieldEra/LocalStoreArt.meta

@@ -92,6 +92,8 @@ namespace StarfieldEra
                 float x = i < 11 ? -9 + (float)random.NextDouble() * 1.5f : 8.5f + (float)random.NextDouble() * 1.4f;
                 float z = -8.5f + (float)random.NextDouble() * 17;
                 float height = 1.7f + (float)random.NextDouble() * 1.3f;
+                if (StoreVisuals.Current && StoreVisuals.Current.tree)
+                { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, new Vector3(x, 0, z), height + .5f); continue; }
                 Shape("Trunk", PrimitiveType.Cylinder, new Vector3(x, height / 3, z), new Vector3(.25f, height / 3, .25f), wood, true);
                 Cone("Pine", new Vector3(x, height / 3, z), new Vector3(1.5f, height, 1.5f), i % 2 == 0 ? green : lightGreen);
             }
@@ -99,7 +101,8 @@ namespace StarfieldEra
             {
                 float x = -7 + (float)random.NextDouble() * 14;
                 float z = -8.7f + (float)random.NextDouble();
-                Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
+                var boundary = Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
+                if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
             }
             for (int i = 0; i < 8; i++)
             {
@@ -131,6 +134,8 @@ namespace StarfieldEra
             hat.SetParent(Player, false);
             var crown = Shape("Hat crown", PrimitiveType.Cylinder, new Vector3(0, 1.68f, 0), new Vector3(.42f, .08f, .42f), flowers);
             crown.SetParent(Player, false);
+
+            if (StoreVisuals.Current) StoreVisuals.Current.Replace(StoreVisuals.Current.farmer, Player, 1.85f, true);
 
             View = new GameObject("Farm camera", typeof(Camera), typeof(AudioListener)).GetComponent<Camera>();
             View.transform.SetParent(transform);
