@@ -8,6 +8,7 @@ namespace StarfieldEra
         public Material materialTemplate;
         public TMPro.TMP_FontAsset labelFont;
         public AdventureWorld Adventure { get; private set; }
+        public HexWorldGrid HexGrid { get; private set; }
         public Transform Player { get; private set; }
         public CharacterController Controller { get; private set; }
         public Camera View { get; private set; }
@@ -16,7 +17,7 @@ namespace StarfieldEra
         readonly Renderer[] soils = new Renderer[FarmState.PlotCount];
         readonly Transform[] crops = new Transform[FarmState.PlotCount];
         readonly List<Material> materials = new List<Material>();
-        Mesh cone;
+        Mesh cone, soilMesh, selectionMesh;
         Material dry, wet, leaf, ripe;
         Transform selection;
 
@@ -36,10 +37,11 @@ namespace StarfieldEra
             ripe = Mat("Golden turnip", "EAB84D");
             cone = CreateCone();
 
-            Shape("Island", PrimitiveType.Cube, new Vector3(0, -.65f, 0), new Vector3(42, 1.2f, 38), stone, true);
-            Shape("Meadow", PrimitiveType.Cube, new Vector3(0, -.08f, 0), new Vector3(41.7f, .18f, 37.7f), grass, true);
-            Shape("Village lane", PrimitiveType.Cube, new Vector3(-2, .025f, 2.6f), new Vector3(14, .04f, 1.6f), sand);
-            Shape("Farm lane", PrimitiveType.Cube, new Vector3(-2, .03f, -2), new Vector3(1.4f, .05f, 8), sand);
+            HexGrid = new GameObject("Hex world map").AddComponent<HexWorldGrid>();
+            HexGrid.transform.SetParent(transform, false);
+            HexGrid.Build(this, stone);
+            HexGrid.PaintBox(new Vector3(-2, 0, 2.6f), new Vector3(14, 0, 1.9f), sand);
+            soilMesh = HexWorldGrid.Prism(HexWorldGrid.Radius - .065f, .13f, "Hex farm plot");
 
             // House doorway faces the farm; its collision never covers the interaction point.
             Shape("Farmhouse", PrimitiveType.Cube, new Vector3(-5, 1.3f, 5.3f), new Vector3(3.6f, 2.6f, 3), cream, true);
@@ -56,9 +58,13 @@ namespace StarfieldEra
 
             for (int i = 0; i < FarmState.PlotCount; i++)
             {
-                Vector3 pos = new Vector3(.5f + (i % 4) * 1.85f, .075f, -3.3f + (i / 4) * 1.85f);
+                Vector3 pos = HexWorldGrid.Center(i % 4, i / 4 - 2) + Vector3.up * .075f;
                 PlotPositions[i] = pos;
-                soils[i] = Shape("Plot " + (i + 1), PrimitiveType.Cube, pos, new Vector3(1.55f, .12f, 1.55f), dry).GetComponent<Renderer>();
+                var plot = new GameObject("Hex plot " + (i + 1), typeof(MeshFilter), typeof(MeshRenderer));
+                plot.transform.SetParent(transform, false); plot.transform.position = pos;
+                plot.GetComponent<MeshFilter>().sharedMesh = soilMesh;
+                soils[i] = plot.GetComponent<MeshRenderer>();
+                soils[i].sharedMaterials = new[] {dry, dry};
                 var cropRoot = new GameObject("Crop " + (i + 1)).transform;
                 cropRoot.SetParent(transform);
                 cropRoot.position = pos + Vector3.up * .1f;
@@ -74,16 +80,11 @@ namespace StarfieldEra
             }
 
             var markerMat = Mat("Selected plot", "F8DF94");
-            selection = new GameObject("Interaction marker").transform;
-            selection.SetParent(transform);
-            for (int i = 0; i < 4; i++)
-            {
-                bool horizontal = i < 2;
-                var border = Shape("Border", PrimitiveType.Cube,
-                    horizontal ? new Vector3(0, .17f, i == 0 ? -.84f : .84f) : new Vector3(i == 2 ? -.84f : .84f, .17f, 0),
-                    horizontal ? new Vector3(1.75f, .035f, .05f) : new Vector3(.05f, .035f, 1.75f), markerMat);
-                border.SetParent(selection, false);
-            }
+            selection = new GameObject("Hex interaction marker", typeof(MeshFilter), typeof(MeshRenderer)).transform;
+            selection.SetParent(transform, false);
+            selectionMesh = HexWorldGrid.Outline(HexWorldGrid.Radius - .045f, .065f);
+            selection.GetComponent<MeshFilter>().sharedMesh = selectionMesh;
+            selection.GetComponent<MeshRenderer>().sharedMaterial = markerMat;
 
             // Fixed seeds make the island reproducible without affecting gameplay random state.
             var random = new System.Random(37);
@@ -112,8 +113,8 @@ namespace StarfieldEra
             Shape("Fence rail", PrimitiveType.Cube, new Vector3(3.2f, .54f, 1.9f), new Vector3(7.5f, .14f, .12f), wood);
 
             var water = Mat("Pond", "639C9D");
-            Shape("Pond rim", PrimitiveType.Cylinder, new Vector3(-5.6f, .035f, -4), new Vector3(3.7f, .08f, 3), sand);
-            Shape("Pond water", PrimitiveType.Cylinder, new Vector3(-5.6f, .12f, -4), new Vector3(3.3f, .02f, 2.6f), water);
+            HexGrid.PaintBox(new Vector3(-5.6f, 0, -4), new Vector3(4.4f, 0, 4), sand);
+            HexGrid.PaintBox(new Vector3(-5.6f, 0, -4), new Vector3(3.4f, 0, 2.8f), water);
             Shape("Pond obstacle", PrimitiveType.Cube, new Vector3(-5.6f, -.45f, -4), new Vector3(3.2f, 1.2f, 2.5f), water, true).GetComponent<Renderer>().enabled = false;
             var flowers = Mat("Wildflowers", "E2C07F");
             for (int i = 0; i < 28; i++)
@@ -166,7 +167,8 @@ namespace StarfieldEra
             for (int i = 0; i < FarmState.PlotCount; i++)
             {
                 CropState crop = state.plots[i];
-                soils[i].sharedMaterial = crop.watered ? wet : dry;
+                var soil = crop.watered ? wet : dry;
+                soils[i].sharedMaterials = new[] {soil, soil};
                 crops[i].gameObject.SetActive(crop.planted);
                 crops[i].localScale = Vector3.one * (crop.Ready ? 1 : .35f + crop.growth * .3f);
             }
@@ -175,7 +177,7 @@ namespace StarfieldEra
         public void Select(int index)
         {
             selection.gameObject.SetActive(index >= 0);
-            if (index >= 0) selection.position = PlotPositions[index];
+            if (index >= 0) selection.position = PlotPositions[index] + Vector3.up * .025f;
         }
 
         public Material Mat(string name, string hex)
@@ -234,6 +236,8 @@ namespace StarfieldEra
         {
             foreach (var material in materials) if (material != null) Destroy(material);
             if (cone != null) Destroy(cone);
+            if (soilMesh != null) Destroy(soilMesh);
+            if (selectionMesh != null) Destroy(selectionMesh);
         }
     }
 }

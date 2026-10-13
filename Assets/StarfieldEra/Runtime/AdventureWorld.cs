@@ -123,7 +123,11 @@ namespace StarfieldEra
             Follower.gameObject.SetActive(false);
         }
 
-        void Patch(string name,Vector3 pos,Vector3 size,Material material) => world.Shape(name,PrimitiveType.Cube,pos,size,material);
+        void Patch(string name,Vector3 pos,Vector3 size,Material material)
+        {
+            if(name=="Jetty plank") world.Shape(name,PrimitiveType.Cube,pos,size,material);
+            else world.HexGrid.PaintBox(pos,size,material);
+        }
         void Tree(Vector3 pos,float height)
         {
             if (StoreVisuals.Current && StoreVisuals.Current.tree) { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, pos, height + 1); return; }
