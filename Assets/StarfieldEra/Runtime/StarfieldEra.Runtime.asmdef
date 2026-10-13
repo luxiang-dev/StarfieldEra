@@ -1,5 +1,5 @@
 {
     "name": "StarfieldEra.Runtime",
-    "references": ["Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui"],
+    "references": ["Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime"],
     "autoReferenced": true
 }

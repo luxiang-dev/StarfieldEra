@@ -14,11 +14,20 @@ namespace StarfieldEra
 
         readonly List<Renderer> tiles = new List<Renderer>();
         Mesh tileMesh;
+        readonly Dictionary<Material,Material> surfaces = new Dictionary<Material,Material>();
+        Material Surface(Material source)
+        {
+            if(surfaces.TryGetValue(source,out var surface))return surface;
+            var shader=Shader.Find("StarfieldEra/Painterly Ground");
+            if(!shader)return source;
+            surface=new Material(shader){name=source.name+" painted",color=source.color};
+            surfaces[source]=surface;return surface;
+        }
 
         public void Build(FarmWorld world, Material edge)
         {
-            tileMesh = Prism(Radius - .025f, .65f, "Hex terrain tile");
-            var meadow = new[] {world.Mat("Hex meadow A", "91AC69"),world.Mat("Hex meadow B", "98B573"),world.Mat("Hex meadow C", "8CA765")};
+            tileMesh = Prism(Radius - .008f, .65f, "Hex terrain tile");
+            var meadow = new[] {world.Mat("Hex meadow A", "87A653"),world.Mat("Hex meadow B", "90AD5F"),world.Mat("Hex meadow C", "819C50")};
             for (int row = -10; row <= 10; row++)
             for (int column = -11; column <= 10; column++)
             {
@@ -30,7 +39,7 @@ namespace StarfieldEra
                 var renderer = go.GetComponent<MeshRenderer>();
                 int variant = (column * 31 + row * 17) % 3;
                 if (variant < 0) variant += 3;
-                renderer.sharedMaterials = new[] { meadow[variant], edge };
+                renderer.sharedMaterials = new[] { Surface(meadow[variant]), edge };
                 tiles.Add(renderer);
             }
             // Continuous support beneath the narrow tile seams keeps walking smooth.
@@ -44,7 +53,7 @@ namespace StarfieldEra
             {
                 var p = renderer.transform.position;
                 if (Mathf.Abs(p.x - center.x) > size.x * .5f || Mathf.Abs(p.z - center.z) > size.z * .5f) continue;
-                var palette = renderer.sharedMaterials; palette[0] = material; renderer.sharedMaterials = palette;
+                var palette = renderer.sharedMaterials; palette[0] = Surface(material); renderer.sharedMaterials = palette;
             }
         }
 
@@ -87,6 +96,6 @@ namespace StarfieldEra
             mesh.SetVertices(vertices); mesh.SetTriangles(indices, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
             return mesh;
         }
-        void OnDestroy() { if (tileMesh) Destroy(tileMesh); }
+        void OnDestroy() { if (tileMesh) Destroy(tileMesh); foreach(var material in surfaces.Values)if(material)Destroy(material); }
     }
 }

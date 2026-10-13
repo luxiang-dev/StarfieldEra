@@ -31,9 +31,9 @@ namespace StarfieldEra
         public void Build(FarmWorld farm)
         {
             world=farm;
-            timber=world.Mat("Cedar timber","72554A"); masonry=world.Mat("Slate","7C8885");
-            green=world.Mat("Moss","476F54"); cream=world.Mat("Limestone","E4D6AF");
-            blue=world.Mat("Lake","548EAA"); gold=world.Mat("Harvest gold","E6BF69"); purple=world.Mat("Star crystal","9D80C1");
+            timber=world.Mat("Cedar timber","72554A"); masonry=world.Mat("Slate","87927E");
+            green=world.Mat("Moss","557B48"); cream=world.Mat("Limestone","D1C493");
+            blue=world.Mat("Lake","4597A8"); gold=world.Mat("Harvest gold","E6BF69"); purple=world.Mat("Star crystal","9D80C1");
             Patch("Forest floor",new Vector3(13,.025f,1),new Vector3(12,.04f,19),green);
             Patch("Village plaza",new Vector3(-5,.035f,9),new Vector3(12,.05f,7),cream);
             Patch("Ruins plateau",new Vector3(10,.04f,13),new Vector3(12,.06f,9),masonry);

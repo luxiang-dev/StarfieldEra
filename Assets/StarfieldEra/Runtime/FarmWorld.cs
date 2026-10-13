@@ -23,16 +23,16 @@ namespace StarfieldEra
 
         public void Generate()
         {
-            var grass = Mat("Meadow", "91AC69");
+            var grass = Mat("Meadow", "82965C");
             var stone = Mat("Island edge", "526856");
-            var sand = Mat("Warm stone", "CCBC8B");
+            var sand = Mat("Warm stone", "D3C394");
             var wood = Mat("Timber", "715346");
             var cream = Mat("Plaster", "F1E2BC");
             var roof = Mat("Terracotta", "B56648");
             var green = Mat("Evergreen", "396952");
             var lightGreen = Mat("Canopy", "638D50");
-            dry = Mat("Dry soil", "805643");
-            wet = Mat("Watered soil", "483E36");
+            dry = Mat("Dry soil", "684936");
+            wet = Mat("Watered soil", "49382B");
             leaf = Mat("Crop leaves", "77A34D");
             ripe = Mat("Golden turnip", "EAB84D");
             cone = CreateCone();
@@ -153,13 +153,19 @@ namespace StarfieldEra
             sun.transform.SetParent(transform);
             sun.type = LightType.Directional;
             sun.transform.rotation = Quaternion.Euler(45, -35, 0);
-            sun.color = new Color(1, .92f, .8f);
-            sun.intensity = 1.6f;
+            sun.color = new Color(1, .97f, .88f);
+            sun.intensity = 1.25f;
+            sun.shadowStrength = .8f;
+            sun.shadowBias = .025f;
+            sun.shadowNormalBias = .15f;
             sun.shadows = LightShadows.Soft;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(.68f, .74f, .72f);
+            RenderSettings.ambientLight = new Color(.48f, .56f, .52f);
             Adventure = gameObject.AddComponent<AdventureWorld>();
             Adventure.Build(this);
+            var presentation = new GameObject("Painterly art direction").AddComponent<PainterlyPresentation>();
+            presentation.transform.SetParent(transform, false);
+            presentation.Build(this);
         }
 
         public void RefreshCrops(FarmState state)
@@ -184,6 +190,8 @@ namespace StarfieldEra
         {
             ColorUtility.TryParseHtmlString("#" + hex, out Color color);
             var material = new Material(materialTemplate) { name = name, color = color };
+            if(name=="Dry soil" || name=="Watered soil")
+            { var painted=Shader.Find("StarfieldEra/Painterly Ground"); if(painted) {material.shader=painted;material.color=color;} }
             material.SetFloat("_Smoothness", .05f);
             materials.Add(material);
             return material;

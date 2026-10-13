@@ -39,6 +39,8 @@ namespace StarfieldEra
                 model.transform.localScale *= factor;
                 model.transform.position += new Vector3(position.x - bounds.center.x, position.y - bounds.min.y, position.z - bounds.center.z) * factor;
             }
+            if(prefab.name.Contains("Pine_Tree") && prefab.name.Contains("green"))
+                model.transform.localScale = Vector3.Scale(model.transform.localScale,new Vector3(1.3f,1,1.3f));
             foreach (var animator in model.GetComponentsInChildren<Animator>(true)) animator.applyRootMotion = false;
             return anchor;
         }

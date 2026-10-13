@@ -19,7 +19,8 @@ namespace StarfieldEra
             panel=go.GetComponent<RectTransform>();panel.SetParent(transform,false);
             panel.anchorMin=panel.anchorMax=panel.pivot=Vector2.one;
             panel.anchoredPosition=new Vector2(-24,-130);panel.sizeDelta=new Vector2(450,550);
-            go.GetComponent<UnityEngine.UI.Image>().color=new Color(.12f,.2f,.23f,.98f);
+            go.GetComponent<UnityEngine.UI.Image>().color=new Color(.06f,.16f,.15f,.98f);
+            HudOrnament.Border(panel);
             title=Text("Panel title",panel,new Vector2(24,-20),new Vector2(390,40),27,new Color(1,.86f,.58f));
             body=Text("Panel content",panel,new Vector2(24,-80),new Vector2(400,210),17,new Color(.93f,.95f,.87f));
             actions=new GameObject("Panel actions",typeof(RectTransform)).transform;actions.SetParent(panel,false);
@@ -97,7 +98,8 @@ namespace StarfieldEra
         {
             var go=new GameObject(label,typeof(RectTransform),typeof(UnityEngine.UI.Image),typeof(UnityEngine.UI.Button));
             var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;
-            var image=go.GetComponent<UnityEngine.UI.Image>();image.color=new Color(.27f,.43f,.39f);image.raycastTarget=true;
+            var image=go.GetComponent<UnityEngine.UI.Image>();image.color=new Color(.18f,.3f,.25f);image.raycastTarget=true;
+            HudOrnament.Border(rect);
             var button=go.GetComponent<UnityEngine.UI.Button>();button.targetGraphic=image;button.onClick.AddListener(callback);
             var text=Text("Caption",go.transform,new Vector2(6,-6),new Vector2(size.x-12,size.y-12),17,Color.white);text.text=label;text.alignment=TextAlignmentOptions.Center;
             return button;
