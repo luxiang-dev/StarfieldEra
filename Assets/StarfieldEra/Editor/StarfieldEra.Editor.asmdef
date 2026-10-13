@@ -1,0 +1,5 @@
+{
+    "name": "StarfieldEra.Editor",
+    "references": ["StarfieldEra.Runtime", "Unity.TextMeshPro"],
+    "includePlatforms": ["Editor"]
+}

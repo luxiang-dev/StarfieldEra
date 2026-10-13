@@ -1,0 +1,5 @@
+{
+    "name": "StarfieldEra.Runtime",
+    "references": ["Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui"],
+    "autoReferenced": true
+}
