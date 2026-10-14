@@ -79,7 +79,8 @@ namespace StarfieldEra
             FarmState state = game.State;
             int selected = game.SelectedPlot;
             CropState crop = selected < 0 ? null : state.plots[selected];
-            string signature = (game.Fences.Active?game.Fences.Hint:game.Construction.Hint)+"/"+game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{state.energy}/{state.selectedCrop}/{state.SelectedSeeds}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
+            string terrainHint=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position));
+            string signature = terrainHint+"/"+ (game.Fences.Active?game.Fences.Hint:game.Construction.Hint)+"/"+game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{state.energy}/{state.selectedCrop}/{state.SelectedSeeds}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
             if (signature == previous) return;
             previous = signature;
             var a=state.adventure;
@@ -97,6 +98,7 @@ namespace StarfieldEra
             if(selected>=12 && !a.expandedFarm)target.text="南侧农田 · 需要扩建农场";
             buyLabel.text="B "+FarmState.CropNames[state.selectedCrop]+" · "+state.SeedCost+"金";
             if(game.Adventure.Target!=null || game.Adventure.InBattle) target.text=game.Adventure.TargetHint;
+            target.text+=" · "+terrainHint;
             if((game.Construction.Active||game.Fences.Active))target.text=(game.Fences.Active?game.Fences.Hint:game.Construction.Hint);
             actionLabel.text = game.Adventure.Target!=null ? "E  交互" : crop != null && crop.Ready ? "E  收获" : "E  种植";
             actionButton.interactable = !game.Adventure.InBattle && (game.Adventure.Target!=null || (crop != null && (crop.Ready || (!crop.planted && state.SelectedSeeds > 0 && (selected<12||a.expandedFarm)))));

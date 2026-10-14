@@ -19,7 +19,7 @@ namespace StarfieldEra
         }
         void Spawn(AnimalRecord record,int id,Vector3 position)
         {
-            var root=new GameObject(record==null?"Wild boar":"Pasture boar");root.transform.SetParent(transform,false);root.transform.position=position;
+            var root=new GameObject(record==null?"Wild boar":"Pasture boar");root.transform.SetParent(transform,false);position=Game.World.HexGrid.SafeLand(position,.28f);root.transform.position=position;
             var actor=root.AddComponent<AnimalActor>();actor.owner=this;actor.record=record;actor.id=id;actor.origin=position;
             if(record==null&&actor.Obstructed(position))
             {
@@ -93,14 +93,14 @@ namespace StarfieldEra
             var delta=destination-transform.position;delta.y=0;walking=delta.magnitude>.12f;
             if(walking)
             {
-                var step=Vector3.MoveTowards(transform.position,destination,Time.deltaTime*.7f);
+                var step=Vector3.MoveTowards(transform.position,destination,Mathf.Min(Time.deltaTime,.1f)*.7f*TerrainTraits.Speed[(int)owner.Game.World.HexGrid.TerrainAt(transform.position)]);
                 if(owner.Game.World.HexGrid.TryCell(transform.position,out var from)&&owner.Game.World.HexGrid.TryCell(step,out var to)&&from!=to)
                 {
                     bool crossing=false;for(int e=0;e<6;e++)if(PastureFences.Neighbor(from,e)==to&&owner.Game.Fences.Blocks(from,e))crossing=true;
                     if(record!=null&&(pen==null||!pen.Contains(to)))crossing=true;
                     if(crossing){destination=transform.position;walking=false;}
                 }
-                if(walking&&!Obstructed(step)){transform.position=step;transform.rotation=Quaternion.Slerp(transform.rotation,Quaternion.LookRotation(delta),Time.deltaTime*4);}else{destination=transform.position;walking=false;}
+                if(walking&&owner.Game.World.HexGrid.CanStand(step,.28f)&&!Obstructed(step)){transform.position=step;transform.rotation=Quaternion.Slerp(transform.rotation,Quaternion.LookRotation(delta),Time.deltaTime*4);}else{destination=transform.position;walking=false;}
             }
             if(animator&&animator.runtimeAnimatorController){if(hasSpeed)animator.SetFloat(walkHash,walking?.7f:0);else if(hasWalking)animator.SetBool(walkHash,walking);else if(walking!=previousWalking){animator.CrossFadeInFixedTime(walking?"Walking":"Idle",.2f,0);previousWalking=walking;}}
         }

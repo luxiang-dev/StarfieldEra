@@ -157,7 +157,7 @@ namespace StarfieldEra
         {
             if(InBattle||region<0||region>=8||!State.discovered[region])return;
             Vector3[] destinations={new Vector3(-5,.2f,7),new Vector3(13,.2f,6),new Vector3(-8,.2f,-7),new Vector3(10,.2f,8),new Vector3(24,.2f,-22),new Vector3(25,.2f,24),new Vector3(-27,.2f,20),new Vector3(-28,.2f,-18)};
-            Game.World.Controller.enabled=false;Game.World.Player.position=destinations[region];Game.World.Controller.enabled=true;
+            Game.World.Controller.enabled=false;Game.World.Player.position=Game.World.HexGrid.SafeLand(destinations[region],Game.World.Controller.radius);Game.World.Controller.enabled=true;
             Game.UpdateSelection();Hud.Hide();Commit("抵达："+AdventureContent.Regions[region]);
         }
         void StartBattle(int id)

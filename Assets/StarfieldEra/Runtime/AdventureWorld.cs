@@ -34,14 +34,14 @@ namespace StarfieldEra
             timber=world.Mat("Cedar timber","72554A"); masonry=world.Mat("Slate","87927E");
             green=world.Mat("Moss","557B48"); cream=world.Mat("Limestone","D1C493");
             blue=world.Mat("Lake","4597A8"); gold=world.Mat("Harvest gold","E6BF69"); purple=world.Mat("Star crystal","9D80C1");
-            Patch("Forest floor",new Vector3(13,.025f,1),new Vector3(12,.04f,19),green);
-            Patch("Village plaza",new Vector3(-5,.035f,9),new Vector3(12,.05f,7),cream);
-            Patch("Ruins plateau",new Vector3(10,.04f,13),new Vector3(12,.06f,9),masonry);
-            Patch("East trail",new Vector3(9,.07f,3),new Vector3(11,.06f,1.3f),cream);
-            Patch("North trail",new Vector3(6,.06f,9),new Vector3(1.3f,.05f,14),cream);
-            Patch("Lake trail",new Vector3(-10,.04f,-1),new Vector3(1.2f,.04f,10),cream);
-            Patch("Lake shore",new Vector3(-13,.03f,-10),new Vector3(10,.1f,8),cream);
-            Patch("Mirror lake",new Vector3(-14,.1f,-11),new Vector3(8.5f,.1f,6.5f),blue);
+            Patch("Forest floor",new Vector3(13,.025f,1),new Vector3(12,.04f,19),green,TerrainKind.Forest);
+            Patch("Village plaza",new Vector3(-5,.035f,9),new Vector3(12,.05f,7),cream,TerrainKind.Road);
+            Patch("Ruins plateau",new Vector3(10,.04f,13),new Vector3(12,.06f,9),masonry,TerrainKind.Rock);
+            Patch("East trail",new Vector3(9,.07f,3),new Vector3(11,.06f,1.3f),cream,TerrainKind.Road);
+            Patch("North trail",new Vector3(6,.06f,9),new Vector3(1.3f,.05f,14),cream,TerrainKind.Road);
+            Patch("Lake trail",new Vector3(-10,.04f,-1),new Vector3(1.2f,.04f,10),cream,TerrainKind.Road);
+            Patch("Lake shore",new Vector3(-13,.03f,-10),new Vector3(10,.1f,8),cream,TerrainKind.Sand);
+            Patch("Mirror lake",new Vector3(-14,.1f,-11),new Vector3(8.5f,.1f,6.5f),blue,TerrainKind.Water);
             var blocker=world.Shape("Lake collision",PrimitiveType.Cube,new Vector3(-14,-.15f,-11),new Vector3(8.5f,.8f,6.5f),blue,true);
             blocker.GetComponent<Renderer>().enabled=false;
             for(int i=0;i<5;i++) Patch("Jetty plank",new Vector3(-11.5f,.24f,-8.3f-i*.5f),new Vector3(2,.12f,.42f),timber);
@@ -129,14 +129,14 @@ namespace StarfieldEra
             var plains=world.Mat("Golden plains","ACAF67");
             var mountain=world.Mat("White rock mountains","A2ACA2");
             var marsh=world.Mat("Glowing marsh","496B67");
-            Patch("Plains region",RegionCenters[4],new Vector3(28,0,24),plains);
-            Patch("Mountain region",RegionCenters[5],new Vector3(28,0,24),mountain);
-            Patch("Marsh region",RegionCenters[6],new Vector3(23,0,27),marsh);
-            Patch("Outpost region",RegionCenters[7],new Vector3(22,0,24),green);
-            Patch("Southern road",new Vector3(12,0,-15),new Vector3(2.5f,0,27),cream);
-            Patch("Northern road",new Vector3(17,0,23),new Vector3(2.5f,0,26),cream);
-            Patch("Outpost road",new Vector3(-21,0,-6),new Vector3(30,0,2.5f),cream);
-            Patch("Marsh road",new Vector3(-20,0,16),new Vector3(32,0,2.5f),cream);
+            Patch("Plains region",RegionCenters[4],new Vector3(28,0,24),plains,TerrainKind.Meadow);
+            Patch("Mountain region",RegionCenters[5],new Vector3(28,0,24),mountain,TerrainKind.Rock);
+            Patch("Marsh region",RegionCenters[6],new Vector3(23,0,27),marsh,TerrainKind.Marsh);
+            Patch("Outpost region",RegionCenters[7],new Vector3(22,0,24),green,TerrainKind.Forest);
+            Patch("Southern road",new Vector3(12,0,-15),new Vector3(2.5f,0,27),cream,TerrainKind.Road);
+            Patch("Northern road",new Vector3(17,0,23),new Vector3(2.5f,0,26),cream,TerrainKind.Road);
+            Patch("Outpost road",new Vector3(-21,0,-6),new Vector3(30,0,2.5f),cream,TerrainKind.Road);
+            Patch("Marsh road",new Vector3(-20,0,16),new Vector3(32,0,2.5f),cream,TerrainKind.Road);
             var random=new System.Random(629);
             for(int region=4;region<8;region++)
             {
@@ -176,10 +176,10 @@ namespace StarfieldEra
             mill.gameObject.SetActive(false);observatory.gameObject.SetActive(false);
         }
 
-        void Patch(string name,Vector3 pos,Vector3 size,Material material)
+        void Patch(string name,Vector3 pos,Vector3 size,Material material,TerrainKind? kind=null)
         {
             if(name=="Jetty plank") world.Shape(name,PrimitiveType.Cube,pos,size,material);
-            else world.HexGrid.PaintBox(pos,size,material);
+            else world.HexGrid.PaintBox(pos,size,material,kind);
         }
         void Tree(Vector3 pos,float height)
         {
@@ -252,7 +252,7 @@ namespace StarfieldEra
                 if(followerSpecies!=state.activeCompanion)
                 {
                     for(int i=Follower.childCount-1;i>=0;i--)Destroy(Follower.GetChild(i).gameObject);
-                    Follower.position=world.Player.position+Vector3.right;
+                    Follower.position=world.HexGrid.SafeLand(world.Player.position+Vector3.right,.15f,false);
                     Creature(Follower,state.activeCompanion);followerSpecies=state.activeCompanion;
                 }
                 Follower.gameObject.SetActive(true);
@@ -280,7 +280,10 @@ namespace StarfieldEra
             {
                 Vector3 destination=player-world.Player.forward*1.2f+world.Player.right*.7f;
                 destination.y=.08f+Mathf.Sin(Time.time*4)*.035f;
-                Follower.position=Vector3.Lerp(Follower.position,destination,Time.deltaTime*3);
+                if(!world.HexGrid.CanStand(Follower.position,.15f))Follower.position=world.HexGrid.SafeLand(player,.15f,false);
+                var step=Vector3.Lerp(Follower.position,destination,Time.deltaTime*3)-Follower.position;
+                var horizontal=world.HexGrid.ConstrainMovement(Follower.position,step,.15f);
+                Follower.position+=horizontal;
                 Follower.rotation=Quaternion.Slerp(Follower.rotation,world.Player.rotation,Time.deltaTime*4);
             }
             if(windmill.gameObject.activeSelf)windmill.Rotate(0,0,Time.deltaTime*30);

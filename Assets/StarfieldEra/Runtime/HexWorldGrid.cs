@@ -4,7 +4,7 @@ using UnityEngine;
 namespace StarfieldEra
 {
     /// <summary>Pointy-top, odd-row offset hex coordinates shared by terrain and farming.</summary>
-    public sealed class HexWorldGrid : MonoBehaviour
+    public sealed partial class HexWorldGrid : MonoBehaviour
     {
         public const float Radius = 1.15f;
         public const float HalfWidth=42, HalfDepth=36;
@@ -15,6 +15,7 @@ namespace StarfieldEra
 
         readonly List<Renderer> tiles = new List<Renderer>();
         Mesh tileMesh;
+        readonly Dictionary<Vector2Int,TerrainKind> terrain=new Dictionary<Vector2Int,TerrainKind>();
         readonly Dictionary<Vector2Int,Renderer> cells=new Dictionary<Vector2Int,Renderer>();
         readonly Dictionary<Material,Material> surfaces = new Dictionary<Material,Material>();
         Material Surface(Material source)
@@ -44,6 +45,7 @@ namespace StarfieldEra
                 renderer.sharedMaterials = new[] { Surface(meadow[variant]), edge };
                 tiles.Add(renderer);
                 cells[new Vector2Int(column,row)]=renderer;
+                terrain[new Vector2Int(column,row)]=TerrainKind.Meadow;
             }
             // Continuous support beneath the narrow tile seams keeps walking smooth.
             var support = gameObject.AddComponent<BoxCollider>();
@@ -51,11 +53,45 @@ namespace StarfieldEra
         }
 
         public bool Contains(Vector2Int cell)=>cells.ContainsKey(cell);
-        public bool IsDry(Vector2Int cell)
+        public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
+        public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;
+        public bool IsDry(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
+        public bool CanBuildOn(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Buildable(TerrainAt(cell));
+        public bool CanStand(Vector3 position,float radius=.3f)
         {
-            if(!cells.TryGetValue(cell,out var renderer))return false;
-            string name=renderer.sharedMaterials[0].name;
-            return !name.StartsWith("Lake") && !name.StartsWith("Pond");
+            if(!TerrainTraits.Walkable(TerrainAt(position)))return false;
+            for(int i=0;i<12;i++)
+            {float angle=i*Mathf.PI/6;if(!TerrainTraits.Walkable(TerrainAt(position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius))))return false;}
+            return true;
+        }
+        public Vector3 ConstrainMovement(Vector3 start,Vector3 displacement,float radius=.3f)
+        {
+            displacement.y=0;int steps=Mathf.Max(1,Mathf.CeilToInt(displacement.magnitude/.12f));var step=displacement/steps;var position=start;
+            for(int i=0;i<steps;i++)
+            {
+                if(CanStand(position+step,radius))position+=step;
+                else
+                {
+                    var x=new Vector3(step.x,0,0);var z=new Vector3(0,0,step.z);
+                    if(CanStand(position+x,radius))position+=x;
+                    if(CanStand(position+z,radius))position+=z;
+                }
+            }
+            return position-start;
+        }
+        public Vector3 SafeLand(Vector3 desired,float radius=.3f, bool obstacles=true)
+        {
+            if(CanStand(desired,radius)&&(!obstacles||Clear(desired,radius)))return desired;
+            Vector3 best=Center(0,0)+Vector3.up*desired.y;float nearest=float.MaxValue;
+            foreach(var cell in cells.Keys)
+            {var p=Center(cell.x,cell.y);p.y=desired.y;float d=(p-desired).sqrMagnitude;if(d>=nearest||!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
+            return best;
+        }
+        bool Clear(Vector3 p,float radius)
+        {
+            foreach(var collider in Physics.OverlapSphere(p+Vector3.up*.75f,radius,~0,QueryTriggerInteraction.Ignore))
+                if(collider!=GetComponent<Collider>()&&!(collider is CharacterController))return false;
+            return true;
         }
         public bool TryCell(Vector3 position,out Vector2Int cell)
         {
@@ -73,12 +109,13 @@ namespace StarfieldEra
             return cells.ContainsKey(cell)&&nearest<=Radius*Radius;
         }
 
-        public void PaintBox(Vector3 center, Vector3 size, Material material)
+        public void PaintBox(Vector3 center, Vector3 size, Material material,TerrainKind? kind=null)
         {
             foreach (var renderer in tiles)
             {
                 var p = renderer.transform.position;
                 if (Mathf.Abs(p.x - center.x) > size.x * .5f || Mathf.Abs(p.z - center.z) > size.z * .5f) continue;
+                if(kind.HasValue&&TryCell(p,out var cell))terrain[cell]=kind.Value;
                 var palette = renderer.sharedMaterials; palette[0] = Surface(material); renderer.sharedMaterials = palette;
             }
         }

@@ -83,7 +83,7 @@ namespace StarfieldEra
             why="";var c=new Vector2Int(f.column,f.row);var n=Neighbor(c,f.edge);var center=HexWorldGrid.Center(c.x,c.y)+(HexWorldGrid.Corner(f.edge,HexWorldGrid.Radius)+HexWorldGrid.Corner((f.edge+1)%6,HexWorldGrid.Radius))*.5f;
             if(edges.ContainsKey(Key(c,f.edge))){why="该边缘已有围栏";return false;}
             if(game.State.adventure.fences.Count>=600){why="围栏已达600段上限";return false;}
-            if(!game.World.HexGrid.Contains(n)||!game.World.HexGrid.IsDry(c)||!game.World.HexGrid.IsDry(n)){why="选择陆地内部边缘";return false;}
+            if(!game.World.HexGrid.Contains(n)||!game.World.HexGrid.CanBuildOn(c)||!game.World.HexGrid.CanBuildOn(n)){why="选择稳定陆地内部边缘，避开水面和沼泽";return false;}
             if(Vector3.Distance(center,game.World.Player.position)>10){why="请走近十步以内";return false;}
             foreach(var b in game.State.adventure.buildings){var cells=BuildingFootprints.Cells(b);if(cells.Contains(c)||cells.Contains(n)){why="边缘覆盖建筑占地";return false;}}
             foreach(var col in Physics.OverlapSphere(center+Vector3.up*.55f,.24f))if(!col.isTrigger&&col!=game.World.HexGrid.GetComponent<Collider>()&&!col.GetComponentInParent<FenceTarget>()){why="边缘有障碍或角色";return false;}

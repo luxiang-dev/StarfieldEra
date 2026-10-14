@@ -32,7 +32,8 @@ namespace StarfieldEra
             World.materialTemplate = worldMaterial;
             World.labelFont = interfaceFont;
             World.Generate();
-            World.Player.position = new Vector3(Mathf.Clamp(State.playerX, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1), .25f, Mathf.Clamp(State.playerZ, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1));
+            World.HexGrid.CompleteTerrain(World,State);
+            World.Player.position = World.HexGrid.SafeLand(new Vector3(Mathf.Clamp(State.playerX, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1), .25f, Mathf.Clamp(State.playerZ, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1)),World.Controller.radius);
             if(State.adventure==null) State.adventure=new AdventureState();
             Adventure=gameObject.AddComponent<AdventureGame>();
             Adventure.Initialize(this);
@@ -62,7 +63,13 @@ namespace StarfieldEra
             if (move.sqrMagnitude > .01f)
                 World.Player.rotation = Quaternion.Slerp(World.Player.rotation, Quaternion.LookRotation(move), Time.deltaTime * 14);
             gravity = World.Controller.isGrounded ? -2 : Mathf.Max(-20, gravity - 20 * Time.deltaTime);
-            World.Controller.Move((move * 4 + Vector3.up * gravity) * Time.deltaTime);
+            var grid=World.HexGrid;var before=World.Player.position;
+            float speed=TerrainTraits.Speed[(int)grid.TerrainAt(before)];
+            var horizontal=grid.ConstrainMovement(before,move*4*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius);
+            World.Controller.Move(horizontal+Vector3.up*gravity*Time.deltaTime);
+            // Collision sliding must also respect the shoreline, including the character radius.
+            if(!grid.CanStand(World.Player.position,World.Controller.radius))
+            {var safe=grid.SafeLand(before,World.Controller.radius,false);World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;}
             Vector3 position = World.Player.position;
             // Physical island edge is complemented by bounds so no input can walk off it.
             position.x = Mathf.Clamp(position.x, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1);

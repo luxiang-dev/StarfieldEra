@@ -162,7 +162,7 @@ namespace StarfieldEra
             explanation="";
             if(!Game.World.HexGrid.Contains(cell)){explanation="建筑占地超出大陆边界";return false;}
             if(occupants.TryGetValue(cell,out var owner)&&owner!=ignore){explanation="占地与已有建筑重叠";return false;}
-            if(!Game.World.HexGrid.IsDry(cell)){explanation="建筑占地覆盖水面";return false;}
+            if(!Game.World.HexGrid.CanBuildOn(cell)){explanation="建筑占地覆盖水面或沼泽，选择稳定陆地";return false;}
             var pos=HexWorldGrid.Center(cell.x,cell.y);
             foreach(var plot in Game.World.PlotPositions)
                 if(Vector3.Distance(pos,new Vector3(plot.x,0,plot.z))<2.1f){explanation="占地覆盖农田或通道";return false;}

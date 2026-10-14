@@ -79,7 +79,7 @@ namespace StarfieldEra
             else if(mode=="map" || mode=="map2")
             {
                 title.text="星野大陆 · 旅途地图";
-                body.text=mode=="map"?"中央：晨风村、24块农田与议事牌。\n东侧：青苔森林，木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，晶石与守卫。\n\n先步行发现，再解锁快速旅行。":"东南：金穗平原，营地与商人。\n东北远方：白岩山地，矿石与新守卫。\n西北：幽光湿地，浆果、钓鱼与守卫。\n西南远方：远行驿站，贸易与营地。\n\n鼠标滚轮可缩放到大陆视野。";
+                body.text=mode=="map"?"中央：晨风村、24块农田与议事牌。\n东侧：青苔森林，木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，晶石与守卫。\n\n先步行发现，再解锁快速旅行。":"东南：金穗平原，营地与商人。\n东北远方：白岩山地，矿石与新守卫。\n西北：幽光湿地，浆果、钓鱼与守卫。\n西南远方：远行驿站，贸易与营地。\n\n鼠标滚轮可缩放到大陆视野。\n沼泽移动45%，道路120%；水面不可通行。";
                 int start=mode=="map"?0:4;
                 for(int i=0;i<4;i++){int region=start+i;Action(AdventureContent.Regions[region]+(s.discovered[region]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[region]);}
                 Page(mode=="map"?"下一页 · 四个远方区域":"上一页 · 村庄周边",()=>Show(mode=="map"?"map2":"map"));
