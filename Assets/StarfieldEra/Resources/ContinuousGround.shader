@@ -33,6 +33,12 @@ Shader "StarfieldEra/Continuous Ground"
     half3 dirt=SRGBToLinear(half3(.73,.61,.42))*(.95+noise(i.world.xz*.45+8)*.1);
     half3 sand=SRGBToLinear(half3(.83,.76,.55))*(.96+noise(i.world.xz*.4+24)*.08);
     half3 snow=SRGBToLinear(half3(.80,.86,.87));
+    // Nested grass patches give large areas distinct painted masses rather than one flat fill.
+    float patch=noise(i.world.xz*.23+float2(13,7))+.24*noise(i.world.xz*.075);
+    float meadowPatch=smoothstep(.52,.61,patch);
+    grass=lerp(grass,SRGBToLinear(half3(.55,.66,.34)),meadowPatch*.72);
+    float shadePatch=smoothstep(.3,.4,noise(i.world.xz*.15+31));
+    grass=lerp(grass,SRGBToLinear(half3(.38,.52,.28)),(1-shadePatch)*.45);
     // Quiet painted washes, leaving readable silhouettes for foliage and buildings.
     grass*=.96+dot(tile(uv,float2(0,.5)),half3(.3,.59,.11))*.08;
     dirt=lerp(dirt,SRGBToLinear(half3(.54,.59,.51)),saturate(i.biome.x)*.8);
@@ -44,9 +50,16 @@ Shader "StarfieldEra/Continuous Ground"
     float highest=max(max(scores.x,scores.y),max(scores.z,scores.w));
     float4 w=max(0,scores-highest+_BlendWidth)*i.weights;w/=max(dot(w,1),.0001);
     half3 paint=grass*w.x+dirt*w.y+sand*w.z+snow*w.w;
+    // A narrow dark grassy lip and a warm bare-earth fringe separate adjacent terrain masses.
+    float landEdge=w.x-w.y-w.z;
+    float lip=(1-smoothstep(.02,.16,abs(landEdge)))*saturate(i.weights.x*5);
+    paint*=1-lip*.22;
+    float fringe=(1-smoothstep(.15,.4,abs(landEdge)))*step(landEdge,0)*saturate(i.weights.x*4);
+    paint=lerp(paint,SRGBToLinear(half3(.66,.56,.36)),fringe*.18);
     float2 cell=floor(i.world.xz*.9),p=frac(i.world.xz*.9)-.5;
     float blades=min(stroke(p,float2(0,-.12),float2(-.11,.06)),min(stroke(p,float2(0,-.12),float2(.015,.14)),stroke(p,float2(0,-.12),float2(.12,.03))));
-    float ink=(1-smoothstep(.008,.024,blades))*step(.78,hash(cell))*w.x;
+    float density=lerp(.78,.5,saturate(lip+abs(meadowPatch-.5)*.4));
+    float ink=(1-smoothstep(.008,.024,blades))*step(density,hash(cell))*w.x;
     paint=lerp(paint,grass*.7,ink*.65);
     paint*=lerp(1,half3(.66,.80,.78),i.biome.y*.55);
     half3 n=normalize(i.normal);Light sun=GetMainLight(TransformWorldToShadowCoord(i.world));

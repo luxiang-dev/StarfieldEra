@@ -164,7 +164,7 @@ namespace StarfieldEra
             vertices.Add(Vector3.zero);uv.Add(new Vector2(.5f,.5f));
             for(int ring=1;ring<=segments;ring++)for(int side=0;side<6;side++)for(int j=0;j<ring;j++)
             {
-                var p=Vector3.Lerp(HexWorldGrid.Corner(side,1.12f),HexWorldGrid.Corner((side+1)%6,1.12f),(float)j/ring)*((float)ring/segments);
+                var p=Vector3.Lerp(HexWorldGrid.Corner(side,1.2f),HexWorldGrid.Corner((side+1)%6,1.2f),(float)j/ring)*((float)ring/segments);
                 p.y=.025f+Mathf.Pow(.5f+.5f*Mathf.Cos(p.x*Mathf.PI*6),3)*.045f;
                 vertices.Add(p);uv.Add(new Vector2(p.x/2.3f+.5f,p.z/2.3f+.5f));
             }
