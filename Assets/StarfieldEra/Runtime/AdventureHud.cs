@@ -34,11 +34,14 @@ namespace StarfieldEra
         public void Show(string next)
         {
             if(game.InBattle&&next!="battle")return;
+            if(game.Game.Management&&ManagementHud.Handles(next)){game.Game.Management.OpenFromMode(next);return;}
+            game.Game.Management?.Close();
             if(game.Game.Expedition.Fishing&&next!="fishing")game.Game.Expedition.CancelFishing();
             if(panel.gameObject.activeSelf&&mode==next&&next!="battle"){Hide();return;}
             mode=next;panel.gameObject.SetActive(true);Rebuild();
         }
-        public void Hide(){if(game.InBattle)return;if(game.Game.Expedition.Fishing){game.Game.Expedition.CancelFishing();return;}panel.gameObject.SetActive(false);mode="";}
+        public void Hide(){if(game.InBattle)return;if(game.Game.Expedition.Fishing){game.Game.Expedition.CancelFishing();return;}HideContextOnly();game.Game.Management?.Close();}
+        public void HideContextOnly(){panel.gameObject.SetActive(false);mode="";}
         public void Refresh()
         {
             if(!panel.gameObject.activeSelf)return;

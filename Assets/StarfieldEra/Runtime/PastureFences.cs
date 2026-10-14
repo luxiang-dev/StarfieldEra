@@ -60,11 +60,12 @@ namespace StarfieldEra
         public void RemoveInspected(){if(Inspected!=null)Remove(Inspected);}
         void Remove(FenceRecord f)
         {var key=Key(new Vector2Int(f.column,f.row),f.edge);game.State.adventure.fences.Remove(f);edges.Remove(key);models[key].SetActive(false);Destroy(models[key]);models.Remove(key);game.State.adventure.wood+=f.gate?2:1;Inspected=null;game.Adventure.Hud.Hide();game.Animals.RefreshPens();game.Adventure.Commit("已拆除围栏，返还一半木材。");}
+        bool GameManagementOpen()=>game.Management&&game.Management.IsOpen;
         void Update()
         {
-            if(!Active)return;if(game.Adventure.InBattle){Cancel();return;}var mouse=Mouse.current;if(mouse==null)return;
+            if(!Active||GameManagementOpen())return;if(game.Adventure.InBattle){Cancel();return;}var mouse=Mouse.current;if(mouse==null)return;
             if(mouse.rightButton.wasPressedThisFrame){Cancel();return;}var p=mouse.position.ReadValue();
-            if((EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||p.y<Screen.height*.2f||p.y>Screen.height*.87f){if(preview)preview.SetActive(false);return;}
+            if((EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(preview)preview.SetActive(false);return;}
             var ray=game.World.View.ScreenPointToRay(p);if(!new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float d)||!game.World.HexGrid.TryCell(ray.GetPoint(d),out var cell)){if(preview)preview.SetActive(false);return;}
             var hit=ray.GetPoint(d)-HexWorldGrid.Center(cell.x,cell.y);int edge=((Mathf.RoundToInt((Mathf.Atan2(hit.z,hit.x)*Mathf.Rad2Deg-60)/60)%6)+6)%6;
             var record=new FenceRecord{column=cell.x,row=cell.y,edge=edge,gate=mode==1};var key=Key(cell,edge);

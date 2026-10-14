@@ -67,11 +67,11 @@ namespace StarfieldEra
             if(!Game.State.SpendEnergy(1)){Game.ShowMessage("采集纤维需要体力1。");return;}
             State.forageDay[item.id]=Game.State.day;State.fiber+=3;Game.Adventure.Commit("采集纤维+3。纤维可制作鱼饵、长靴与野营补给。");
         }
-        bool CraftHere=>Game.NearHouse||(Game.Adventure.Target!=null&&Game.Adventure.Target.kind==EncounterKind.Camp)||
+        public bool CanCraftHere=>Game.NearHouse||(Game.Adventure.Target!=null&&Game.Adventure.Target.kind==EncounterKind.Camp)||
             (Game.State.adventure.workshop&&Vector3.Distance(Game.World.Player.position,new Vector3(-10,0,13))<4);
         public void Craft(string recipe)
         {
-            if(Game.Adventure.InBattle||Fishing)return;if(!CraftHere){Game.ShowMessage("走到小屋、营地或已建工坊旁制作。");return;}
+            if(Game.Adventure.InBattle||Fishing)return;if(!CanCraftHere){Game.ShowMessage("走到小屋、营地或已建工坊旁制作。");return;}
             var a=Game.State.adventure;bool made=false;string result="";
             switch(recipe)
             {

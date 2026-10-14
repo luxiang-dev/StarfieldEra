@@ -17,6 +17,7 @@ namespace StarfieldEra
         public PastureFences Fences { get; private set; }
         public FarmAnimals Animals { get; private set; }
         public ExpeditionGame Expedition { get; private set; }
+        public ManagementHud Management { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
         public bool NearHouse => World != null && Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f;
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
@@ -46,6 +47,7 @@ namespace StarfieldEra
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
+            Management=hud.GetComponent<ManagementHud>();
             World.RefreshCrops(State);
             UpdateSelection();
             hud.Refresh();
@@ -54,6 +56,18 @@ namespace StarfieldEra
         void Update()
         {
             var keyboard = Keyboard.current;
+            if(Management.IsOpen)
+            {
+                if(keyboard!=null)
+                {
+                    if(keyboard.escapeKey.wasPressedThisFrame||keyboard.tabKey.wasPressedThisFrame)Management.Close();
+                    else if(keyboard.iKey.wasPressedThisFrame)Management.Toggle("inventory");
+                    else if(keyboard.qKey.wasPressedThisFrame)Management.Toggle("tasks");
+                    else if(keyboard.lKey.wasPressedThisFrame)Management.Toggle("craft");
+                    else if(keyboard.mKey.wasPressedThisFrame)Management.Toggle("map");
+                }
+                hud.Refresh();return;
+            }
             if(Expedition.Fishing)
             {
                 if(keyboard!=null){if(keyboard.eKey.wasPressedThisFrame)Expedition.Reel();if(keyboard.escapeKey.wasPressedThisFrame)Expedition.CancelFishing();}
@@ -86,13 +100,15 @@ namespace StarfieldEra
             UpdateSelection();
             if (keyboard != null)
             {
-                if (keyboard.lKey.wasPressedThisFrame) Adventure.Hud.Show("expedition");
+                if (keyboard.tabKey.wasPressedThisFrame) Management.Toggle("inventory");
+                if (keyboard.lKey.wasPressedThisFrame) Management.Toggle("craft");
                 if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
                 if (keyboard.tKey.wasPressedThisFrame) CycleCrop();
                 if (keyboard.iKey.wasPressedThisFrame) Adventure.Hud.Show("supplies");
                 if (keyboard.cKey.wasPressedThisFrame) Adventure.CycleCompanion();
+                if(Management.IsOpen){hud.Refresh();return;}
                 if (Adventure.InBattle)
                 {
                     if(keyboard.digit1Key.wasPressedThisFrame)Adventure.BattleAction(0);
@@ -171,6 +187,12 @@ namespace StarfieldEra
             if (!NearHouse && !(Adventure.Target!=null && Adventure.Target.kind==EncounterKind.Market)) { Notify("种子商店在小屋门前，也可以与远行商人交易。"); return; }
             if (!State.BuySeed()) { Notify("金币不足：当前种子需要 "+State.SeedCost+" 金币。"); return; }
             Changed("购买"+FarmState.CropNames[State.selectedCrop]+"种子 +1。按 T 切换作物。");
+        }
+
+        public void SelectCrop(int kind)
+        {
+            if(Adventure.InBattle||Expedition.Fishing||kind<0||kind>2)return;
+            State.selectedCrop=kind;Changed("当前种子："+FarmState.CropNames[kind]+"。");
         }
 
         public void CycleCrop()

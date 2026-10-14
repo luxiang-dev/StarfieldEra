@@ -20,7 +20,7 @@ namespace StarfieldEra
         public readonly Vector3[] RegionCenters = {new Vector3(-5,0,6),new Vector3(13,0,0),new Vector3(-12,0,-8),new Vector3(10,0,13),new Vector3(24,0,-24),new Vector3(27,0,27),new Vector3(-29,0,22),new Vector3(-28,0,-20)};
         public Transform Follower { get; private set; }
         public int Region { get; private set; }
-        FarmWorld world;
+        FarmWorld world;FarmGame owner;
         Material timber, masonry, green, cream, blue, gold, purple;
         Transform workshop, library, windmill, mill, observatory;
         readonly List<TextMeshPro> signs = new List<TextMeshPro>();
@@ -30,7 +30,7 @@ namespace StarfieldEra
 
         public void Build(FarmWorld farm)
         {
-            world=farm;
+            world=farm;owner=farm.GetComponentInParent<FarmGame>();
             timber=world.Mat("Cedar timber","72554A"); masonry=world.Mat("Slate","87927E");
             green=world.Mat("Moss","557B48"); cream=world.Mat("Limestone","D1C493");
             blue=world.Mat("Lake","4597A8"); gold=world.Mat("Harvest gold","E6BF69"); purple=world.Mat("Star crystal","9D80C1");
@@ -268,7 +268,7 @@ namespace StarfieldEra
             world.View.transform.rotation=Quaternion.Euler(39, -35,0);
             world.View.transform.LookAt(player+Vector3.up*.2f);
             var mouse=UnityEngine.InputSystem.Mouse.current;
-            if(mouse!=null)zoom=Mathf.Clamp(zoom-mouse.scroll.ReadValue().y*.008f,7,30);
+            if(mouse!=null&&!(owner.Management&&owner.Management.IsOpen))zoom=Mathf.Clamp(zoom-mouse.scroll.ReadValue().y*.008f,7,30);
             world.View.orthographicSize=Mathf.Lerp(world.View.orthographicSize,zoom,Time.deltaTime*5);
             foreach(var sign in signs)
             {

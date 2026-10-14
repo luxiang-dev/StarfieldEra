@@ -1,0 +1,262 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEngine;
+
+namespace StarfieldEra
+{
+    public sealed class ManagementHud : MonoBehaviour
+    {
+        FarmGame game;FarmHud worldHud;TMP_FontAsset font;RectTransform overlay,window,content;
+        TextMeshProUGUI heading,wallet,feedback;
+        readonly Dictionary<string,UnityEngine.UI.Button> tabs=new Dictionary<string,UnityEngine.UI.Button>();
+        string page="inventory",filter="全部",itemKey="wood",buildingKey="",signature="",openingMessage="";
+        int selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
+        bool expeditionTasks,buildingsView,confirmDemolition;
+        readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
+        public string Page=>page;
+        public bool IsOpen=>overlay&&overlay.gameObject.activeSelf;
+        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market"};
+        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易"};
+        static readonly string[] RecipeKeys={"bait","rod","boots","amulet","camp","meal"};
+        static readonly string[] RecipeNames={"草编鱼饵","精制鱼竿","湿地长靴","星辉护符","野营补给","暖心料理"};
+        static readonly string[] RecipeCosts={"纤维2 · 浆果1","木材8 · 纤维4 · 知识2","纤维8 · 木材4 · 金币20","碎片3 · 晶石2 · 知识6","纤维4 · 浆果4 · 鲜鱼1","浆果3 · 鲜鱼1"};
+        static readonly string[] TechKeys={"workshop","library","irrigation","lore","farm","mill","tools","observatory"};
+        static readonly string[] TechNames={"工坊","书院","灌溉技术","星辉学","农场扩建","磨坊","采集工具","观星台"};
+        static readonly string[] TechCosts={"木6 石4 金15","木8 石6 金20","知4 木4 石4","知6 晶1","木8 石6 金30","木10 石8 金30","木6 石5 金25","木18 石14 晶3 知20"};
+        AdventureState A=>game.State.adventure;ExpeditionState X=>A.expedition;
+        public void Create(FarmGame owner,TMP_FontAsset asset)
+        {
+            game=owner;worldHud=GetComponent<FarmHud>();font=asset;
+            overlay=Box(transform,"Management backdrop",0,0,0,0,new Color(.015f,.035f,.03f,.88f),true);
+            overlay.anchorMin=Vector2.zero;overlay.anchorMax=Vector2.one;overlay.offsetMin=overlay.offsetMax=Vector2.zero;
+            window=Box(overlay,"Traveler handbook",0,0,1400,760,green,true);window.anchorMin=window.anchorMax=window.pivot=new Vector2(.5f,.5f);window.anchoredPosition=Vector2.zero;HudOrnament.Border(window);
+            var header=Box(window,"Handbook header",0,0,1400,86,cream);
+            Text(header,"星野纪元 · 旅人手册",26,20,440,44,30,ink);
+            heading=Text(header,"",500,18,410,48,25,ink);
+            wallet=Text(header,"",1000,20,370,60,16,ink);wallet.alignment=TextAlignmentOptions.Right;
+            Box(window,"Navigation rail",0,86,202,674,new Color(.04f,.12f,.11f));
+            for(int i=0;i<PageKeys.Length;i++)
+            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,118+i*58,154,50,()=>Open(key));}
+            Text(window,"I 背包   Q 任务\nL 制作   M 地图\nTab 开关手册",26,554,158,86,16,new Color(.72f,.79f,.68f));
+            Button(window,"返回世界 · Esc",24,680,154,46,Close);
+            content=Box(window,"Management page",208,96,1168,598,new Color(0,0,0,0));
+            feedback=Text(window,"",232,708,1140,32,17,new Color(.93f,.84f,.64f));
+            overlay.gameObject.SetActive(false);
+        }
+        public void Toggle(string target){if(IsOpen&&page==target)Close();else Open(target);}
+        public void Open(string target)
+        {
+            if(game.Adventure.InBattle)return;
+            if(game.Expedition.Fishing)game.Expedition.CancelFishing();
+            if(!PageKeys.Contains(target))target="inventory";
+            bool changed=page!=target;if(!IsOpen||changed)openingMessage=game.Message;
+            game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
+            page=target;worldHud.SetWorldVisible(false);overlay.gameObject.SetActive(true);overlay.SetAsLastSibling();
+            if(changed&&target=="tasks")selectedTask=Mathf.Clamp(expeditionTasks?X.quest:A.quest,0,expeditionTasks?2:5);
+            confirmDemolition=false;signature="";Rebuild();
+        }
+        public void OpenFromMode(string mode)
+        {
+            if(mode=="journal"){expeditionTasks=false;selectedTask=Mathf.Min(A.quest,5);Open("tasks");}
+            else if(mode=="expedition"){expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Open("tasks");}
+            else if(mode=="supplies")Open("inventory");
+            else if(mode=="craft"||mode=="craft2"){if(mode=="craft2")selectedRecipe=3;Open("craft");}
+            else if(mode=="town"||mode=="town2"){buildingsView=false;if(mode=="town2")selectedTech=4;Open("town");}
+            else if(mode=="map"||mode=="map2")Open("map");
+            else if(mode=="market")Open("market");
+            else Open("companions");
+        }
+        public static bool Handles(string mode)=>mode=="journal"||mode=="expedition"||mode=="supplies"||mode=="craft"||mode=="craft2"||mode=="town"||mode=="town2"||mode=="map"||mode=="map2"||mode=="companions"||mode=="market";
+        public void Close(){if(!IsOpen)return;if(overlay)overlay.gameObject.SetActive(false);worldHud.SetWorldVisible(true);confirmDemolition=false;game.Persist();}
+        void Update(){if(IsOpen){FitWindow();Refresh();}}
+        void FitWindow(){var area=overlay.rect;if(area.width<1||area.height<1)return;float fit=Mathf.Min(1,Mathf.Min((area.width-32)/1400,(area.height-32)/760));window.localScale=Vector3.one*Mathf.Max(.1f,fit);}
+        public void Refresh()
+        {
+            if(!IsOpen)return;
+            string next=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
+            if(next==signature)return;Rebuild();
+        }
+        void Rebuild()
+        {
+            signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
+            for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
+            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":"大陆与旅途");
+            wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
+            foreach(var pair in tabs)pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
+            feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存 · Tab / Esc 返回世界":game.Message)+(game.SaveHealthy?"":" · 保存失败");
+            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else Map();
+        }
+        sealed class Item
+        {public string key,name,category,description;public int count,symbol;public Item(string k,string n,string cat,int value,int icon,string desc){key=k;name=n;category=cat;count=value;symbol=icon;description=desc;}}
+        List<Item> Items()=>new List<Item>{
+            new Item("wood","木材","材料",A.wood,1,"采集倒木获得，用于建造、围栏和制作。"),new Item("stone","石料","材料",A.stone,2,"开采矿石获得，用于建筑与城镇发展。"),
+            new Item("berries","浆果","材料",A.berries,3,"采摘或种植获得，可招募伙伴、喂食野猪、制作鱼饵和料理。"),new Item("fish","鲜鱼","材料",A.fish,4,"在湖岸钓鱼获得，可交易、招募伙伴或制作补给。"),
+            new Item("crystals","晶石","材料",A.crystals,5,"矿脉、宝箱与守卫奖励，用于研究和制作护符。"),new Item("fiber","纤维","材料",X.fiber,3,"采集野生草束或开启补给箱获得，用于远行装备。"),
+            new Item("shards","遗迹碎片","材料",X.shards,5,"解读石碑或完美收线获得，星辉护符需要三份。"),new Item("truffles","松露","材料",A.truffles,3,"喂食牧场野猪后次日获得，可在动物详情中出售。"),
+            new Item("seed0","金萝卜种子","种子",game.State.seeds,3,"两天成熟，收获后售出。选为当前种子，再回农田种植。"),new Item("seed1","小麦种子","种子",game.State.wheatSeeds,3,"三天成熟，每次收获售24金币。"),new Item("seed2","浆果种子","种子",game.State.berrySeeds,3,"四天成熟，可重复收获，产出金币和浆果。"),
+            new Item("meal","暖心料理","补给",A.meals,0,"随时使用，体力回复12，最高30。小屋或营地可制作。"),new Item("bait","草编鱼饵","补给",X.bait,4,"抛竿时自动使用一份，扩大绿色收线窗口。"),new Item("camp","野营补给","补给",X.campSupplies,0,"在稳定陆地休整，体力回复15，不推进天数或刷新每日采集。"),
+            new Item("rod","精制鱼竿","装备",X.fishingRod?1:0,4,"永久装备，扩大钓鱼收线窗口。制作后自动生效。"),new Item("boots","湿地长靴","装备",X.marshBoots?1:0,0,"永久装备，使玩家沼泽速度提升到80%、雪地85%，仍不能进入水面。"),new Item("amulet","星辉护符","装备",X.starAmulet?1:0,5,"永久装备，伙伴战斗最大体力+10，攻击与技能伤害+3。")};
+        void Inventory()
+        {
+            string[] categories={"全部","材料","种子","补给","装备"};
+            for(int i=0;i<categories.Length;i++){string category=categories[i];Chip(category,i*126,()=>{filter=category;Rebuild();},filter==category);}
+            var all=Items();var items=all.Where(x=>filter=="全部"||x.category==filter).ToList();
+            if(!items.Any(x=>x.key==itemKey))itemKey=items[0].key;
+            for(int i=0;i<items.Count;i++)
+            {
+                var item=items[i];float x=(i%4)*155,y=60+(i/4)*105;
+                var button=Button(content,"",x,y,145,95,()=>{itemKey=item.key;Rebuild();});button.GetComponent<UnityEngine.UI.Image>().color=item.key==itemKey?new Color(.29f,.37f,.28f):new Color(.11f,.23f,.2f);
+                Icon(button.transform,12,10,36,item.symbol,gold);
+                var count=Text(button.transform,item.category=="装备"?(item.count>0?"已装备":"未拥有"):item.count.ToString(),55,10,78,36,item.category=="装备"?14:22,item.count>0?cream:new Color(.58f,.66f,.58f));count.alignment=TextAlignmentOptions.Right;
+                Text(button.transform,item.name,10,57,125,30,17,cream);
+            }
+            var selected=all.First(x=>x.key==itemKey);var detail=Details(selected.name,selected.category+" · "+(selected.category=="装备"?(selected.count>0?"已装备":"尚未制作"):"持有 "+selected.count),selected.description+"\n\n体力 "+game.State.energy+" / 30\n当前种子："+FarmState.CropNames[game.State.selectedCrop]);
+            if(selected.key=="meal")DetailAction(detail,"使用料理 · 回复体力12",0,()=>game.Adventure.Supply("eat"),selected.count>0&&game.State.energy<30);
+            else if(selected.key=="camp")DetailAction(detail,"野营休整 · 回复体力15",0,game.Expedition.UseCamp,selected.count>0&&game.State.energy<30&&game.World.HexGrid.CanBuildOn(CurrentCell()));
+            else if(selected.category=="种子")
+            {
+                int kind=int.Parse(selected.key.Substring(4));DetailAction(detail,kind==game.State.selectedCrop?"已选为当前种子":"选为当前种子",0,()=>game.SelectCrop(kind),kind!=game.State.selectedCrop);
+                int cost=kind==0?5:kind==1?8:10;DetailAction(detail,"购买一份种子 · 金币"+cost,1,()=>{game.SelectCrop(kind);game.BuySeed();},(game.NearHouse||game.Adventure.Target?.kind==EncounterKind.Market)&&game.State.coins>=cost);
+                Text(detail,"购买需在小屋或商人旁。",22,502,466,26,16,ink);
+            }
+            else if(selected.category=="装备")DetailAction(detail,"查看制作配方",0,()=>{selectedRecipe=Array.IndexOf(RecipeKeys,selected.key);Open("craft");});
+            if(selected.category=="材料")
+            {
+                if(selected.key=="truffles")DetailAction(detail,"出售全部松露 · 金币"+A.truffles*18,0,game.Animals.Sell,A.truffles>0);
+                else DetailAction(detail,"查看制作配方",0,()=>Open("craft"));
+                DetailAction(detail,"查看交易与订单",1,()=>Open("market"));
+            }
+            if(selected.key=="meal"||selected.key=="camp"||selected.key=="bait")DetailAction(detail,"查看补给配方",1,()=>{selectedRecipe=Array.IndexOf(RecipeKeys,selected.key);Open("craft");});
+        }
+        Vector2Int CurrentCell(){game.World.HexGrid.TryCell(game.World.Player.position,out var c);return c;}
+        void Tasks()
+        {
+            Chip("村庄主线",0,()=>{expeditionTasks=false;selectedTask=Mathf.Min(A.quest,5);Rebuild();},!expeditionTasks);
+            Chip("星图远征",180,()=>{expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Rebuild();},expeditionTasks);
+            string[] names=expeditionTasks?new[]{"远征入门","湿地行者","星图重现"}:new[]{"村长的委托","聚落的伙伴","失落的星辉","金穗拓荒","越过白岩","星野纪元"};
+            int stage=expeditionTasks?X.quest:A.quest;selectedTask=Mathf.Clamp(selectedTask,0,names.Length-1);
+            for(int i=0;i<names.Length;i++){int id=i;Row(names[i],i<stage?"已完成":i==stage?"进行中":"尚未解锁",i,()=>{selectedTask=id;Rebuild();},selectedTask==i);}
+            string[] rewards=expeditionTasks?new[]{"金币25 · 纤维4 · 鱼饵3","晶石2 · 知识6 · 碎片1","金币150 · 知识15"}:new[]{"金币30 · 浆果3 · 木材5","金币40 · 石料5 · 知识4","金币80 · 知识8","金币60 · 浆果5 · 知识4","金币80 · 晶石3 · 知识8","金币200 · 知识20"};
+            float progress=selectedTask<stage?1:TaskProgress(selectedTask);string description=(expeditionTasks?ExpeditionContent.Quests[selectedTask]:AdventureContent.Quests[selectedTask])+"\n\n进度 "+Mathf.RoundToInt(progress*100)+"%\n"+TaskCounts(selectedTask)+"\n\n奖励："+rewards[selectedTask]+"\n\n完成后回晨风村村长身边领取。";
+            var detail=Details(names[selectedTask],selectedTask<stage?"已完成":selectedTask==stage?"当前委托":"后续委托",description);
+            Progress(detail,progress);
+            bool near=game.Adventure.Target?.kind==EncounterKind.Elder;
+            DetailAction(detail,selectedTask<stage?"奖励已领取":progress<1?"目标尚未完成":near?"领取任务奖励":"请回村长身边领取",0,()=>{if(expeditionTasks)game.Expedition.ClaimQuest();else game.Adventure.ClaimMainQuest();},selectedTask==stage&&progress>=1&&near);
+            DetailAction(detail,"返回晨风村",1,()=>game.Adventure.Travel(0));
+        }
+        float TaskProgress(int id)
+        {
+            if(expeditionTasks){if(id==0)return (Mathf.Clamp01(X.CacheCount/2f)+Mathf.Clamp01(X.fishCaught/3f))*.5f;if(id==1)return (Mathf.Clamp01(X.RuneCount/3f)+(X.marshBoots?1:0))*.5f;return (X.RuneCount/8f+(X.starAmulet?1:0)+(A.ruinsWon?1:0)+(A.mountainWon?1:0)+(A.marshWon?1:0))/5;}
+            if(id==0)return Mathf.Clamp01(game.State.harvests/3f);if(id==1)return ((A.CompanionCount>0?1:0)+(A.workshop?1:0))*.5f;if(id==2)return ((A.ruinsWon?1:0)+(A.irrigation?1:0))*.5f;if(id==3)return (Mathf.Clamp01(game.State.harvests/8f)+(A.expandedFarm?1:0)+(A.mill?1:0))/3;if(id==4)return (A.discovered.Count(x=>x)/8f+(A.mountainWon?1:0))*.5f;return (A.CompanionCount/3f+(A.observatory?1:0)+(A.lore?1:0))/3;
+        }
+        string TaskCounts(int id)
+        {
+            if(expeditionTasks)return id==0?"补给箱 "+X.CacheCount+" / 2 · 钓获 "+X.fishCaught+" / 3":id==1?"石碑 "+X.RuneCount+" / 3 · 长靴 "+(X.marshBoots?"已制作":"未制作"):"石碑 "+X.RuneCount+" / 8 · 三地守卫 "+((A.ruinsWon?1:0)+(A.mountainWon?1:0)+(A.marshWon?1:0))+" / 3";
+            return "收获 "+game.State.harvests+" 次 · 伙伴 "+A.CompanionCount+" / 3\n发现区域 "+A.discovered.Count(x=>x)+" / 8";
+        }
+        void Crafting()
+        {
+            Text(content,"在小屋、营地或已建工坊旁制作",0,6,620,34,19,cream);
+            for(int i=0;i<RecipeKeys.Length;i++){int id=i;Row(RecipeNames[i],RecipeCosts[i]+(RecipeOwned(i)?" · 已装备":""),i,()=>{selectedRecipe=id;Rebuild();},selectedRecipe==i);}
+            selectedRecipe=Mathf.Clamp(selectedRecipe,0,5);int recipe=selectedRecipe;
+            string[] effects={"每次制作鱼饵3。钓鱼抛竿时自动使用一份，扩大绿色收线窗口。","永久扩大钓鱼收线窗口，制作后自动生效。","沼泽移动速度提升至80%，雪地85%。不能进入水面。","伙伴战斗最大体力+10，攻击与技能伤害+3。","制作一份野营补给，在稳定陆地使用，体力回复15，不推进天数。","制作一份料理，体力回复12，最高30。需在小屋或营地制作。"};
+            string condition=recipe==1||recipe==2?"前置：工坊 "+(A.workshop?"已建造":"未建造"):recipe==3?"前置：书院 "+(A.library?"已建造":"未建造"):"无需科技前置";
+            bool location=recipe==5?game.NearHouse||game.Adventure.Target?.kind==EncounterKind.Camp:game.Expedition.CanCraftHere;
+            var detail=Details(RecipeNames[recipe],RecipeOwned(recipe)?"已装备 · 永久生效":"制作配方",effects[recipe]+"\n\n材料："+RecipeCosts[recipe]+"\n"+condition+"\n\n地点："+(location?"当前可制作":"请走近制作地点")+"\n纤维 "+X.fiber+" · 碎片 "+X.shards+"\n浆果 "+A.berries+" · 鲜鱼 "+A.fish);
+            DetailAction(detail,RecipeOwned(recipe)?"已经制作":!location?"请走近制作地点":CanAfford(recipe)?"制作物品":"材料或前置不足",0,()=>{if(recipe==5)game.Adventure.Supply("cook");else game.Expedition.Craft(RecipeKeys[recipe]);},!RecipeOwned(recipe)&&location&&CanAfford(recipe));
+            DetailAction(detail,"查看背包",1,()=>Open("inventory"));
+        }
+        bool RecipeOwned(int id)=>id==1?X.fishingRod:id==2?X.marshBoots:id==3&&X.starAmulet;
+        bool CanAfford(int id)
+        {switch(id){case 0:return X.fiber>=2&&A.berries>=1;case 1:return A.workshop&&A.wood>=8&&X.fiber>=4&&A.science>=2;case 2:return A.workshop&&X.fiber>=8&&A.wood>=4&&game.State.coins>=20;case 3:return A.library&&X.shards>=3&&A.crystals>=2&&A.science>=6;case 4:return X.fiber>=4&&A.berries>=4&&A.fish>=1;default:return A.berries>=3&&A.fish>=1;}}
+        void Town()
+        {
+            Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",180,()=>{buildingsView=true;Rebuild();},buildingsView);
+            if(buildingsView){Buildings();return;}
+            for(int i=0;i<TechKeys.Length;i++){int id=i;Row(TechNames[i],TechOwned(i)?"已完成":TechCosts[i],i,()=>{selectedTech=id;Rebuild();},selectedTech==i,58);}
+            string[] effects={"每天木材+2，解锁书院、农场扩建和采集工具。","每天知识+2，解锁灌溉与观星台。","每天照料前6块农田，农场扩建后照料12块。","伙伴战斗伤害增加3。","解锁南侧12块农田，总共24块。","每天金币+6。","采集木材、石料每次额外获得2份。","每天知识+4，需书院和白岩守卫胜利。"};
+            string[] prerequisite={"无前置","工坊","书院","灌溉技术","工坊","农场扩建","工坊","书院、击败白岩守卫"};int tech=selectedTech;
+            bool near=game.Adventure.Target?.kind==EncounterKind.Town;
+            var detail=Details(TechNames[tech],TechOwned(tech)?"已完成":"城镇项目",effects[tech]+"\n\n费用："+TechCosts[tech]+"\n前置："+prerequisite[tech]+"\n\n木材 "+A.wood+" · 石料 "+A.stone+"\n金币 "+game.State.coins+" · 知识 "+A.science+"\n\n建设与研究需站在城镇议事牌旁。");
+            DetailAction(detail,TechOwned(tech)?"项目已完成":near?"建设或研究":"请走近城镇议事牌",0,()=>game.Adventure.BuildOrResearch(TechKeys[tech]),!TechOwned(tech)&&near);
+            DetailAction(detail,"进入自由建造",1,game.Construction.Open);
+        }
+        bool TechOwned(int id)=>id==0?A.workshop:id==1?A.library:id==2?A.irrigation:id==3?A.lore:id==4?A.expandedFarm:id==5?A.mill:id==6?A.toolLevel>0:A.observatory;
+        void Buildings()
+        {
+            int pages=Mathf.Max(1,Mathf.CeilToInt(A.buildings.Count/8f));buildingPage=Mathf.Clamp(buildingPage,0,pages-1);
+            var selected=A.buildings.FirstOrDefault(b=>b.column+":"+b.row==buildingKey);if(selected==null&&A.buildings.Count>0){selected=A.buildings[0];buildingKey=selected.column+":"+selected.row;}
+            int start=buildingPage*8;
+            for(int i=start;i<Mathf.Min(start+8,A.buildings.Count);i++){var b=A.buildings[i];string key=b.column+":"+b.row;Row(HexConstruction.Names[b.kind],"坐标 "+key+" · "+BuildingFootprints.Cells(b).Count+"格",i-start,()=>{buildingKey=key;confirmDemolition=false;Rebuild();},key==buildingKey,56);}
+            Button(content,"上一页",0,528,116,38,()=>{buildingPage--;Rebuild();},buildingPage>0);Text(content,(buildingPage+1)+" / "+pages,128,536,140,28,17,cream);Button(content,"下一页",286,528,116,38,()=>{buildingPage++;Rebuild();},buildingPage<pages-1);
+            if(selected==null){var empty=Details("尚无自建建筑","聚落档案","在地图上自由建造林场、采石场、学舍或营地。围栏沿六边形边缘布置。");DetailAction(empty,"开始建造",0,game.Construction.Open);return;}
+            var chosen=selected;string output=chosen.kind==0?"每日木材+2":chosen.kind==1?"每日石料+2":chosen.kind==2?"每日知识+1":"可在营地制作料理与装备";
+            var detail=Details(HexConstruction.Names[chosen.kind],"占地 "+BuildingFootprints.Cells(chosen).Count+" 格",output+"\n\n坐标 ["+chosen.column+","+chosen.row+"]\n朝向 "+chosen.rotation*60+"度\n建造："+(chosen.builtDay>0?"第"+chosen.builtDay+"天":"旧存档建筑")+"\n\n拆除返还一半木材、石料和金币。"+(confirmDemolition?"\n\n确认拆除这座建筑？":""));
+            DetailAction(detail,confirmDemolition?"确认拆除并返还资源":"拆除这座建筑",0,()=>{if(confirmDemolition){game.Construction.Demolish(new Vector2Int(chosen.column,chosen.row));confirmDemolition=false;buildingKey="";}else{confirmDemolition=true;Rebuild();}});
+            DetailAction(detail,confirmDemolition?"取消拆除":"继续建造",1,()=>{if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});
+        }
+        void Companions()
+        {
+            Text(content,"选择伙伴，查看能力和招募条件",0,6,620,34,19,cream);
+            selectedCompanion=Mathf.Clamp(selectedCompanion,0,2);
+            for(int i=0;i<3;i++){int id=i;Row(AdventureContent.Names[i],A.companions[i]?(A.activeCompanion==i?"正在随行":"已招募"):"尚未招募",i,()=>{selectedCompanion=id;Rebuild();},selectedCompanion==i,110);}
+            int species=selectedCompanion;string[] conditions={"在青苔森林，用浆果3招募。","在镜湖岸，用鲜鱼2、浆果2招募。","击败遗迹守卫，再用晶石1招募。"};
+            var detail=Details(AdventureContent.Names[species],A.companions[species]?"已成为伙伴":"野外伙伴",AdventureContent.Roles[species]+"\n\n"+conditions[species]+"\n\n草系技能削弱守卫反击；水系技能回复伙伴体力；火系技能克制幽光守卫。");
+            DetailAction(detail,A.companions[species]&&A.activeCompanion==species?"正在随行":"设为随行伙伴",0,()=>game.Adventure.SelectCompanion(species),A.companions[species]&&A.activeCompanion!=species);
+            DetailAction(detail,"查看所在区域",1,()=>{selectedRegion=species+1;Open("map");});
+        }
+        void Map()
+        {
+            var map=Box(content,"Continent chart",0,8,620,510,new Color(.2f,.37f,.36f));
+            var graphic=new GameObject("Hex terrain chart",typeof(RectTransform),typeof(CanvasRenderer),typeof(TerrainMapGraphic)).GetComponent<TerrainMapGraphic>();graphic.transform.SetParent(map,false);graphic.rectTransform.anchorMin=Vector2.zero;graphic.rectTransform.anchorMax=Vector2.one;graphic.rectTransform.offsetMin=graphic.rectTransform.offsetMax=Vector2.zero;graphic.grid=game.World.HexGrid;graphic.raycastTarget=false;
+            for(int i=0;i<8;i++)
+            {
+                int region=i;var p=game.World.Adventure.RegionCenters[i];var button=Button(map,AdventureContent.Regions[i]+"\n"+(A.discovered[i]?"已发现":"尚未发现"),0,0,104,60,()=>{selectedRegion=region;Rebuild();});
+                var rect=button.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.anchoredPosition=new Vector2(p.x/84*620,p.z/72*510);button.GetComponent<UnityEngine.UI.Image>().color=selectedRegion==i?new Color(.38f,.32f,.18f):A.discovered[i]?green:new Color(.23f,.28f,.25f);
+                button.GetComponentInChildren<TextMeshProUGUI>().fontSize=13;
+            }
+            var player=game.World.Player.position;var marker=Box(map,"Player map marker",0,0,12,12,gold);marker.anchorMin=marker.anchorMax=marker.pivot=new Vector2(.5f,.5f);marker.anchoredPosition=new Vector2(player.x/84*620,player.z/72*510);
+            Text(content,"草地 · 森林 · 沼泽 · 沙地 · 岩地 · 雪地 · 道路 · 水面",0,538,630,30,16,cream);
+            string[] descriptions={"农场、小屋、村长与城镇议事牌。","倒木、浆果与森林伙伴。森林移动80%。","湖岸钓点与潮汐伙伴。水面禁止通行。","石碑、遗迹守卫与焰晶狐。","商人、营地和荒野补给。","矿石、晶石和白岩守卫。岩地70%，雪地65%。","湿地采集、水洼钓点与幽光守卫。沼泽移动45%。","远行商人、营地与旅人石碑。"};selectedRegion=Mathf.Clamp(selectedRegion,0,7);int regionId=selectedRegion;
+            var detail=Details(AdventureContent.Regions[regionId],A.discovered[regionId]?"已发现 · 可快速旅行":"尚未发现",descriptions[regionId]+"\n\n补给箱："+(X.caches[regionId]?"已开启":"未开启")+"\n石碑："+(X.runes[regionId]?"已解读":"未解读")+"\n\n先步行发现区域，再解锁旅行。\n"+game.Expedition.NextLandmark);
+            DetailAction(detail,"前往这个区域",0,()=>game.Adventure.Travel(regionId),A.discovered[regionId]);
+            DetailAction(detail,"查看探索任务",1,()=>{expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Open("tasks");});
+        }
+        void Market()
+        {
+            Text(content,"种子商店 · 资源收购 · 每日订单",0,6,620,34,19,cream);
+            string[] names={"金萝卜种子","小麦种子","浆果种子","出售木材","出售鲜鱼","每日贸易订单"};
+            string[] offers={"购买价5金币","购买价8金币","购买价10金币","木材5 → 金币12","鲜鱼2 → 金币10",A.deliveredDay==game.State.day?"今日订单已完成":"木6 石4 鲜鱼2 → 金35 知2"};
+            for(int i=0;i<6;i++){int id=i;Row(names[i],offers[i],i,()=>{selectedTrade=id;Rebuild();},selectedTrade==i);}
+            int trade=selectedTrade;bool merchant=game.Adventure.Target?.kind==EncounterKind.Market;bool seedShop=merchant||game.NearHouse;
+            string description=trade<3?"在小屋门前或远行商人旁购买一份种子。\n\n购买后收入背包，再选择为当前种子。":trade==3?"商人收购木材5，支付金币12。":trade==4?"商人收购鲜鱼2，支付金币10。":"订单需求：木材6、石料4、鲜鱼2。\n奖励：金币35、知识2，每天限一次。";
+            var detail=Details(names[trade],offers[trade],description+"\n\n当前范围："+(merchant?"附近有商人":game.NearHouse?"小屋种子商店":"需走近交易地点")+"\n金币 "+game.State.coins+" · 木材 "+A.wood+"\n石料 "+A.stone+" · 鲜鱼 "+A.fish+"\n\n资源交易与订单需在商人旁。\n商人在金穗平原和远行驿站。");
+            int price=trade==0?5:trade==1?8:10;
+            bool allowed=trade<3?seedShop&&game.State.coins>=price:trade==3?merchant&&A.wood>=5:trade==4?merchant&&A.fish>=2:merchant&&A.deliveredDay!=game.State.day&&A.wood>=6&&A.stone>=4&&A.fish>=2;
+            DetailAction(detail,trade<3?"购买一份种子":trade==5?"提交每日订单":"确认出售",0,()=>{if(trade<3){game.SelectCrop(trade);game.BuySeed();}else game.Adventure.Supply(trade==3?"wood":trade==4?"fish":"delivery");},allowed);
+            DetailAction(detail,"查看背包",1,()=>Open("inventory"));
+        }
+        RectTransform Details(string title,string subtitle,string description)
+        {
+            var panel=Box(content,"Selected detail",654,8,506,554,cream);HudOrnament.Border(panel);
+            Text(panel,title,22,18,462,52,26,ink);Text(panel,subtitle,22,76,462,30,16,new Color(.46f,.38f,.22f));Text(panel,description,22,116,462,280,18,ink);return panel;
+        }
+        void Progress(Transform parent,float value)
+        {var track=Box(parent,"Task progress",22,395,462,8,new Color(.64f,.65f,.51f));Box(track,"Task progress fill",0,0,462*Mathf.Clamp01(value),8,new Color(.36f,.54f,.32f));}
+        void DetailAction(Transform parent,string label,int row,UnityEngine.Events.UnityAction callback,bool enabled=true)=>Button(parent,label,22,420+row*60,462,46,callback,enabled);
+        void Chip(string label,float x,UnityEngine.Events.UnityAction callback,bool selected)
+        {var button=Button(content,label,x,4,118,38,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.36f,.32f,.2f):new Color(.12f,.25f,.22f);}
+        void Row(string title,string description,int row,UnityEngine.Events.UnityAction callback,bool selected,float spacing=78)
+        {var button=Button(content,"",0,60+row*spacing,620,spacing-8,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);Text(button.transform,title,16,spacing<65?3:7,588,spacing<65?30:36,spacing<65?18:20,cream);Text(button.transform,description,16,spacing<65?28:44,588,spacing<65?22:26,spacing<65?13:15,new Color(.74f,.8f,.69f));}
+        RectTransform Box(Transform parent,string name,float x,float y,float width,float height,Color color,bool raycast=false)
+        {var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);go.GetComponent<UnityEngine.UI.Image>().color=color;go.GetComponent<UnityEngine.UI.Image>().raycastTarget=raycast;return rect;}
+        TextMeshProUGUI Text(Transform parent,string text,float x,float y,float width,float height,float point,Color color)
+        {var go=new GameObject("Label",typeof(RectTransform),typeof(TextMeshProUGUI));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);var label=go.GetComponent<TextMeshProUGUI>();label.font=font;label.fontSize=point;label.text=text;label.color=color;label.raycastTarget=false;label.enableAutoSizing=false;label.overflowMode=TextOverflowModes.Ellipsis;return label;}
+        UnityEngine.UI.Button Button(Transform parent,string text,float x,float y,float width,float height,UnityEngine.Events.UnityAction callback,bool enabled=true)
+        {var rect=Box(parent,text,x,y,width,height,new Color(.13f,.28f,.23f),true);HudOrnament.Border(rect);var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();button.onClick.AddListener(callback);button.interactable=enabled;var caption=Text(rect,text,8,4,width-16,height-8,18,cream);caption.alignment=TextAlignmentOptions.Center;return button;}
+        void Icon(Transform parent,float x,float y,float size,int symbol,Color color)
+        {var go=new GameObject("Item emblem",typeof(RectTransform),typeof(CanvasRenderer),typeof(HudOrnament));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=Vector2.one*size;var icon=go.GetComponent<HudOrnament>();icon.symbol=symbol;icon.color=color;icon.raycastTarget=false;}
+    }
+}

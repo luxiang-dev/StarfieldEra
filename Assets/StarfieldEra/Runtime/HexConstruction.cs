@@ -89,10 +89,11 @@ namespace StarfieldEra
         void Update()
         {
             var mouse=Mouse.current;
+            if(Game.Management&&Game.Management.IsOpen)return;
             if(Game.Expedition&&Game.Expedition.Fishing)return;
             if(Game.Adventure.InBattle||mouse==null){if(Active)Cancel();return;}
             Vector2 pixel=mouse.position.ReadValue();
-            bool blocked=(EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||pixel.y<Screen.height*.2f||pixel.y>Screen.height*.87f;
+            bool blocked=(EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||pixel.y<Screen.height*.12f||pixel.y>Screen.height*.91f;
             var ray=Game.World.View.ScreenPointToRay(pixel);
             if(Game.Fences&&Game.Fences.Active)return;
             if(!Active)

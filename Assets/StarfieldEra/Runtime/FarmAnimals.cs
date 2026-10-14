@@ -9,6 +9,7 @@ namespace StarfieldEra
     public sealed class FarmAnimals : MonoBehaviour
     {
         public FarmGame Game {get;private set;}public AnimalActor Inspected {get;private set;}
+        public bool HasNearby=>actors.Exists(a=>Vector3.Distance(a.transform.position,Game.World.Player.position)<2.2f);
         readonly List<AnimalActor> actors=new List<AnimalActor>();
         public void Initialize(FarmGame game)
         {

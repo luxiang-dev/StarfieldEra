@@ -101,6 +101,10 @@ namespace StarfieldEra
                 return 1;
             }
         }
+        public void ClaimMainQuest()
+        {
+            if(InBattle||Target==null||Target.kind!=EncounterKind.Elder){Game.ShowMessage("回村长身边领取任务奖励。");return;}Quest();
+        }
         void Quest()
         {
             if(State.quest>=6){Game.ShowMessage(AdventureContent.Quests[6]);Hud.Show("journal");return;}
@@ -143,6 +147,11 @@ namespace StarfieldEra
             if(valid){Game.World.RefreshCrops(Game.State);Commit("建设或研究完成！农田、建筑与每日产出已更新。");}
             else Game.ShowMessage("资源不足、前置尚未完成，或该项目已经完成。费用和前置见议事面板。");
             Hud.Refresh();
+        }
+        public void SelectCompanion(int species)
+        {
+            if(InBattle||species<0||species>=3||!State.companions[species])return;
+            State.activeCompanion=species;Commit("随行伙伴："+AdventureContent.Names[species]+"。");
         }
         public void CycleCompanion()
         {
