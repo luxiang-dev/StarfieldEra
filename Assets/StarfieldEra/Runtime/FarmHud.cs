@@ -69,7 +69,7 @@ namespace StarfieldEra
             buyButton = Button("Buy", bottom, "B  种子 · 5 金币", 646, game.BuySeed, out buyLabel);
             Button("Journal", bottom, "Q  冒险日志", 852, ()=>game.Adventure.Hud.Show("journal"), out _);
             Button("Map", bottom, "M  旅途地图", 1058, ()=>game.Adventure.Hud.Show("map"), out _);
-            Label("Movement hint", bottom, "WASD 移动 · C 伙伴 · T 种子\nG 建造 · I 行囊 · 自动保存", new Vector2(1280, -104), new Vector2(300, 52), 16, new Color(.86f,.84f,.72f));
+            Label("Movement hint", bottom, "WASD 移动 · C 伙伴 · T 种子\nG 建造 · I 行囊 · L 远征制作", new Vector2(1280, -104), new Vector2(300, 52), 16, new Color(.86f,.84f,.72f));
             var adventureHud = gameObject.AddComponent<AdventureHud>();
             adventureHud.Create(game.Adventure,font);
         }
@@ -79,7 +79,7 @@ namespace StarfieldEra
             FarmState state = game.State;
             int selected = game.SelectedPlot;
             CropState crop = selected < 0 ? null : state.plots[selected];
-            string terrainHint=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position));
+            string terrainHint=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
             string signature = terrainHint+"/"+ (game.Fences.Active?game.Fences.Hint:game.Construction.Hint)+"/"+game.Adventure.Revision+"/"+game.World.Adventure.Region+"/"+game.Adventure.TargetHint+"/"+$"{state.day}/{state.coins}/{state.seeds}/{state.harvests}/{state.energy}/{state.selectedCrop}/{state.SelectedSeeds}/{selected}/{crop?.planted}/{crop?.watered}/{crop?.growth}/{game.NearHouse}/{game.SaveHealthy}/{game.Message}";
             if (signature == previous) return;
             previous = signature;
@@ -99,9 +99,10 @@ namespace StarfieldEra
             buyLabel.text="B "+FarmState.CropNames[state.selectedCrop]+" · "+state.SeedCost+"金";
             if(game.Adventure.Target!=null || game.Adventure.InBattle) target.text=game.Adventure.TargetHint;
             target.text+=" · "+terrainHint;
+            if(game.Expedition.Fishing)target.text="钓鱼 · 等待光标进入绿色区域，按 E 收线";
             if((game.Construction.Active||game.Fences.Active))target.text=(game.Fences.Active?game.Fences.Hint:game.Construction.Hint);
-            actionLabel.text = game.Adventure.Target!=null ? "E  交互" : crop != null && crop.Ready ? "E  收获" : "E  种植";
-            actionButton.interactable = !game.Adventure.InBattle && (game.Adventure.Target!=null || (crop != null && (crop.Ready || (!crop.planted && state.SelectedSeeds > 0 && (selected<12||a.expandedFarm)))));
+            actionLabel.text = game.Expedition.Fishing?"E 收线":game.Adventure.Target!=null ? "E  交互" : crop != null && crop.Ready ? "E  收获" : "E  种植";
+            actionButton.interactable = game.Expedition.Fishing || !game.Adventure.InBattle && (game.Adventure.Target!=null || (crop != null && (crop.Ready || (!crop.planted && state.SelectedSeeds > 0 && (selected<12||a.expandedFarm)))));
             waterButton.interactable = !game.Adventure.InBattle && crop != null && crop.planted && !crop.watered && !crop.Ready;
             sleepButton.interactable = !game.Adventure.InBattle && game.NearHouse;
             buyButton.interactable = !game.Adventure.InBattle && (game.NearHouse || game.Adventure.Target?.kind==EncounterKind.Market) && state.coins >= state.SeedCost;

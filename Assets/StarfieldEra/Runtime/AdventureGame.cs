@@ -45,6 +45,7 @@ namespace StarfieldEra
             {
                 if(InBattle)return "遗迹遭遇战 · 选择攻击、技能、防御或撤退";
                 if(Target==null)return "";
+                if(Target.kind==EncounterKind.Fiber||Target.kind==EncounterKind.Treasure||Target.kind==EncounterKind.Rune)return Game.Expedition.TargetHint(Target);
                 if((Target.kind<=EncounterKind.Fish || Target.kind==EncounterKind.Crystal) && State.gatheredDay[Target.id]==Game.State.day)return Target.name+" · 今天已采集，明天恢复";
                 if(Target.kind==EncounterKind.Companion)
                     return Target.name+" · "+(Target.id==0?"招募需要三份浆果":Target.id==1?"招募需要两条鱼和两份浆果":"击败守卫后，用一枚晶石招募");
@@ -57,6 +58,8 @@ namespace StarfieldEra
             var item=Target;if(item==null)return;
             switch(item.kind)
             {
+                case EncounterKind.Fish:Game.Expedition.BeginFishing(item);break;
+                case EncounterKind.Fiber:case EncounterKind.Treasure:case EncounterKind.Rune:Game.Expedition.Interact(item);break;
                 case EncounterKind.Elder:Quest();break;
                 case EncounterKind.Town:Hud.Show("town");break;
                 case EncounterKind.Companion:Recruit(item.id);break;
@@ -70,7 +73,6 @@ namespace StarfieldEra
                     if(item.kind==EncounterKind.Wood){int amount=3+State.toolLevel*2;State.wood+=amount;Commit("采集木材 +"+amount+"，体力 -2。");}
                     if(item.kind==EncounterKind.Stone){int amount=3+State.toolLevel*2;State.stone+=amount;Commit("开采石料 +"+amount+"，体力 -2。");}
                     if(item.kind==EncounterKind.Berry){State.berries+=3;Commit("采摘浆果 +3。浆果可以招募森林伙伴。");}
-                    if(item.kind==EncounterKind.Fish){int yield=State.companions[1]?3:2;State.fish+=yield;Commit("钓鱼成功！鲜鱼 +"+yield+"。");}
                     if(item.kind==EncounterKind.Crystal){State.crystals++;Commit("开采晶石 +1，体力 -2。");}
                     break;
             }
@@ -165,7 +167,7 @@ namespace StarfieldEra
             if(State.CompanionCount==0){Game.ShowMessage("遗迹危机四伏，先招募一位伙伴再来挑战。");return;}
             if(State.bossDay[id]==Game.State.day){Game.ShowMessage("守卫今日已被击退，明天可以再次挑战。");return;}
             enemyId=id;EnemyName=id==0?"岩甲兽":id==1?"白岩守卫":"幽光守卫";
-            InBattle=true;AllyMaxHP=40+Mathf.Min(State.victories,10)*2;AllyHP=AllyMaxHP;EnemyMaxHP=id==0?42:id==1?68:58;EnemyHP=EnemyMaxHP;
+            InBattle=true;AllyMaxHP=40+Mathf.Min(State.victories,10)*2+(State.expedition.starAmulet?10:0);AllyHP=AllyMaxHP;EnemyMaxHP=id==0?42:id==1?68:58;EnemyHP=EnemyMaxHP;
             Turn=1;Cooldown=0;BattleLog=EnemyName+"挡住了道路。每三回合重击，水系克制白岩，火系克制幽光。";
             Revision++;Hud.Show("battle");
         }
@@ -174,7 +176,7 @@ namespace StarfieldEra
             if(!InBattle || action<0 || action>3)return;
             if(action==3){InBattle=false;Hud.Hide();Commit("你和伙伴撤离了遗迹，随时可以再次挑战。");return;}
             if(action==1&&Cooldown>0){Game.ShowMessage("技能仍在冷却，先使用攻击或防御。");return;}
-            int bonus=(State.companions[2]?3:0)+(State.lore?3:0)+Mathf.Min(State.victories,6);
+            int bonus=(State.expedition.starAmulet?3:0)+(State.companions[2]?3:0)+(State.lore?3:0)+Mathf.Min(State.victories,6);
             if(action==1&&((enemyId==1&&State.activeCompanion==1)||(enemyId==2&&State.activeCompanion==2)))bonus+=6;
             string[] skills={"藤蔓缠绕","潮汐冲击","星火爆裂"};
             if(action==0){EnemyHP=Mathf.Max(0,EnemyHP-9-bonus);BattleLog="伙伴发动攻击，造成 "+(9+bonus)+" 点伤害。";}
@@ -222,7 +224,7 @@ namespace StarfieldEra
         }
         public void Commit(string message)
         {
-            Revision++;Game.World.Adventure.Refresh(State);Game.ShowMessage(message);Game.Persist();Hud?.Refresh();
+            Revision++;Game.World.Adventure.Refresh(State);Game.Expedition?.RefreshVisuals();Game.ShowMessage(message);Game.Persist();Hud?.Refresh();
         }
     }
 }

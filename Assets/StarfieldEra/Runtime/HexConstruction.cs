@@ -89,6 +89,7 @@ namespace StarfieldEra
         void Update()
         {
             var mouse=Mouse.current;
+            if(Game.Expedition&&Game.Expedition.Fishing)return;
             if(Game.Adventure.InBattle||mouse==null){if(Active)Cancel();return;}
             Vector2 pixel=mouse.position.ReadValue();
             bool blocked=(EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||pixel.y<Screen.height*.2f||pixel.y>Screen.height*.87f;
@@ -100,6 +101,7 @@ namespace StarfieldEra
                 {
                     if(Physics.Raycast(ray,out var hit,150,~0,QueryTriggerInteraction.Collide))
                     {
+                        var landmark=hit.collider.GetComponentInParent<ExpeditionTarget>();if(landmark){Game.Expedition.Inspect(landmark.encounter);return;}
                         var animal=hit.collider.GetComponentInParent<AnimalActor>();if(animal){Game.Animals.Inspect(animal);return;}
                         var fence=hit.collider.GetComponentInParent<FenceTarget>();if(fence){Game.Fences.Inspect(fence.record);return;}
                         var info=hit.collider.GetComponentInParent<BuildingInspectable>();

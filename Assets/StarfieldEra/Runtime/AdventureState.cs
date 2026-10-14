@@ -10,6 +10,7 @@ namespace StarfieldEra
         public int wood, stone, berries, fish, crystals, science;
         public int quest;
         public int truffles;
+        public ExpeditionState expedition=new ExpeditionState();
         public List<FenceRecord> fences = new List<FenceRecord>();
         public List<AnimalRecord> animals = new List<AnimalRecord>();
         public bool workshop, library, irrigation, lore, ruinsWon;
@@ -27,6 +28,7 @@ namespace StarfieldEra
         public AdventureState() { for (int i=0;i<32;i++) gatheredDay[i]=-1; discovered[0]=true; }
         public void Upgrade()
         {
+            if(expedition==null)expedition=new ExpeditionState();
             if(fences==null)fences=new List<FenceRecord>();
             if(animals==null)animals=new List<AnimalRecord>();
             if(buildings==null)buildings=new List<PlacedBuilding>();
@@ -39,7 +41,7 @@ namespace StarfieldEra
         }
         public int CompanionCount => companions.Count(x=>x);
         public bool Valid() => wood>=0 && stone>=0 && berries>=0 && fish>=0 && crystals>=0 && science>=0 &&
-            truffles>=0 && PastureFences.Valid(fences) && animals!=null && animals.Count<=3 && animals.All(a=>a!=null&&a.id>=0&&a.id<3&&a.fedDay>=-1&&a.homeColumn>=-23&&a.homeColumn<=22&&a.homeRow>=-20&&a.homeRow<=20&&!float.IsNaN(a.x)&&!float.IsInfinity(a.x)&&!float.IsNaN(a.z)&&!float.IsInfinity(a.z)&&Math.Abs(a.x)<=HexWorldGrid.HalfWidth&&Math.Abs(a.z)<=HexWorldGrid.HalfDepth) && animals.Select(a=>a.id).Distinct().Count()==animals.Count && quest>=0 && quest<=6 && companions!=null && companions.Length==3 && gatheredDay!=null && gatheredDay.Length==32 &&
+            expedition!=null && expedition.Valid() && truffles>=0 && PastureFences.Valid(fences) && animals!=null && animals.Count<=3 && animals.All(a=>a!=null&&a.id>=0&&a.id<3&&a.fedDay>=-1&&a.homeColumn>=-23&&a.homeColumn<=22&&a.homeRow>=-20&&a.homeRow<=20&&!float.IsNaN(a.x)&&!float.IsInfinity(a.x)&&!float.IsNaN(a.z)&&!float.IsInfinity(a.z)&&Math.Abs(a.x)<=HexWorldGrid.HalfWidth&&Math.Abs(a.z)<=HexWorldGrid.HalfDepth) && animals.Select(a=>a.id).Distinct().Count()==animals.Count && quest>=0 && quest<=6 && companions!=null && companions.Length==3 && gatheredDay!=null && gatheredDay.Length==32 &&
             discovered!=null && discovered.Length==8 && activeCompanion>=0 && activeCompanion<3 && victories>=0 && toolLevel>=0 && toolLevel<=1 && meals>=0 && deliveries>=0 && bossDay!=null && bossDay.Length==3 && buildings!=null && buildings.Count<=80 && buildings.All(b=>b!=null&&b.kind>=0&&b.kind<4&&b.rotation>=0&&b.rotation<6&&b.row>=-20&&b.row<=20&&b.column>=-23&&b.column<=22&&Math.Abs(HexWorldGrid.Center(b.column,b.row).x)<=HexWorldGrid.HalfWidth-1&&Math.Abs(HexWorldGrid.Center(b.column,b.row).z)<=HexWorldGrid.HalfDepth-1) && buildings.Select(b=>b.column+":"+b.row).Distinct().Count()==buildings.Count && BuildingFootprints.Valid(buildings);
         public void NewDay(FarmState farm)
         {

@@ -16,6 +16,7 @@ namespace StarfieldEra
         public HexConstruction Construction { get; private set; }
         public PastureFences Fences { get; private set; }
         public FarmAnimals Animals { get; private set; }
+        public ExpeditionGame Expedition { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
         public bool NearHouse => World != null && Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f;
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
@@ -33,6 +34,7 @@ namespace StarfieldEra
             World.labelFont = interfaceFont;
             World.Generate();
             World.HexGrid.CompleteTerrain(World,State);
+            Physics.SyncTransforms();
             World.Player.position = World.HexGrid.SafeLand(new Vector3(Mathf.Clamp(State.playerX, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1), .25f, Mathf.Clamp(State.playerZ, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1)),World.Controller.radius);
             if(State.adventure==null) State.adventure=new AdventureState();
             Adventure=gameObject.AddComponent<AdventureGame>();
@@ -40,6 +42,7 @@ namespace StarfieldEra
             Construction=gameObject.AddComponent<HexConstruction>();Construction.Initialize(this);
             Fences=gameObject.AddComponent<PastureFences>();Fences.Initialize(this);
             Animals=gameObject.AddComponent<FarmAnimals>();Animals.Initialize(this);
+            Expedition=gameObject.AddComponent<ExpeditionGame>();Expedition.Initialize(this);
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
@@ -51,6 +54,11 @@ namespace StarfieldEra
         void Update()
         {
             var keyboard = Keyboard.current;
+            if(Expedition.Fishing)
+            {
+                if(keyboard!=null){if(keyboard.eKey.wasPressedThisFrame)Expedition.Reel();if(keyboard.escapeKey.wasPressedThisFrame)Expedition.CancelFishing();}
+                hud.Refresh();return;
+            }
             Vector2 input = Vector2.zero;
             if (keyboard != null && !Adventure.InBattle)
             {
@@ -64,7 +72,7 @@ namespace StarfieldEra
                 World.Player.rotation = Quaternion.Slerp(World.Player.rotation, Quaternion.LookRotation(move), Time.deltaTime * 14);
             gravity = World.Controller.isGrounded ? -2 : Mathf.Max(-20, gravity - 20 * Time.deltaTime);
             var grid=World.HexGrid;var before=World.Player.position;
-            float speed=TerrainTraits.Speed[(int)grid.TerrainAt(before)];
+            float speed=Expedition.MovementSpeed(grid.TerrainAt(before));
             var horizontal=grid.ConstrainMovement(before,move*4*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius);
             World.Controller.Move(horizontal+Vector3.up*gravity*Time.deltaTime);
             // Collision sliding must also respect the shoreline, including the character radius.
@@ -78,6 +86,7 @@ namespace StarfieldEra
             UpdateSelection();
             if (keyboard != null)
             {
+                if (keyboard.lKey.wasPressedThisFrame) Adventure.Hud.Show("expedition");
                 if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
@@ -118,6 +127,7 @@ namespace StarfieldEra
 
         public void Interact()
         {
+            if(Expedition.Fishing){Expedition.Reel();return;}
             if(Adventure.InBattle||Construction.Active||Fences.Active)return;
             if(Animals.InteractNearby())return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
@@ -140,7 +150,7 @@ namespace StarfieldEra
 
         public void Water()
         {
-            if(Adventure.InBattle)return;
+            if(Adventure.InBattle||Expedition.Fishing)return;
             if (SelectedPlot < 0) { Notify("走近已播种的农田才能浇水。"); return; }
             if (!State.Water(SelectedPlot)) { Notify("体力不足，或农田今天无需浇水。成熟作物可以收获。"); return; }
             Changed("浇水完成！湿润的农田会在夜间成长。");
@@ -148,7 +158,7 @@ namespace StarfieldEra
 
         public void Sleep()
         {
-            if(Adventure.InBattle)return;
+            if(Adventure.InBattle||Expedition.Fishing)return;
             if (!NearHouse) { Notify("走到小屋门前，再按 F 结束一天。"); return; }
             State.Sleep();
             Adventure.Commit("新的一天！工坊与书院完成了生产，伙伴和灌溉设施会照料农田。");
@@ -157,7 +167,7 @@ namespace StarfieldEra
 
         public void BuySeed()
         {
-            if(Adventure.InBattle)return;
+            if(Adventure.InBattle||Expedition.Fishing)return;
             if (!NearHouse && !(Adventure.Target!=null && Adventure.Target.kind==EncounterKind.Market)) { Notify("种子商店在小屋门前，也可以与远行商人交易。"); return; }
             if (!State.BuySeed()) { Notify("金币不足：当前种子需要 "+State.SeedCost+" 金币。"); return; }
             Changed("购买"+FarmState.CropNames[State.selectedCrop]+"种子 +1。按 T 切换作物。");
@@ -165,7 +175,7 @@ namespace StarfieldEra
 
         public void CycleCrop()
         {
-            if(Adventure.InBattle)return;
+            if(Adventure.InBattle||Expedition.Fishing)return;
             State.selectedCrop=(State.selectedCrop+1)%3;
             Changed("当前种子："+FarmState.CropNames[State.selectedCrop]+"。余量 "+State.SelectedSeeds+"，购买价 "+State.SeedCost+" 金币。");
         }

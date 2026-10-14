@@ -25,7 +25,7 @@ namespace StarfieldEra.Editor
             if (!font.TryAddCharacters(File.ReadAllText("Assets/StarfieldEra/Art/Glyphs.txt"), out string missing))
                 throw new System.InvalidOperationException("Font is missing glyphs: " + missing);
             foreach (var texture in font.atlasTextures)
-                if (!AssetDatabase.Contains(texture)) AssetDatabase.AddObjectToAsset(texture, font);
+                if (texture && !AssetDatabase.Contains(texture)) AssetDatabase.AddObjectToAsset(texture, font);
             font.atlasPopulationMode = AtlasPopulationMode.Static;
             EditorUtility.SetDirty(font);
             AssetDatabase.SaveAssets();

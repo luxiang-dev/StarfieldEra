@@ -10,6 +10,7 @@ namespace StarfieldEra
         RectTransform panel;
         TextMeshProUGUI title,body;
         Transform actions;
+        RectTransform fishingTrack,fishingZone,fishingCursor;
         string mode="";
         int previousRevision=-1,previousDay=-1;
         public void Create(AdventureGame adventure,TMP_FontAsset asset)
@@ -27,15 +28,17 @@ namespace StarfieldEra
             var actionRect=(RectTransform)actions;actionRect.anchorMin=actionRect.anchorMax=actionRect.pivot=new Vector2(0,1);
             actionRect.anchoredPosition=Vector2.zero;actionRect.sizeDelta=new Vector2(450,550);
             AddButton(panel,"关闭",new Vector2(322,-492),new Vector2(100,38),()=>{if(mode=="building"||mode=="confirm-demolition")game.Game.Construction.ClearInspection();Hide();});
+            CreateFishingTrack();
             panel.gameObject.SetActive(false);
         }
         public void Show(string next)
         {
             if(game.InBattle&&next!="battle")return;
+            if(game.Game.Expedition.Fishing&&next!="fishing")game.Game.Expedition.CancelFishing();
             if(panel.gameObject.activeSelf&&mode==next&&next!="battle"){Hide();return;}
             mode=next;panel.gameObject.SetActive(true);Rebuild();
         }
-        public void Hide(){if(game.InBattle)return;panel.gameObject.SetActive(false);mode="";}
+        public void Hide(){if(game.InBattle)return;if(game.Game.Expedition.Fishing){game.Game.Expedition.CancelFishing();return;}panel.gameObject.SetActive(false);mode="";}
         public void Refresh()
         {
             if(!panel.gameObject.activeSelf)return;
@@ -47,7 +50,51 @@ namespace StarfieldEra
             previousRevision=game.Revision;previousDay=game.Game.State.day;
             for(int i=actions.childCount-1;i>=0;i--) {actions.GetChild(i).gameObject.SetActive(false);Destroy(actions.GetChild(i).gameObject);}
             var s=game.State;
-            if(mode=="battle")
+            fishingTrack.gameObject.SetActive(mode=="fishing");
+            if(mode=="fishing")
+            {
+                title.text="湖岸垂钓 · 收线时机";body.text=game.Game.Expedition.FishingText;
+                Action("E 收线 · 光标进入绿色区域",0,game.Game.Expedition.Reel);
+                Action("收起鱼竿",1,game.Game.Expedition.CancelFishing);
+            }
+            else if(mode=="expedition")
+            {
+                var e=s.expedition;title.text="远征日志 · 星图重现";
+                body.text=ExpeditionContent.Quests[e.quest]+"\n\n补给箱 "+e.CacheCount+" / 8   石碑 "+e.RuneCount+" / 8\n累计钓获 "+e.fishCaught+" 条   遗迹碎片 "+e.shards+"\n纤维 "+e.fiber+"   鱼饵 "+e.bait+"   野营补给 "+e.campSupplies+"\n\n"+game.Game.Expedition.NextLandmark;
+                Action("制作装备、鱼饵与补给",0,()=>Show("craft"));
+                Action("使用野营补给 · 回复体力15",1,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<30);
+                Action("向村长领取远征奖励",2,game.Game.Expedition.ClaimQuest,e.quest<3);
+                Action("打开旅途地图",3,()=>Show("map"));
+            }
+            else if(mode=="craft"||mode=="craft2")
+            {
+                var e=s.expedition;title.text="制作台 · 远行装备";
+                body.text="纤维 "+e.fiber+"   遗迹碎片 "+e.shards+"\n木材 "+s.wood+"   浆果 "+s.berries+"   鲜鱼 "+s.fish+"\n晶石 "+s.crystals+"   知识 "+s.science+"\n\n在小屋、营地或已建工坊旁制作。\n鱼竿与长靴需先建工坊；护符需书院。\n长靴提升沼泽与雪地速度；护符体力+10、伤害+3。";
+                if(mode=="craft")
+                {
+                    Action("鱼饵3 · 纤维2 浆果1",0,()=>game.Game.Expedition.Craft("bait"));
+                    Action(e.fishingRod?"精制鱼竿 · 已装备":"精制鱼竿 · 木8 纤维4 知2",1,()=>game.Game.Expedition.Craft("rod"),!e.fishingRod);
+                    Action(e.marshBoots?"湿地长靴 · 已装备":"湿地长靴 · 纤维8 木4 金20",2,()=>game.Game.Expedition.Craft("boots"),!e.marshBoots);
+                    Action("返回远征日志",3,()=>Show("expedition"));
+                }
+                else
+                {
+                    Action(e.starAmulet?"星辉护符 · 已装备":"星辉护符 · 碎片3 晶2 知6",0,()=>game.Game.Expedition.Craft("amulet"),!e.starAmulet);
+                    Action("野营补给 · 纤维4 浆果4 鲜鱼1",1,()=>game.Game.Expedition.Craft("camp"));
+                    Action("使用野营补给 · 回复体力15",2,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<30);
+                    Action("返回远征日志",3,()=>Show("expedition"));
+                }
+                Page(mode=="craft"?"下一页 · 护符与野营":"上一页 · 鱼竿与长靴",()=>Show(mode=="craft"?"craft2":"craft"));
+            }
+            else if(mode=="landmark")
+            {
+                var item=game.Game.Expedition.Inspected;if(item==null){Hide();return;}title.text=item.name;body.text=game.Game.Expedition.LandmarkDescription;
+                bool claimed=item.kind==EncounterKind.Treasure?s.expedition.caches[item.id]:s.expedition.runes[item.id];
+                Action(claimed?"已经探索":"走近领取或解读",0,game.Game.Expedition.ClaimLandmark,!claimed);
+                Action("查看远征日志",1,()=>Show("expedition"));
+                Action("查看装备制作",2,()=>Show("craft"));
+            }
+            else if(mode=="battle")
             {
                 title.text=game.EnemyName+" · 回合 "+game.Turn;
                 body.text=AdventureContent.Names[s.activeCompanion]+" 体力 "+game.AllyHP+" / "+game.AllyMaxHP+"\n\n"+game.EnemyName+" 体力 "+game.EnemyHP+" / "+game.EnemyMaxHP+"\n\n"+game.BattleLog+"\n\n技能冷却："+game.Cooldown+" 回合\n守卫每三回合会发动重击，适时防御。";
@@ -161,6 +208,7 @@ namespace StarfieldEra
                 Action("使用料理 · 回复体力12",1,()=>game.Supply("eat"),s.meals>0&&farm.energy<30);
                 Action("T 切换种子 · 当前 "+FarmState.CropNames[farm.selectedCrop],2,game.Game.CycleCrop);
                 Action("查看贸易订单",3,()=>Show("market"));
+                Page("L 远征日志 · 装备与制作",()=>Show("expedition"));
             }
             else if(mode=="market")
             {
@@ -181,7 +229,28 @@ namespace StarfieldEra
                 Action("C  切换随行伙伴",0,game.CycleCompanion);
                 Action("M  打开旅途地图",1,()=>Show("map"));
                 Action("查看建设与研究",2,()=>Show("town"));
+                Action("L 远征与制作",3,()=>Show("expedition"));
             }
+        }
+        void CreateFishingTrack()
+        {
+            fishingTrack=TrackPart("Fishing track",panel,new Color(.02f,.08f,.08f));
+            fishingTrack.anchorMin=fishingTrack.anchorMax=fishingTrack.pivot=new Vector2(0,1);fishingTrack.anchoredPosition=new Vector2(24,-232);fishingTrack.sizeDelta=new Vector2(400,18);
+            fishingZone=TrackPart("Green catch window",fishingTrack,new Color(.38f,.72f,.36f));
+            fishingCursor=TrackPart("Fishing cursor",fishingTrack,new Color(1,.87f,.53f));
+            fishingTrack.gameObject.SetActive(false);
+        }
+        RectTransform TrackPart(string name,Transform parent,Color color)
+        {
+            var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);
+            rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;go.GetComponent<UnityEngine.UI.Image>().color=color;go.GetComponent<UnityEngine.UI.Image>().raycastTarget=false;return rect;
+        }
+        void Update()
+        {
+            if(mode!="fishing"||!game.Game.Expedition.Fishing)return;var fish=game.Game.Expedition;
+            body.text=fish.FishingText;
+            fishingZone.anchorMin=new Vector2(fish.ZoneCenter-fish.ZoneWidth*.5f,0);fishingZone.anchorMax=new Vector2(fish.ZoneCenter+fish.ZoneWidth*.5f,1);fishingZone.offsetMin=fishingZone.offsetMax=Vector2.zero;
+            fishingCursor.anchorMin=new Vector2(fish.Cursor,0);fishingCursor.anchorMax=new Vector2(fish.Cursor,1);fishingCursor.offsetMin=new Vector2(-2,-4);fishingCursor.offsetMax=new Vector2(2,4);
         }
         public void DismissBuildingDetails(){if(mode=="building"||mode=="confirm-demolition")Hide();}
         void Page(string text,UnityEngine.Events.UnityAction callback) => AddButton(actions,text,new Vector2(24,-246),new Vector2(400,32),callback);
