@@ -31,7 +31,7 @@ Shader "StarfieldEra/Cultivated Soil"
     float grain=frac(sin(dot(floor(i.world.xz*35),float2(47.1,91.7)))*4137.2);
     float alpha=saturate((1.08-edge+(grain-.5)*.04)/.08);
     half3 detail=SAMPLE_TEXTURE2D(_Atlas,sampler_Atlas,float2(.5,0)+(.008+frac(i.uv)*.484)).rgb;
-    half3 soil=lerp(SRGBToLinear(half3(.43,.30,.18)),detail,.3)*_BaseColor.rgb;
+    half3 soil=detail*_BaseColor.rgb;
     // Extra dark grooves follow the actual sculpted ridges.
     soil*=.82+.18*pow(.5+.5*cos(p.x*18.8496),2);
     Light sun=GetMainLight(TransformWorldToShadowCoord(i.world));half3 n=normalize(i.normal);

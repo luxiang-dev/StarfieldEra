@@ -1,6 +1,6 @@
 Shader "StarfieldEra/Continuous Ground"
 {
- Properties { _Atlas("Painted grass / dirt / sand / soil",2D)="white"{} _TileScale("Meters per repeat",Float)=5 _BlendWidth("Height blend width",Range(.02,.4))=.12 }
+ Properties { _Atlas("Painted grass / dirt / sand / soil",2D)="white"{} _TileScale("Meters per repeat",Float)=7 _BlendWidth("Height blend width",Range(.02,.4))=.12 }
  SubShader
  {
   Tags {"RenderPipeline"="UniversalPipeline" "RenderType"="Opaque"}
@@ -29,18 +29,18 @@ Shader "StarfieldEra/Continuous Ground"
    half4 frag(V i):SV_Target
    {
     float2 uv=i.world.xz/_TileScale;
-    half3 grass=SRGBToLinear(half3(.46,.59,.30))*(.94+noise(i.world.xz*.32)*.12);
-    half3 dirt=SRGBToLinear(half3(.73,.61,.42))*(.95+noise(i.world.xz*.45+8)*.1);
-    half3 sand=SRGBToLinear(half3(.83,.76,.55))*(.96+noise(i.world.xz*.4+24)*.08);
+    half3 grass=tile(uv,float2(0,.5));
+    half3 dirt=tile(uv,float2(.5,.5));
+    half3 sand=tile(uv,float2(0,0));
     half3 snow=SRGBToLinear(half3(.80,.86,.87));
     // Nested grass patches give large areas distinct painted masses rather than one flat fill.
     float patch=noise(i.world.xz*.23+float2(13,7))+.24*noise(i.world.xz*.075);
     float meadowPatch=smoothstep(.52,.61,patch);
-    grass=lerp(grass,SRGBToLinear(half3(.55,.66,.34)),meadowPatch*.72);
+    grass=lerp(grass,SRGBToLinear(half3(.55,.66,.34)),meadowPatch*.16);
     float shadePatch=smoothstep(.3,.4,noise(i.world.xz*.15+31));
-    grass=lerp(grass,SRGBToLinear(half3(.38,.52,.28)),(1-shadePatch)*.45);
+    grass=lerp(grass,SRGBToLinear(half3(.38,.52,.28)),(1-shadePatch)*.18);
     // Quiet painted washes, leaving readable silhouettes for foliage and buildings.
-    grass*=.96+dot(tile(uv,float2(0,.5)),half3(.3,.59,.11))*.08;
+
     dirt=lerp(dirt,SRGBToLinear(half3(.54,.59,.51)),saturate(i.biome.x)*.8);
     grass*=1+saturate(-i.biome.x)*half3(-.25,-.16,.08);
     // Luminance is the painted texture's height proxy; high frequency noise bites into edges.
@@ -60,7 +60,7 @@ Shader "StarfieldEra/Continuous Ground"
     float blades=min(stroke(p,float2(0,-.12),float2(-.11,.06)),min(stroke(p,float2(0,-.12),float2(.015,.14)),stroke(p,float2(0,-.12),float2(.12,.03))));
     float density=lerp(.78,.5,saturate(lip+abs(meadowPatch-.5)*.4));
     float ink=(1-smoothstep(.008,.024,blades))*step(density,hash(cell))*w.x;
-    paint=lerp(paint,grass*.7,ink*.65);
+    paint=lerp(paint,grass*.7,ink*.20);
     paint*=lerp(1,half3(.66,.80,.78),i.biome.y*.55);
     half3 n=normalize(i.normal);Light sun=GetMainLight(TransformWorldToShadowCoord(i.world));
     // Steep slopes expose layered ochre-gray rock beneath the grassy terrace.

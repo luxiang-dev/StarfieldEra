@@ -50,7 +50,7 @@ namespace StarfieldEra
         const float Step=.4f;
         public void Build(HexWorldGrid source,FarmWorld world)
         {
-            grid=source;BuildWaterLevels();atlas=Resources.Load<Texture2D>("TerrainArt/HandpaintedAtlas");
+            grid=source;BuildWaterLevels();atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
             var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(HexWorldGrid.HalfWidth*2/Step),nz=Mathf.CeilToInt(HexWorldGrid.HalfDepth*2/Step);
             for(int z=0;z<=nz;z++)for(int x=0;x<=nx;x++)

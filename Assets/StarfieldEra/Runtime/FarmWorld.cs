@@ -202,7 +202,7 @@ namespace StarfieldEra
             if(name=="Dry soil" || name=="Watered soil")
             {
                 var painted=Shader.Find("StarfieldEra/Cultivated Soil");
-                if(painted){material.shader=painted;material.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/HandpaintedAtlas"));material.color=name=="Watered soil"?new Color(.63f,.64f,.7f,1):Color.white;}
+                if(painted){material.shader=painted;material.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas"));material.color=name=="Watered soil"?new Color(.63f,.64f,.7f,1):Color.white;}
             }
             material.SetFloat("_Smoothness", .05f);
             materials.Add(material);
