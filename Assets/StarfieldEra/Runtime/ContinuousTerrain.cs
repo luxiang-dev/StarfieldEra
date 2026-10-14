@@ -77,9 +77,10 @@ namespace StarfieldEra
             waterMesh.SetVertices(waterVertices);waterMesh.SetColors(waterColors);waterMesh.SetTriangles(waterTriangles,0);waterMesh.RecalculateNormals();waterMesh.RecalculateBounds();owned.Add(waterMesh);
             var waterRenderer=Draw("Animated translucent water",waterMesh,Material("StarfieldEra/Painted Water"));waterRenderer.shadowCastingMode=ShadowCastingMode.Off;
             var cameraData=world.View.GetComponent<UniversalAdditionalCameraData>();if(cameraData)cameraData.requiresDepthTexture=true;
-            ConfigurePlots(world);DecorateBanks(world);GroundWorld(world);
+            DecorateBanks(world);GroundWorld(world);
             world.gameObject.AddComponent<FantasyPresentation>().Build(world);
             world.gameObject.AddComponent<GrassPatches>().Build(world);
+            world.gameObject.AddComponent<FarmFieldArt>().Build(world);
         }
         Material Material(string shaderName)
         {
@@ -146,45 +147,6 @@ namespace StarfieldEra
             {var p=p0;p.y=WaterLevelAt(p)+.015f;vertices.Add(p);Sample(p,out _,out float depth,out _);colors.Add(new Color(depth,0,0,1));}
             for(int i=1;i<polygon.Count-1;i++)triangles.AddRange(new[]{offset,offset+i,offset+i+1});
         }
-        void ConfigurePlots(FarmWorld world)
-        {
-            var plotMesh=Furrows();owned.Add(plotMesh);
-            var changed=new HashSet<Material>();var shader=Shader.Find("StarfieldEra/Cultivated Soil");
-            foreach(var renderer in world.GetComponentsInChildren<MeshRenderer>())
-            {
-                if(!renderer.name.StartsWith("Hex plot "))continue;
-                renderer.GetComponent<MeshFilter>().sharedMesh=plotMesh;
-                foreach(var material in renderer.sharedMaterials)if(material&&changed.Add(material))
-                {bool wet=material.name=="Watered soil";material.shader=shader;material.SetTexture("_Atlas",atlas);material.SetColor("_BaseColor",wet?new Color(.63f,.64f,.7f,1):Color.white);}
-            }
-        }
-        static Mesh Furrows()
-        {
-            var vertices=new List<Vector3>();var uv=new List<Vector2>();var triangles=new List<int>();
-            const int segments=18;
-            // Shared center and concentric subdivided hex rings give actual raised soil rows.
-            vertices.Add(Vector3.zero);uv.Add(new Vector2(.5f,.5f));
-            for(int ring=1;ring<=segments;ring++)for(int side=0;side<6;side++)for(int j=0;j<ring;j++)
-            {
-                var p=Vector3.Lerp(HexWorldGrid.Corner(side,1.2f),HexWorldGrid.Corner((side+1)%6,1.2f),(float)j/ring)*((float)ring/segments);
-                p.y=.025f+Mathf.Pow(.5f+.5f*Mathf.Cos(p.x*Mathf.PI*6),3)*.045f;
-                vertices.Add(p);uv.Add(new Vector2(p.x/2.3f+.5f,p.z/2.3f+.5f));
-            }
-            int previous=0,current=1;
-            for(int ring=1;ring<=segments;ring++)
-            {
-                for(int side=0;side<6;side++)for(int j=0;j<ring;j++)
-                {
-                    int a=current+side*ring+j,b=current+(side*ring+j+1)%(ring*6);
-                    int c=ring==1?0:previous+(side*(ring-1)+Mathf.Min(j,ring-1))%(6*(ring-1));
-                    triangles.AddRange(new[]{a,b,c});
-                    if(j<ring-1){int d=previous+(side*(ring-1)+j+1)%(6*(ring-1));triangles.AddRange(new[]{b,d,c});}
-                }
-                previous=current;current+=ring*6;
-            }
-            var mesh=new Mesh{name="Raised cultivated soil rows"};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);for(int i=0;i<triangles.Count;i+=3){int swap=triangles[i+1];triangles[i+1]=triangles[i+2];triangles[i+2]=swap;}
-            mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();mesh.RecalculateBounds();return mesh;
-        }
         void DecorateBanks(FarmWorld world)
         {
             var stone=world.Mat("Riverbed pebbles","8E9B88");var leaf=world.Mat("Lily pads","65934C");var random=new System.Random(491);
@@ -197,13 +159,7 @@ namespace StarfieldEra
                 for(int i=0;i<2;i++)
                 {var pebble=world.Shape("Submerged pebble",PrimitiveType.Sphere,p+new Vector3((float)random.NextDouble()-.5f,-.23f,(float)random.NextDouble()-.5f),new Vector3(.24f,.1f,.18f),stone);pebble.SetParent(transform,true);}
             }
-            var grass=world.Mat("Plot edge weeds","74883D");
-            for(int i=0;i<world.PlotPositions.Length;i++)for(int j=0;j<3;j++)
-            {
-                var p=world.PlotPositions[i]+HexWorldGrid.Corner(j*2,1.04f);p.y+=HeightAt(p);
-                var pebble=world.Shape("Farm edge pebble",PrimitiveType.Sphere,p,new Vector3(.10f,.07f,.12f),stone);pebble.SetParent(transform,true);
-                var weed=world.Cone("Farm edge weed",p+new Vector3(.12f,.06f,.07f),new Vector3(.09f,.16f,.09f),grass);weed.SetParent(transform,true);
-            }
+
         }
         void GroundWorld(FarmWorld world)
         {
