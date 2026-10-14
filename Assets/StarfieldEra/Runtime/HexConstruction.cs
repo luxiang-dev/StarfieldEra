@@ -62,12 +62,12 @@ namespace StarfieldEra
         public void Open()
         {
             if(Game.Adventure.InBattle)return;
-            Cancel();Game.Adventure.Hud.Show("build");
+            Game.Fences?.Cancel();Cancel();Game.Adventure.Hud.Show("build");
         }
         public void Choose(int kind)
         {
             if(kind<0||kind>4||Game.Adventure.InBattle)return;
-            Cancel();selected=kind;rotation=0;
+            Game.Fences?.Cancel();Cancel();selected=kind;rotation=0;
             Game.Adventure.Hud.Hide();
             if(kind<4)preview=CreateModel(new PlacedBuilding{kind=kind,footprintVersion=1},true);
             else
@@ -93,12 +93,15 @@ namespace StarfieldEra
             Vector2 pixel=mouse.position.ReadValue();
             bool blocked=(EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||pixel.y<Screen.height*.2f||pixel.y>Screen.height*.87f;
             var ray=Game.World.View.ScreenPointToRay(pixel);
+            if(Game.Fences&&Game.Fences.Active)return;
             if(!Active)
             {
                 if(!blocked&&mouse.leftButton.wasPressedThisFrame)
                 {
                     if(Physics.Raycast(ray,out var hit,150,~0,QueryTriggerInteraction.Collide))
                     {
+                        var animal=hit.collider.GetComponentInParent<AnimalActor>();if(animal){Game.Animals.Inspect(animal);return;}
+                        var fence=hit.collider.GetComponentInParent<FenceTarget>();if(fence){Game.Fences.Inspect(fence.record);return;}
                         var info=hit.collider.GetComponentInParent<BuildingInspectable>();
                         if(info){Inspect(info);return;}
                     }

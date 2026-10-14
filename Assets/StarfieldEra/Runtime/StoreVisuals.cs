@@ -9,7 +9,7 @@ namespace StarfieldEra
     public sealed class StoreVisuals : ScriptableObject
     {
         public GameObject farmer, villager, tree, rock, market, workshop, library, guardian;
-        public GameObject grass, flower, shrub, ore, fallenLog, quarry;
+        public GameObject grass, flower, shrub, ore, fallenLog, quarry, boar;
         public GameObject[] companions;
         public AnimationClip idle, walk;
         static StoreVisuals cached;

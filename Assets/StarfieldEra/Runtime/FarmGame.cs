@@ -14,6 +14,8 @@ namespace StarfieldEra
         public FarmWorld World { get; private set; }
         public AdventureGame Adventure { get; private set; }
         public HexConstruction Construction { get; private set; }
+        public PastureFences Fences { get; private set; }
+        public FarmAnimals Animals { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
         public bool NearHouse => World != null && Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f;
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
@@ -35,6 +37,8 @@ namespace StarfieldEra
             Adventure=gameObject.AddComponent<AdventureGame>();
             Adventure.Initialize(this);
             Construction=gameObject.AddComponent<HexConstruction>();Construction.Initialize(this);
+            Fences=gameObject.AddComponent<PastureFences>();Fences.Initialize(this);
+            Animals=gameObject.AddComponent<FarmAnimals>();Animals.Initialize(this);
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
@@ -84,7 +88,7 @@ namespace StarfieldEra
                 if (keyboard.rKey.wasPressedThisFrame) {if(Construction.Active)Construction.Rotate();else Water();}
                 if (keyboard.fKey.wasPressedThisFrame) Sleep();
                 if (keyboard.bKey.wasPressedThisFrame) BuySeed();
-                if (keyboard.escapeKey.wasPressedThisFrame) { Construction.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
+                if (keyboard.escapeKey.wasPressedThisFrame) { Construction.Cancel(); Fences.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
             }
             hud.Refresh();
         }
@@ -107,7 +111,8 @@ namespace StarfieldEra
 
         public void Interact()
         {
-            if(Adventure.InBattle)return;
+            if(Adventure.InBattle||Construction.Active||Fences.Active)return;
+            if(Animals.InteractNearby())return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
             if (SelectedPlot < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
             if(SelectedPlot>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}
@@ -171,6 +176,7 @@ namespace StarfieldEra
         public void Persist()
         {
             if (State == null || World == null) return;
+            Animals?.SavePositions();
             State.playerX = World.Player.position.x;
             State.playerZ = World.Player.position.z;
             try { FarmSave.Save(SavePath, State); SaveHealthy = true; }

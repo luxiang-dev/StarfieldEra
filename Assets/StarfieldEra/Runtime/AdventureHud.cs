@@ -89,7 +89,37 @@ namespace StarfieldEra
                 title.text="六边形建造 · 自由选址";
                 body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场木+2，采石场石+2，学舍知+1。\n林场、采石场7格；学舍4格，营地3格。\n\n左键建造，R旋转；右键或Esc取消。\n绿色可建，红色不可建。\n全部占地须可建，点击建筑查看详情。";
                 for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" "+BuildingFootprints.Counts[i]+"格 · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
-                Page("拆除自建建筑 · 返还一半资源",()=>game.Game.Construction.Choose(4));
+                Page("下一页 · 围栏、牧场与拆除",()=>Show("pasture"));
+            }
+            else if(mode=="pasture")
+            {
+                title.text="牧场 · 围栏与动物";
+                body.text="木材 "+s.wood+"   浆果 "+s.berries+"   松露 "+s.truffles+"\n\n围栏沿六边形边缘放置，格内可养动物。\n至少围住三格，关好门，再点击野猪驯养。\n左键连续放置，右键或Esc取消。\n点击牧场门可开关，点击动物查看状态。\n每只每天喂浆果1，次日松露1，可售18金币。";
+                Action("木围栏 · 每段木2",0,()=>game.Game.Fences.Choose(0));
+                Action("牧场门 · 每扇木4",1,()=>game.Game.Fences.Choose(1));
+                Action("拆除围栏 · 返还一半木材",2,()=>game.Game.Fences.Choose(2));
+                Action("拆除自建建筑",3,()=>game.Game.Construction.Choose(4));
+                Page("上一页 · 建筑",()=>Show("build"));
+            }
+            else if(mode=="fence")
+            {
+                var f=game.Game.Fences.Inspected;if(f==null){Hide();return;}
+                title.text=f.gate?"牧场门":"木围栏";
+                body.text="坐标 ["+f.column+","+f.row+"]   边缘 "+(f.edge+1)+"\n\n"+(f.gate?(f.open?"状态：已打开。牧场未封闭。":"状态：已关闭，可围住牧场。") :"阻挡角色与动物，不占用整格。")+"\n\n费用：木材 "+(f.gate?4:2)+"\n拆除返还一半木材。";
+                if(f.gate)Action(f.open?"关闭牧场门":"打开牧场门",0,game.Game.Fences.ToggleGate);
+                Action("拆除这段围栏",1,game.Game.Fences.RemoveInspected);
+                Action("继续建造围栏",2,()=>game.Game.Fences.Choose(0));
+            }
+            else if(mode=="animal")
+            {
+                var actor=game.Game.Animals.Inspected;if(!actor){Hide();return;}var a=actor.record;
+                title.text=a==null?"林间野猪 · 野生动物":"牧场野猪 · 动物详情";
+                body.text=a==null?"野猪在青苔森林与金穗平原活动。\n\n用三份浆果驯养，自动迁入附近封闭牧场。\n先在十步以内围出至少三格，关好牧场门。":
+                    "状态：已驯养\n今日喂食："+(a.fedDay==game.Game.State.day?"已吃饱，次日松露+1":"尚未喂食")+"\n牧场："+(actor.pen==null?"未封闭，请补齐围栏或关门":"封闭 · "+actor.pen.Count+"格")+"\n\n每天喂浆果1，结束一天后产松露1。\n仓库松露 "+s.truffles+" · 每份售价18金币";
+                if(a==null)Action("驯养到牧场 · 浆果3",0,game.Game.Animals.Tame,s.berries>=3);
+                else Action(a.fedDay==game.Game.State.day?"今日已喂食":"喂食 · 浆果1",0,game.Game.Animals.Feed,a.fedDay!=game.Game.State.day&&s.berries>0);
+                Action("出售全部松露 · 金"+s.truffles*18,1,game.Game.Animals.Sell,s.truffles>0);
+                Action("围栏与牧场建造",2,()=>Show("pasture"));
             }
             else if(mode=="building" || mode=="confirm-demolition")
             {
