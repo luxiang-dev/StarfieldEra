@@ -1,6 +1,6 @@
 Shader "StarfieldEra/Painted Water"
 {
- Properties {_Shallow("Shallow turquoise",Color)=(.36,.74,.69,1) _Deep("Deep blue green",Color)=(.05,.39,.47,1)}
+ Properties {_Shallow("Shallow turquoise",Color)=(.39,.71,.69,1) _Deep("Deep blue green",Color)=(.19,.52,.57,1)}
  SubShader
  {
   Tags {"RenderPipeline"="UniversalPipeline" "Queue"="Transparent" "RenderType"="Transparent"}
@@ -33,12 +33,12 @@ Shader "StarfieldEra/Painted Water"
     float raw=SampleSceneDepth(i.screen.xy/i.screen.w);
     float scene=unity_OrthoParams.w>.5?LinearDepthToEyeDepth(raw):LinearEyeDepth(raw,_ZBufferParams);
     float own=-TransformWorldToView(i.world).z;float depth=max(0,scene-own);
-    float band=voronoi(i.world.xz*2.8+float2(_Time.y*.07,_Time.y*.045));
+    float band=voronoi(i.world.xz*1.25+float2(_Time.y*.035,_Time.y*.022));
     float shoreline=max(1-smoothstep(.04,.22,depth),(1-smoothstep(.48,.7,i.depth))*.65);
     float foam=shoreline*smoothstep(.08,.14,band+sin(_Time.y*1.4+i.world.x*.6)*.05);
     float glint=(1-smoothstep(.015,.048,band))*(.3+.3*sin(_Time.y+i.world.z*2));
     half3 water=lerp(_Shallow.rgb,_Deep.rgb,saturate(i.depth*1.5));
-    water=lerp(water,half3(.86,.94,.82),saturate(foam*.85+glint*.32));
+    water=lerp(water,half3(.86,.94,.82),saturate(foam*.85+glint*.12));
     return half4(water,lerp(.48,.86,saturate(max(depth,i.depth*.3)*3)));
    }
    ENDHLSL

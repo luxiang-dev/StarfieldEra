@@ -26,6 +26,8 @@ namespace StarfieldEra
         GameObject selectionOutline;
         Material selectionMaterial,platformMaterial;
         Mesh platformMesh;
+        readonly List<Mesh> footingMeshes=new List<Mesh>();
+        Material footingMaterial;
         readonly Dictionary<Vector2Int,GameObject> models=new Dictionary<Vector2Int,GameObject>();
         readonly List<Vector3> trees=new List<Vector3>();
         int selected=-1,rotation;
@@ -44,6 +46,7 @@ namespace StarfieldEra
             foreach(var anchor in game.World.GetComponentsInChildren<Transform>())
                 if(anchor.name.StartsWith("Store art - PT_Pine"))trees.Add(anchor.position);
             selectionMaterial=game.World.Mat("Building selected","E5C578");platformMaterial=game.World.Mat("Building foundation","B7AD8A");
+            footingMaterial=game.World.Mat("Terrace retaining stone","827A61");
             platformMesh=HexWorldGrid.Prism(HexWorldGrid.Radius-.025f,.07f,"Building footprint tile");
             foreach(var building in game.State.adventure.buildings)Claim(building);
             bool expanded=false;
@@ -108,16 +111,16 @@ namespace StarfieldEra
                         var info=hit.collider.GetComponentInParent<BuildingInspectable>();
                         if(info){Inspect(info);return;}
                     }
-                    if(new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float d)&&Game.World.HexGrid.TryCell(ray.GetPoint(d),out var cell)&&occupants.TryGetValue(cell,out var record))
+                    if(Game.World.HexGrid.RaycastGround(ray,out var groundPoint)&&Game.World.HexGrid.TryCell(groundPoint,out var cell)&&occupants.TryGetValue(cell,out var record))
                         {Inspect(models[new Vector2Int(record.column,record.row)].GetComponent<BuildingInspectable>());return;}
                     ClearInspection();Game.Adventure.Hud.DismissBuildingDetails();
                 }
                 return;
             }
             if(mouse.rightButton.wasPressedThisFrame){Cancel();return;}
-            float distance=0;hasTile=!blocked&&new Plane(Vector3.up,Vector3.zero).Raycast(ray,out distance);
+            Vector3 groundHit=default;hasTile=!blocked&&Game.World.HexGrid.RaycastGround(ray,out groundHit);
             if(!hasTile){preview.SetActive(false);Hint="建造 · 移动鼠标到地图地块，右键取消";return;}
-            hasTile=Game.World.HexGrid.TryCell(ray.GetPoint(distance),out hovered);
+            hasTile=Game.World.HexGrid.TryCell(groundHit,out hovered);
             if(!hasTile){preview.SetActive(false);return;}
             PlacedBuilding demolition=null;
             if(selected==4)occupants.TryGetValue(hovered,out demolition);
@@ -166,16 +169,16 @@ namespace StarfieldEra
             if(!Game.World.HexGrid.Contains(cell)){explanation="建筑占地超出大陆边界";return false;}
             if(occupants.TryGetValue(cell,out var owner)&&owner!=ignore){explanation="占地与已有建筑重叠";return false;}
             if(!Game.World.HexGrid.CanBuildOn(cell)){explanation="建筑占地覆盖水面或沼泽，选择稳定陆地";return false;}
-            var pos=HexWorldGrid.Center(cell.x,cell.y);
+            var pos=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y));
             foreach(var plot in Game.World.PlotPositions)
-                if(Vector3.Distance(pos,new Vector3(plot.x,0,plot.z))<2.1f){explanation="占地覆盖农田或通道";return false;}
+                if(WorldRelief.PlanarDistance(pos,plot)<2.1f){explanation="占地覆盖农田或通道";return false;}
             foreach(var encounter in Game.World.Adventure.Encounters)
-                if(Vector3.Distance(pos,encounter.Position)<2.6f){explanation="占地覆盖人物或资源预留地";return false;}
+                if(WorldRelief.PlanarDistance(pos,encounter.Position)<2.6f){explanation="占地覆盖人物或资源预留地";return false;}
             var reserved=new[]{new Vector3(-5,0,5.3f),new Vector3(-10,0,8.5f),new Vector3(-1,0,11.5f),new Vector3(-10,0,13),new Vector3(-5,0,13.6f),new Vector3(-1,0,-12.5f),new Vector3(-14,0,13.5f),new Vector3(-28,0,-22)};
-            foreach(var point in reserved)if(Vector3.Distance(pos,point)<3.4f){explanation="占地覆盖村庄建筑预留地";return false;}
+            foreach(var point in reserved)if(WorldRelief.PlanarDistance(pos,point)<3.4f){explanation="占地覆盖村庄建筑预留地";return false;}
             foreach(var collider in Physics.OverlapSphere(pos+Vector3.up*.65f,1.15f))
-                if(collider!=Game.World.HexGrid.GetComponent<Collider>()&&!collider.isTrigger&&!(migrating&&collider==Game.World.Controller)){explanation="占地有障碍或角色";return false;}
-            foreach(var tree in trees)if(Vector3.Distance(pos,tree)<1.4f){explanation="占地有树木，选择空地";return false;}
+                if(!Game.World.HexGrid.IsGroundCollider(collider)&&!collider.isTrigger&&!(migrating&&collider==Game.World.Controller)){explanation="占地有障碍或角色";return false;}
+            foreach(var tree in trees)if(WorldRelief.PlanarDistance(pos,tree)<1.4f){explanation="占地有树木，选择空地";return false;}
             return true;
         }
         public bool Build(Vector2Int cell,int kind,int facing)
@@ -212,8 +215,10 @@ namespace StarfieldEra
         GameObject CreateModel(PlacedBuilding building,bool ghost)
         {
             int kind=building.kind;var cells=BuildingFootprints.Cells(building);
-            var anchor=HexWorldGrid.Center(building.column,building.row);
-            var center=Vector3.zero;foreach(var cell in cells)center+=HexWorldGrid.Center(cell.x,cell.y);center/=cells.Count;
+            var anchor=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(building.column,building.row));
+            var center=Vector3.zero;float foundation=0;
+            foreach(var cell in cells){var p=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y));center+=p;foundation=Mathf.Max(foundation,p.y);}center/=cells.Count;
+            center.y=foundation;anchor.y=foundation;
             var root=new GameObject((ghost?"Preview ":"Built ")+Names[kind]);root.transform.SetParent(transform,false);root.transform.position=anchor;
             root.transform.rotation=Quaternion.Euler(0,-building.rotation*60,0);
             var art=StoreVisuals.Current;
@@ -238,12 +243,20 @@ namespace StarfieldEra
             }
             foreach(var cell in cells)
             {
-                var pos=HexWorldGrid.Center(cell.x,cell.y);
-                var pad=new GameObject("Building parcel",typeof(MeshFilter),typeof(MeshRenderer));pad.transform.SetParent(root.transform,true);pad.transform.position=pos+Vector3.up*.04f;pad.transform.rotation=Quaternion.identity;
+                var pos=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y));
+                var pad=new GameObject("Building parcel",typeof(MeshFilter),typeof(MeshRenderer));pad.transform.SetParent(root.transform,true);pad.transform.position=new Vector3(pos.x,foundation+.04f,pos.z);pad.transform.rotation=Quaternion.identity;
                 pad.GetComponent<MeshFilter>().sharedMesh=platformMesh;pad.GetComponent<MeshRenderer>().sharedMaterials=new[]{platformMaterial,platformMaterial};
-                if(!ghost){var obstacle=root.AddComponent<BoxCollider>();obstacle.center=root.transform.InverseTransformPoint(pos+Vector3.up*1.1f);obstacle.size=new Vector3(1.65f,2.2f,1.65f);}
+                float depth=foundation-pos.y;
+                if(depth>.12f)
+                {
+                    var footing=new GameObject("Terrace foundation",typeof(MeshFilter),typeof(MeshRenderer));footing.transform.SetParent(root.transform,true);footing.transform.position=new Vector3(pos.x,foundation,pos.z);
+                    var mesh=HexWorldGrid.Prism(HexWorldGrid.Radius-.055f,depth,"Retaining foundation");footingMeshes.Add(mesh);
+                    footing.GetComponent<MeshFilter>().sharedMesh=mesh;footing.GetComponent<MeshRenderer>().sharedMaterials=new[]{footingMaterial,footingMaterial};
+                }
+                if(!ghost){var obstacle=root.AddComponent<BoxCollider>();obstacle.center=root.transform.InverseTransformPoint(new Vector3(pos.x,foundation+1.1f,pos.z));obstacle.size=new Vector3(1.65f,2.2f,1.65f);}
             }
             if(ghost)CreateOutline(cells,validMaterial).transform.SetParent(root.transform,true);
+            if(!ghost){var presentation=Game.World.GetComponent<FantasyPresentation>();if(presentation){presentation.Stylize(root.transform);presentation.IllustrateBuilding(root.transform,kind,center,height);}}
             return root;
         }
         GameObject CreateOutline(List<Vector2Int> cells,Material material)
@@ -251,7 +264,7 @@ namespace StarfieldEra
             var root=new GameObject("Building footprint outline");root.transform.SetParent(transform,false);
             foreach(var cell in cells)
             {
-                var go=new GameObject("Occupied hex",typeof(MeshFilter),typeof(MeshRenderer));go.transform.SetParent(root.transform,false);go.transform.position=HexWorldGrid.Center(cell.x,cell.y)+Vector3.up*.095f;
+                var go=new GameObject("Occupied hex",typeof(MeshFilter),typeof(MeshRenderer));go.transform.SetParent(root.transform,false);go.transform.position=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y),.095f);
                 go.GetComponent<MeshFilter>().sharedMesh=Game.World.ConstructionOutline;go.GetComponent<MeshRenderer>().sharedMaterial=material;
             }
             return root;
@@ -306,12 +319,12 @@ namespace StarfieldEra
             for(int radius=1;radius<8;radius++)for(int r=current.y-radius;r<=current.y+radius;r++)for(int c=current.x-radius;c<=current.x+radius;c++)
             {
                 var cell=new Vector2Int(c,r);if(!Game.World.HexGrid.Contains(cell)||!Game.World.HexGrid.IsDry(cell)||occupants.ContainsKey(cell))continue;
-                var pos=HexWorldGrid.Center(c,r);bool blocked=false;
-                foreach(var obstacle in Physics.OverlapSphere(pos+Vector3.up*.8f,.4f))if(obstacle!=Game.World.HexGrid.GetComponent<Collider>()&&obstacle!=Game.World.Controller&&!obstacle.isTrigger){blocked=true;break;}
+                var pos=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(c,r));bool blocked=false;
+                foreach(var obstacle in Physics.OverlapSphere(pos+Vector3.up*.8f,.4f))if(!Game.World.HexGrid.IsGroundCollider(obstacle)&&obstacle!=Game.World.Controller&&!obstacle.isTrigger){blocked=true;break;}
                 if(blocked)continue;
                 Game.World.Controller.enabled=false;Game.World.Player.position=pos+Vector3.up*.2f;Game.World.Controller.enabled=true;return;
             }
         }
-        void OnDestroy(){if(platformMesh)Destroy(platformMesh);}
+        void OnDestroy(){if(platformMesh)Destroy(platformMesh);foreach(var mesh in footingMeshes)if(mesh)Destroy(mesh);}
     }
 }

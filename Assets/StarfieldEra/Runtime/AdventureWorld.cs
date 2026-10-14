@@ -279,11 +279,11 @@ namespace StarfieldEra
             if(Follower.gameObject.activeSelf)
             {
                 Vector3 destination=player-world.Player.forward*1.2f+world.Player.right*.7f;
-                destination.y=.08f+Mathf.Sin(Time.time*4)*.035f;
+                destination.y=world.HexGrid.GroundHeight(destination)+.08f+Mathf.Sin(Time.time*4)*.035f;
                 if(!world.HexGrid.CanStand(Follower.position,.15f))Follower.position=world.HexGrid.SafeLand(player,.15f,false);
                 var step=Vector3.Lerp(Follower.position,destination,Time.deltaTime*3)-Follower.position;
                 var horizontal=world.HexGrid.ConstrainMovement(Follower.position,step,.15f);
-                Follower.position+=horizontal;
+                Follower.position+=horizontal;var grounded=Follower.position;grounded.y=world.HexGrid.GroundHeight(grounded)+.08f+Mathf.Sin(Time.time*4)*.035f;Follower.position=grounded;
                 Follower.rotation=Quaternion.Slerp(Follower.rotation,world.Player.rotation,Time.deltaTime*4);
             }
             if(windmill.gameObject.activeSelf)windmill.Rotate(0,0,Time.deltaTime*30);

@@ -49,7 +49,7 @@ namespace StarfieldEra
         {
             List<Vector2Int> best=null;float distance=10;
             foreach(var f in edges.Values)foreach(var c in new[]{new Vector2Int(f.column,f.row),Neighbor(new Vector2Int(f.column,f.row),f.edge)})
-            {var pen=Enclosure(c);if(pen==null)continue;var center=Vector3.zero;foreach(var tile in pen)center+=HexWorldGrid.Center(tile.x,tile.y);center/=pen.Count;float d=Vector3.Distance(center,game.World.Player.position);if(d<distance){distance=d;best=pen;}}
+            {var pen=Enclosure(c);if(pen==null)continue;var center=Vector3.zero;foreach(var tile in pen)center+=HexWorldGrid.Center(tile.x,tile.y);center/=pen.Count;float d=WorldRelief.PlanarDistance(center,game.World.Player.position);if(d<distance){distance=d;best=pen;}}
             return best;
         }
         public void Inspect(FenceRecord f){Inspected=f;game.Construction.Cancel();Cancel();game.Adventure.Hud.Hide();game.Adventure.Hud.Show("fence");}
@@ -66,8 +66,8 @@ namespace StarfieldEra
             if(!Active||GameManagementOpen())return;if(game.Adventure.InBattle){Cancel();return;}var mouse=Mouse.current;if(mouse==null)return;
             if(mouse.rightButton.wasPressedThisFrame){Cancel();return;}var p=mouse.position.ReadValue();
             if((EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(preview)preview.SetActive(false);return;}
-            var ray=game.World.View.ScreenPointToRay(p);if(!new Plane(Vector3.up,Vector3.zero).Raycast(ray,out float d)||!game.World.HexGrid.TryCell(ray.GetPoint(d),out var cell)){if(preview)preview.SetActive(false);return;}
-            var hit=ray.GetPoint(d)-HexWorldGrid.Center(cell.x,cell.y);int edge=((Mathf.RoundToInt((Mathf.Atan2(hit.z,hit.x)*Mathf.Rad2Deg-60)/60)%6)+6)%6;
+            var ray=game.World.View.ScreenPointToRay(p);if(!game.World.HexGrid.RaycastGround(ray,out var groundHit)||!game.World.HexGrid.TryCell(groundHit,out var cell)){if(preview)preview.SetActive(false);return;}
+            var hit=groundHit-HexWorldGrid.Center(cell.x,cell.y);int edge=((Mathf.RoundToInt((Mathf.Atan2(hit.z,hit.x)*Mathf.Rad2Deg-60)/60)%6)+6)%6;
             var record=new FenceRecord{column=cell.x,row=cell.y,edge=edge,gate=mode==1};var key=Key(cell,edge);
             bool existing=edges.TryGetValue(key,out var old);bool valid=mode==2?existing:Allowed(record,out _);
             if(!preview||previewKey!=key){if(preview)Destroy(preview);preview=Model(record,true);previewKey=key;previewValid=!valid;}
@@ -85,15 +85,17 @@ namespace StarfieldEra
             if(edges.ContainsKey(Key(c,f.edge))){why="该边缘已有围栏";return false;}
             if(game.State.adventure.fences.Count>=600){why="围栏已达600段上限";return false;}
             if(!game.World.HexGrid.Contains(n)||!game.World.HexGrid.CanBuildOn(c)||!game.World.HexGrid.CanBuildOn(n)){why="选择稳定陆地内部边缘，避开水面和沼泽";return false;}
-            if(Vector3.Distance(center,game.World.Player.position)>10){why="请走近十步以内";return false;}
+            if(WorldRelief.PlanarDistance(center,game.World.Player.position)>10){why="请走近十步以内";return false;}
             foreach(var b in game.State.adventure.buildings){var cells=BuildingFootprints.Cells(b);if(cells.Contains(c)||cells.Contains(n)){why="边缘覆盖建筑占地";return false;}}
-            foreach(var col in Physics.OverlapSphere(center+Vector3.up*.55f,.24f))if(!col.isTrigger&&col!=game.World.HexGrid.GetComponent<Collider>()&&!col.GetComponentInParent<FenceTarget>()){why="边缘有障碍或角色";return false;}
+            center=game.World.HexGrid.SurfacePoint(center);
+            foreach(var col in Physics.OverlapSphere(center+Vector3.up*.55f,.24f))if(!col.isTrigger&&!game.World.HexGrid.IsGroundCollider(col)&&!col.GetComponentInParent<FenceTarget>()){why="边缘有障碍或角色";return false;}
             if(game.State.adventure.wood<(f.gate?4:2)){why="木材不足";return false;}return true;
         }
         GameObject Model(FenceRecord f,bool ghost)
         {
             var root=new GameObject(ghost?"Fence preview":f.gate?"Pasture gate":"Pasture fence");root.transform.SetParent(transform,false);
             var center=HexWorldGrid.Center(f.column,f.row);var a=center+HexWorldGrid.Corner(f.edge,HexWorldGrid.Radius);var b=center+HexWorldGrid.Corner((f.edge+1)%6,HexWorldGrid.Radius);
+            a=game.World.HexGrid.SurfacePoint(a);b=game.World.HexGrid.SurfacePoint(b);
             root.transform.position=(a+b)*.5f;root.transform.rotation=Quaternion.LookRotation((b-a).normalized,Vector3.up);
             Piece(root,"Post",new Vector3(0,.5f,-HexWorldGrid.Radius*.5f),new Vector3(.14f,1,.14f),!ghost);Piece(root,"Post",new Vector3(0,.5f,HexWorldGrid.Radius*.5f),new Vector3(.14f,1,.14f),!ghost);
             var leaf=new GameObject("Rails");leaf.transform.SetParent(root.transform,false);

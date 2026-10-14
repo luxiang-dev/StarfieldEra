@@ -136,7 +136,7 @@ namespace StarfieldEra
         {
             float distance=float.MaxValue;bobberWater=point.Position;
             for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
-            {var cell=new Vector2Int(c,r);if(!Game.World.HexGrid.Contains(cell)||Game.World.HexGrid.TerrainAt(cell)!=TerrainKind.Water)continue;var p=HexWorldGrid.Center(c,r);float d=(p-point.Position).sqrMagnitude;if(d<distance){distance=d;bobberWater=p;}}
+            {var cell=new Vector2Int(c,r);if(!Game.World.HexGrid.Contains(cell)||Game.World.HexGrid.TerrainAt(cell)!=TerrainKind.Water)continue;var p=HexWorldGrid.Center(c,r);float d=Mathf.Pow(WorldRelief.PlanarDistance(p,point.Position),2);if(d<distance){distance=d;bobberWater=p;bobberWater.y=Game.World.HexGrid.GetComponent<ContinuousTerrain>().WaterLevelAt(p);}}
             var root=GameObject.CreatePrimitive(PrimitiveType.Sphere);root.name="Fishing float";root.transform.SetParent(transform,false);root.transform.position=bobberWater+Vector3.up*.16f;root.transform.localScale=Vector3.one*.18f;root.GetComponent<Collider>().enabled=false;root.GetComponent<Renderer>().sharedMaterial=bobberMaterial;bobber=root.transform;
             fishingLine=root.AddComponent<LineRenderer>();fishingLine.positionCount=2;fishingLine.startWidth=fishingLine.endWidth=.012f;fishingLine.useWorldSpace=true;fishingLine.sharedMaterial=lineMaterial;
         }

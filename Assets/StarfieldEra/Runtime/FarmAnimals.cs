@@ -48,9 +48,9 @@ namespace StarfieldEra
             if(s.berries<3){Game.ShowMessage("驯养需要三份浆果。");return;}
             // Use a free cell in the enclosed pasture, away from solid obstacles.
             Vector2Int home=default;bool found=false;
-            foreach(var c in pen){var pos=HexWorldGrid.Center(c.x,c.y);if(actors.Exists(a=>a.record!=null&&Vector3.Distance(a.transform.position,pos)<1))continue;if(!Inspected.Obstructed(pos)){home=c;found=true;break;}}
+            foreach(var c in pen){var pos=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(c.x,c.y));if(actors.Exists(a=>a.record!=null&&Vector3.Distance(a.transform.position,pos)<1))continue;if(!Inspected.Obstructed(pos)){home=c;found=true;break;}}
             if(!found){Game.ShowMessage("牧场缺少空地，请扩大围栏。");return;}
-            s.berries-=3;var p=HexWorldGrid.Center(home.x,home.y);
+            s.berries-=3;var p=Game.World.HexGrid.SurfacePoint(HexWorldGrid.Center(home.x,home.y));
             var record=new AnimalRecord{id=Inspected.id,homeColumn=home.x,homeRow=home.y,x=p.x,z=p.z,fedDay=-1};s.animals.Add(record);Inspected.record=record;Inspected.origin=p;Inspected.transform.position=p;RefreshPens();Game.Adventure.Commit("野猪已加入牧场。每天喂一份浆果，次日获得松露。");
         }
         public void Feed()
@@ -76,7 +76,7 @@ namespace StarfieldEra
         }
         public bool Obstructed(Vector3 p)
         {
-            foreach(var col in Physics.OverlapSphere(p+Vector3.up*.5f,.28f,~0,QueryTriggerInteraction.Ignore))if(col!=owner.Game.World.HexGrid.GetComponent<Collider>())return true;return false;
+            foreach(var col in Physics.OverlapSphere(p+Vector3.up*.5f,.28f,~0,QueryTriggerInteraction.Ignore))if(!owner.Game.World.HexGrid.IsGroundCollider(col))return true;return false;
         }
         void Update()
         {
@@ -88,6 +88,7 @@ namespace StarfieldEra
                 {
                     Vector3 p;if(record!=null){if(pen==null||pen.Count==0)break;var c=pen[UnityEngine.Random.Range(0,pen.Count)];p=HexWorldGrid.Center(c.x,c.y)+new Vector3(UnityEngine.Random.Range(-.25f,.25f),0,UnityEngine.Random.Range(-.25f,.25f));}
                     else{var offset=UnityEngine.Random.insideUnitCircle*3;p=origin+new Vector3(offset.x,0,offset.y);}
+                    p=owner.Game.World.HexGrid.SurfacePoint(p);
                     if(!owner.Game.World.HexGrid.TryCell(p,out var cell)||!owner.Game.World.HexGrid.IsDry(cell)||Obstructed(p))continue;destination=p;break;
                 }
             }
@@ -95,6 +96,7 @@ namespace StarfieldEra
             if(walking)
             {
                 var step=Vector3.MoveTowards(transform.position,destination,Mathf.Min(Time.deltaTime,.1f)*.7f*TerrainTraits.Speed[(int)owner.Game.World.HexGrid.TerrainAt(transform.position)]);
+                step=owner.Game.World.HexGrid.SurfacePoint(step);
                 if(owner.Game.World.HexGrid.TryCell(transform.position,out var from)&&owner.Game.World.HexGrid.TryCell(step,out var to)&&from!=to)
                 {
                     bool crossing=false;for(int e=0;e<6;e++)if(PastureFences.Neighbor(from,e)==to&&owner.Game.Fences.Blocks(from,e))crossing=true;

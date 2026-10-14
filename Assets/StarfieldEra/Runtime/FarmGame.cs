@@ -48,6 +48,8 @@ namespace StarfieldEra
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
             Management=hud.GetComponent<ManagementHud>();
+            World.GetComponent<FantasyPresentation>()?.Stylize(transform);
+            World.Controller.slopeLimit=50;
             World.RefreshCrops(State);
             UpdateSelection();
             hud.Refresh();

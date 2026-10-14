@@ -30,6 +30,11 @@ namespace StarfieldEra
             support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(HalfWidth*2, .8f, HalfDepth*2);
         }
 
+        public float GroundHeight(Vector3 p){var surface=GetComponent<ContinuousTerrain>();return surface?surface.HeightAt(p):0;}
+        public Vector3 SurfacePoint(Vector3 p,float offset=0){p.y=GroundHeight(p)+offset;return p;}
+        public bool IsGroundCollider(Collider col)=>col==GetComponent<Collider>()||(GetComponent<ContinuousTerrain>()&&GetComponent<ContinuousTerrain>().IsGround(col));
+        public bool RaycastGround(Ray ray,out Vector3 point)
+        {var surface=GetComponent<ContinuousTerrain>();if(surface&&surface.Raycast(ray,out var hit)){point=hit.point;return true;}point=default;return false;}
         public bool Contains(Vector2Int cell)=>cells.Contains(cell);
         public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
         public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;
@@ -59,16 +64,17 @@ namespace StarfieldEra
         }
         public Vector3 SafeLand(Vector3 desired,float radius=.3f, bool obstacles=true)
         {
+            desired=SurfacePoint(desired,Mathf.Clamp(desired.y,0,.25f));
             if(CanStand(desired,radius)&&(!obstacles||Clear(desired,radius)))return desired;
             Vector3 best=Center(0,0)+Vector3.up*desired.y;float nearest=float.MaxValue;
             foreach(var cell in cells)
-            {var p=Center(cell.x,cell.y);p.y=desired.y;float d=(p-desired).sqrMagnitude;if(d>=nearest||!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
+            {var p=SurfacePoint(Center(cell.x,cell.y),.08f);float d=Mathf.Pow(WorldRelief.PlanarDistance(p,desired),2);if(d>=nearest||!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
             return best;
         }
         bool Clear(Vector3 p,float radius)
         {
             foreach(var collider in Physics.OverlapSphere(p+Vector3.up*.75f,radius,~0,QueryTriggerInteraction.Ignore))
-                if(collider!=GetComponent<Collider>()&&!(collider is CharacterController))return false;
+                if(!IsGroundCollider(collider)&&!(collider is CharacterController))return false;
             return true;
         }
         public bool TryCell(Vector3 position,out Vector2Int cell)

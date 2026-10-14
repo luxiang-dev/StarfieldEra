@@ -43,8 +43,8 @@ namespace StarfieldEra
             var grid=game.Game.World.HexGrid;Vector3 best=grid.SafeLand(desired,.4f);float distance=float.MaxValue;
             for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
             {
-                var cell=new Vector2Int(c,r);if(!grid.Contains(cell))continue;var p=HexWorldGrid.Center(c,r);float d=(p-desired).sqrMagnitude;if(d>=distance||!grid.CanStand(p,.45f))continue;
-                bool blocked=false;foreach(var col in Physics.OverlapSphere(p+Vector3.up*.75f,.65f,~0,QueryTriggerInteraction.Ignore))if(col!=grid.GetComponent<Collider>()&&!(col is CharacterController)){blocked=true;break;}if(blocked)continue;
+                var cell=new Vector2Int(c,r);if(!grid.Contains(cell))continue;var p=grid.SurfacePoint(HexWorldGrid.Center(c,r));float d=Mathf.Pow(WorldRelief.PlanarDistance(p,desired),2);if(d>=distance||!grid.CanStand(p,.45f))continue;
+                bool blocked=false;foreach(var col in Physics.OverlapSphere(p+Vector3.up*.75f,.65f,~0,QueryTriggerInteraction.Ignore))if(!grid.IsGroundCollider(col)&&!(col is CharacterController)){blocked=true;break;}if(blocked)continue;
                 foreach(var e in game.Game.World.Adventure.Encounters)if((p-e.Position).sqrMagnitude<8){blocked=true;break;}if(blocked)continue;
                 foreach(var plot in game.Game.World.PlotPositions)if((p-plot).sqrMagnitude<4){blocked=true;break;}if(blocked||game.Game.Fences.Enclosure(cell)!=null)continue;
                 distance=d;best=p;
