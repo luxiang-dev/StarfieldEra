@@ -200,7 +200,10 @@ namespace StarfieldEra
             ColorUtility.TryParseHtmlString("#" + hex, out Color color);
             var material = new Material(materialTemplate) { name = name, color = color };
             if(name=="Dry soil" || name=="Watered soil")
-            { var painted=Shader.Find("StarfieldEra/Painterly Ground"); if(painted) {material.shader=painted;material.color=color;} }
+            {
+                var painted=Shader.Find("StarfieldEra/Cultivated Soil");
+                if(painted){material.shader=painted;material.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/HandpaintedAtlas"));material.color=name=="Watered soil"?new Color(.63f,.64f,.7f,1):Color.white;}
+            }
             material.SetFloat("_Smoothness", .05f);
             materials.Add(material);
             return material;

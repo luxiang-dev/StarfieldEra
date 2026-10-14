@@ -13,46 +13,24 @@ namespace StarfieldEra
         public static Vector3 Center(int column, int row) =>
             new Vector3(.5f + ColumnSpacing * (column + .5f * (row & 1)), 0, .15f + RowSpacing * row);
 
-        readonly List<Renderer> tiles = new List<Renderer>();
-        Mesh tileMesh;
         readonly Dictionary<Vector2Int,TerrainKind> terrain=new Dictionary<Vector2Int,TerrainKind>();
-        readonly Dictionary<Vector2Int,Renderer> cells=new Dictionary<Vector2Int,Renderer>();
-        readonly Dictionary<Material,Material> surfaces = new Dictionary<Material,Material>();
-        Material Surface(Material source)
-        {
-            if(surfaces.TryGetValue(source,out var surface))return surface;
-            var shader=Shader.Find("StarfieldEra/Painterly Ground");
-            if(!shader)return source;
-            surface=new Material(shader){name=source.name+" painted",color=source.color};
-            surfaces[source]=surface;return surface;
-        }
+        readonly HashSet<Vector2Int> cells=new HashSet<Vector2Int>();
 
         public void Build(FarmWorld world, Material edge)
         {
-            tileMesh = Prism(Radius - .008f, .65f, "Hex terrain tile");
-            var meadow = new[] {world.Mat("Hex meadow A", "87A653"),world.Mat("Hex meadow B", "90AD5F"),world.Mat("Hex meadow C", "819C50")};
-            for (int row = -20; row <= 20; row++)
-            for (int column = -23; column <= 22; column++)
+            // Cells are gameplay records, not separate renderers.
+            for (int row=-20;row<=20;row++)for(int column=-23;column<=22;column++)
             {
-                var position = Center(column, row);
-                if (position.x < -HalfWidth+1 || position.x > HalfWidth-1 || position.z < -HalfDepth+1 || position.z > HalfDepth-1) continue;
-                var go = new GameObject($"Hex [{column}, {row}]", typeof(MeshFilter), typeof(MeshRenderer));
-                go.transform.SetParent(transform, false); go.transform.localPosition = position;
-                go.GetComponent<MeshFilter>().sharedMesh = tileMesh;
-                var renderer = go.GetComponent<MeshRenderer>();
-                int variant = (column * 31 + row * 17) % 3;
-                if (variant < 0) variant += 3;
-                renderer.sharedMaterials = new[] { Surface(meadow[variant]), edge };
-                tiles.Add(renderer);
-                cells[new Vector2Int(column,row)]=renderer;
-                terrain[new Vector2Int(column,row)]=TerrainKind.Meadow;
+                var position=Center(column,row);
+                if(position.x < -HalfWidth+1 || position.x > HalfWidth-1 || position.z < -HalfDepth+1 || position.z > HalfDepth-1)continue;
+                var cell=new Vector2Int(column,row);cells.Add(cell);terrain[cell]=TerrainKind.Meadow;
             }
             // Continuous support beneath the narrow tile seams keeps walking smooth.
             var support = gameObject.AddComponent<BoxCollider>();
             support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(HalfWidth*2, .8f, HalfDepth*2);
         }
 
-        public bool Contains(Vector2Int cell)=>cells.ContainsKey(cell);
+        public bool Contains(Vector2Int cell)=>cells.Contains(cell);
         public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
         public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;
         public bool IsDry(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
@@ -83,7 +61,7 @@ namespace StarfieldEra
         {
             if(CanStand(desired,radius)&&(!obstacles||Clear(desired,radius)))return desired;
             Vector3 best=Center(0,0)+Vector3.up*desired.y;float nearest=float.MaxValue;
-            foreach(var cell in cells.Keys)
+            foreach(var cell in cells)
             {var p=Center(cell.x,cell.y);p.y=desired.y;float d=(p-desired).sqrMagnitude;if(d>=nearest||!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
             return best;
         }
@@ -106,18 +84,18 @@ namespace StarfieldEra
                     if(delta.sqrMagnitude<nearest){nearest=delta.sqrMagnitude;cell=new Vector2Int(c,r);}
                 }
             }
-            return cells.ContainsKey(cell)&&nearest<=Radius*Radius;
+            return cells.Contains(cell)&&nearest<=Radius*Radius;
         }
 
         public void PaintBox(Vector3 center, Vector3 size, Material material,TerrainKind? kind=null)
         {
-            foreach (var renderer in tiles)
+            foreach(var cell in cells)
             {
-                var p = renderer.transform.position;
-                if (Mathf.Abs(p.x - center.x) > size.x * .5f || Mathf.Abs(p.z - center.z) > size.z * .5f) continue;
-                if(kind.HasValue&&TryCell(p,out var cell))terrain[cell]=kind.Value;
-                var palette = renderer.sharedMaterials; palette[0] = Surface(material); renderer.sharedMaterials = palette;
+                var p=Center(cell.x,cell.y);
+                if(Mathf.Abs(p.x-center.x)>size.x*.5f||Mathf.Abs(p.z-center.z)>size.z*.5f)continue;
+                if(kind.HasValue)terrain[cell]=kind.Value;
             }
+
         }
 
         public static Vector3 Corner(int index, float radius)
@@ -159,6 +137,6 @@ namespace StarfieldEra
             mesh.SetVertices(vertices); mesh.SetTriangles(indices, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
             return mesh;
         }
-        void OnDestroy() { if (tileMesh) Destroy(tileMesh); foreach(var material in surfaces.Values)if(material)Destroy(material); }
+
     }
 }
