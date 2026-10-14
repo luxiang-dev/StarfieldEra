@@ -51,14 +51,14 @@ namespace StarfieldEra
         public void Build(HexWorldGrid source,FarmWorld world)
         {
             grid=source;BuildWaterLevels();atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
-            var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var triangles=new List<int>();
+            var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var varieties=new List<Vector4>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(HexWorldGrid.HalfWidth*2/Step),nz=Mathf.CeilToInt(HexWorldGrid.HalfDepth*2/Step);
             for(int z=0;z<=nz;z++)for(int x=0;x<=nx;x++)
             {
                 var p=new Vector3(-HexWorldGrid.HalfWidth+x*Step,0,-HexWorldGrid.HalfDepth+z*Step);
                 Sample(p,out var weights,out float water,out float tint);
                 p.y=HeightAt(p);
-                vertices.Add(p);colors.Add(weights);uv.Add(new Vector2(tint,water));
+                vertices.Add(p);colors.Add(weights);uv.Add(new Vector2(tint,water));varieties.Add(GrassEcology.Weights(p,grid));
             }
             var waterVertices=new List<Vector3>();var waterColors=new List<Color>();var waterTriangles=new List<int>();
             for(int z=0;z<nz;z++)for(int x=0;x<nx;x++)
@@ -69,7 +69,7 @@ namespace StarfieldEra
                 WaterTriangle(vertices[b],vertices[c],vertices[d],waterVertices,waterColors,waterTriangles);
             }
             var mesh=new Mesh{name="Continuous painted island",indexFormat=IndexFormat.UInt32};
-            mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetUVs(1,uv);mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();mesh.RecalculateBounds();owned.Add(mesh);
+            mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetUVs(1,uv);mesh.SetUVs(2,varieties);mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();mesh.RecalculateBounds();owned.Add(mesh);
             var land=Draw("Continuous land and lakebed",mesh,Material("StarfieldEra/Continuous Ground"));
             groundCollider=land.gameObject.AddComponent<MeshCollider>();groundCollider.sharedMesh=mesh;
             grid.GetComponent<BoxCollider>().enabled=false;
@@ -79,11 +79,13 @@ namespace StarfieldEra
             var cameraData=world.View.GetComponent<UniversalAdditionalCameraData>();if(cameraData)cameraData.requiresDepthTexture=true;
             ConfigurePlots(world);DecorateBanks(world);GroundWorld(world);
             world.gameObject.AddComponent<FantasyPresentation>().Build(world);
+            world.gameObject.AddComponent<GrassPatches>().Build(world);
         }
         Material Material(string shaderName)
         {
             var material=new Material(Shader.Find(shaderName)){name=shaderName};
             if(material.HasProperty("_Atlas"))material.SetTexture("_Atlas",atlas);
+            if(material.HasProperty("_GrassVariants"))material.SetTexture("_GrassVariants",Resources.Load<Texture2D>("TerrainArt/GrassVariants"));
             owned.Add(material);return material;
         }
         MeshRenderer Draw(string title,Mesh mesh,Material material)

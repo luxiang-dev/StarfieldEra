@@ -1,6 +1,6 @@
 Shader "StarfieldEra/Continuous Ground"
 {
- Properties { _Atlas("Painted grass / dirt / sand / soil",2D)="white"{} _TileScale("Meters per repeat",Float)=7 _BlendWidth("Height blend width",Range(.02,.4))=.12 }
+ Properties { _Atlas("Painted grass / dirt / sand / soil",2D)="white"{} _GrassVariants("Grass type atlas",2D)="white"{} _TileScale("Meters per repeat",Float)=7 _BlendWidth("Height blend width",Range(.02,.4))=.12 }
  SubShader
  {
   Tags {"RenderPipeline"="UniversalPipeline" "RenderType"="Opaque"}
@@ -15,21 +15,29 @@ Shader "StarfieldEra/Continuous Ground"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
    TEXTURE2D(_Atlas);SAMPLER(sampler_Atlas);
+   TEXTURE2D(_GrassVariants);SAMPLER(sampler_GrassVariants);
    CBUFFER_START(UnityPerMaterial)
    float4 _Atlas_ST;float _TileScale,_BlendWidth;
    CBUFFER_END
-   struct A {float4 positionOS:POSITION;float3 normalOS:NORMAL;float4 color:COLOR;float2 biome:TEXCOORD1;};
-   struct V {float4 positionCS:SV_POSITION;float3 world:TEXCOORD0;half3 normal:TEXCOORD1;float4 weights:TEXCOORD2;float2 biome:TEXCOORD3;};
-   V vert(A i){V o;o.world=TransformObjectToWorld(i.positionOS.xyz);o.positionCS=TransformWorldToHClip(o.world);o.normal=TransformObjectToWorldNormal(i.normalOS);o.weights=i.color;o.biome=i.biome;return o;}
+   struct A {float4 positionOS:POSITION;float3 normalOS:NORMAL;float4 color:COLOR;float2 biome:TEXCOORD1;float4 varieties:TEXCOORD2;};
+   struct V {float4 positionCS:SV_POSITION;float3 world:TEXCOORD0;half3 normal:TEXCOORD1;float4 weights:TEXCOORD2;float2 biome:TEXCOORD3;float4 varieties:TEXCOORD4;};
+   V vert(A i){V o;o.world=TransformObjectToWorld(i.positionOS.xyz);o.positionCS=TransformWorldToHClip(o.world);o.normal=TransformObjectToWorldNormal(i.normalOS);o.weights=i.color;o.biome=i.biome;o.varieties=i.varieties;return o;}
    float hash(float2 p){return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
    float noise(float2 p){float2 a=floor(p),b=frac(p);b=b*b*(3-2*b);return lerp(lerp(hash(a),hash(a+float2(1,0)),b.x),lerp(hash(a+float2(0,1)),hash(a+1),b.x),b.y);}
    half3 tile(float2 uv,float2 quadrant){return SAMPLE_TEXTURE2D_GRAD(_Atlas,sampler_Atlas,quadrant+(.006+frac(uv)*.488),ddx(uv)*.488,ddy(uv)*.488).rgb;}
+   half3 grassTile(float2 uv,float2 quadrant)
+   {return SAMPLE_TEXTURE2D_GRAD(_GrassVariants,sampler_GrassVariants,quadrant+(.006+frac(uv)*.488),ddx(uv)*.488,ddy(uv)*.488).rgb;}
    float stroke(float2 p,float2 a,float2 b)
    {float2 d=b-a;float t=saturate(dot(p-a,d)/dot(d,d));return length(p-a-d*t);}
    half4 frag(V i):SV_Target
    {
     float2 uv=i.world.xz/_TileScale;
-    half3 grass=tile(uv,float2(0,.5));
+    float4 varieties=max(0,i.varieties);varieties/=max(dot(varieties,1),.0001);
+    half3 dryGrass=grassTile(i.world.xz/5,float2(0,.5));
+    half3 shortGrass=grassTile(i.world.xz/5.8,float2(.5,.5));
+    half3 denseGrass=grassTile(i.world.xz/7,float2(0,0));
+    half3 tallGrass=grassTile(i.world.xz/8.5,float2(.5,0));
+    half3 grass=dryGrass*varieties.x+shortGrass*varieties.y+denseGrass*varieties.z+tallGrass*varieties.w;
     half3 dirt=tile(uv,float2(.5,.5));
     half3 sand=tile(uv,float2(0,0));
     half3 snow=SRGBToLinear(half3(.80,.86,.87));
