@@ -18,10 +18,11 @@ namespace StarfieldEra
             profile = ScriptableObject.CreateInstance<VolumeProfile>(); volume.sharedProfile = profile;
             profile.Add<Tonemapping>(true).mode.value = TonemappingMode.Neutral;
             var colors = profile.Add<ColorAdjustments>(true);
-            colors.contrast.value = 12; colors.saturation.value = 8; colors.postExposure.value = .1f;
+            colors.contrast.value = 10; colors.saturation.value = 3; colors.postExposure.value = .05f;
+            colors.colorFilter.value = new Color(1,.98f,.93f);
             profile.Add<WhiteBalance>(true).temperature.value = 4;
-            var bloom = profile.Add<Bloom>(true); bloom.threshold.value = 1.2f; bloom.intensity.value = .18f; bloom.scatter.value = .45f;
-            var vignette = profile.Add<Vignette>(true); vignette.intensity.value = .14f; vignette.smoothness.value = .7f;
+            var bloom = profile.Add<Bloom>(true); bloom.threshold.value = .9f; bloom.intensity.value = .6f; bloom.scatter.value = .45f;
+            var vignette = profile.Add<Vignette>(true); vignette.intensity.value = .22f; vignette.smoothness.value = .7f;
 
             var random = new System.Random(815);
             var art = StoreVisuals.Current;
@@ -85,18 +86,6 @@ namespace StarfieldEra
                 world.Shape("Crate strap",PrimitiveType.Cube,pos+new Vector3(0,0,-.31f),new Vector3(.61f,.09f,.035f),straw);
             }
 
-            var shadow = world.Mat("Soft contact shadow", "1E3024");
-            var shadowShader = Shader.Find("StarfieldEra/Contact Shadow");
-            if(shadowShader)
-            {
-                shadow.shader=shadowShader;shadow.color=new Color(.08f,.13f,.09f,.4f);
-                var anchors=world.GetComponentsInChildren<Transform>();
-                foreach(var anchor in anchors)
-                    if(anchor.name.StartsWith("Store art - PT_Pine_Tree")) GroundShadow(world,anchor.position,1.6f,1.3f,shadow);
-                GroundShadow(world,new Vector3(-5,0,5.3f),5.1f,4.4f,shadow);
-                for(int i=0;i<6;i++)GroundShadow(world,new Vector3(7.5f+(i%3)*2.6f,0,12+(i/3)*3.5f),1.8f,1.5f,shadow);
-            }
-
             // Joints, weathering and climbing plants give the ruins a more inhabited silhouette.
             for(int i=0;i<6;i++)
             {
@@ -113,11 +102,6 @@ namespace StarfieldEra
             }
             for(int i=0;i<10;i++)
                 world.Shape("Portal masonry",PrimitiveType.Cube,new Vector3(7.8f+i*.49f,3.34f,16),new Vector3(.46f,.17f,1.05f),plaster);
-        }
-        static void GroundShadow(FarmWorld world,Vector3 position,float width,float depth,Material material)
-        {
-            var quad=world.Shape("Soft ground contact",PrimitiveType.Quad,new Vector3(position.x,.018f,position.z),new Vector3(width,depth,1),material);
-            quad.rotation=Quaternion.Euler(90,0,0);
         }
         void OnDestroy()
         {

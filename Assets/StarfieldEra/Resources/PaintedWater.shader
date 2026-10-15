@@ -10,9 +10,13 @@ Shader "StarfieldEra/Painted Water"
    Blend SrcAlpha OneMinusSrcAlpha
    ZWrite Off
    HLSLPROGRAM
+   #pragma target 4.5
    #pragma vertex vert
+   #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+   #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
    #pragma fragment frag
-   #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+   #define _SURFACE_TYPE_TRANSPARENT 1
+   #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
    CBUFFER_START(UnityPerMaterial)
    half4 _Shallow,_Deep;
@@ -39,6 +43,7 @@ Shader "StarfieldEra/Painted Water"
     float glint=(1-smoothstep(.015,.048,band))*(.3+.3*sin(_Time.y+i.world.z*2));
     half3 water=lerp(_Shallow.rgb,_Deep.rgb,saturate(i.depth*1.5));
     water=lerp(water,half3(.86,.94,.82),saturate(foam*.85+glint*.12));
+    Light sun=GetMainLight(TransformWorldToShadowCoord(i.world),i.world,half4(1,1,1,1));water*=lerp(.66,1,sun.shadowAttenuation);
     return half4(water,lerp(.48,.86,saturate(max(depth,i.depth*.3)*3)));
    }
    ENDHLSL

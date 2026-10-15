@@ -60,11 +60,13 @@ namespace StarfieldEra
                 {if(Mathf.Abs(anchor.position.x*37+anchor.position.z*11)%5>1.25f)Hide(anchor);}
             }
             Stylize(world.transform);
-            var volume=world.GetComponentInChildren<Volume>();
-            if(volume&&volume.sharedProfile&&volume.sharedProfile.TryGet<ColorAdjustments>(out var colors))
-            {colors.contrast.value=3;colors.saturation.value=-5;colors.postExposure.value=0;}
-            foreach(var light in world.GetComponentsInChildren<Light>())if(light.type==LightType.Directional){light.color=new Color(1,.97f,.90f);light.intensity=1;light.shadowStrength=.65f;}
-            RenderSettings.ambientLight=new Color(.63f,.68f,.60f);
+            foreach(var light in world.GetComponentsInChildren<Light>())if(light.type==LightType.Directional)
+            {
+                light.transform.rotation=Quaternion.Euler(48,-105,0);light.color=new Color(1,.97f,.90f);light.intensity=1.1f;light.shadows=LightShadows.Soft;light.shadowStrength=.8f;light.shadowBias=.02f;light.shadowNormalBias=.08f;
+                var data=light.GetComponent<UniversalAdditionalLightData>()??light.gameObject.AddComponent<UniversalAdditionalLightData>();data.usePipelineSettings=false;data.softShadowQuality=SoftShadowQuality.High;
+            }
+            RenderSettings.ambientLight=new Color(.53f,.59f,.54f);
+            world.gameObject.AddComponent<WatersideDetails>().Build(world);
             FaceCamera();
         }
         float BoundsHeight(Transform root,float fallback)
@@ -78,7 +80,7 @@ namespace StarfieldEra
             else if(spriteIndex==3)local=LocalEnvironment.House(transform,p,height,name.Contains("farmhouse")?5.2f:4.5f);
             if(local){local.name=name.Replace("Painted","Model");return local;}
             var go=new GameObject(name,typeof(SpriteRenderer));go.transform.SetParent(transform,false);go.transform.position=p;
-            var renderer=go.GetComponent<SpriteRenderer>();renderer.sprite=sprites[spriteIndex];renderer.sharedMaterial=spriteMaterial;renderer.shadowCastingMode=ShadowCastingMode.Off;
+            var renderer=go.GetComponent<SpriteRenderer>();renderer.sprite=sprites[spriteIndex];renderer.sharedMaterial=spriteMaterial;renderer.shadowCastingMode=ShadowCastingMode.TwoSided;renderer.receiveShadows=true;
             float scale=height/renderer.sprite.bounds.size.y;go.transform.localScale=Vector3.one*scale;billboards.Add(go.transform);return go.transform;
         }
         public Transform PlantTree(Vector3 position,float height)
@@ -105,6 +107,7 @@ namespace StarfieldEra
                         clone=new Material(original){shader=shader,name=original.name+" storybook"};
                         if(!original.HasProperty("_BaseMap"))clone.SetTexture("_BaseMap",Texture2D.whiteTexture);
                         if(!original.HasProperty("_BaseColor"))clone.SetColor("_BaseColor",Color.white);
+                        if(!original.IsKeywordEnabled("_EMISSION"))clone.SetColor("_EmissionColor",Color.black);
                         painted[original]=clone;owned.Add(clone);
                     }
                     materials[i]=clone;changed=true;

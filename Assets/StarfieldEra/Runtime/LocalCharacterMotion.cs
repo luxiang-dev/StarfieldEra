@@ -21,7 +21,8 @@ namespace StarfieldEra
         {
             if(!LocalEnvironment.Character("WildBarbarian",anchor,anchor.position,2.6f))return false;
             var obstacle=anchor.gameObject.AddComponent<CapsuleCollider>();obstacle.height=2.6f;obstacle.radius=.55f;obstacle.center=Vector3.up*1.3f;
-            var label=anchor.GetComponentInChildren<TMPro.TMP_Text>();if(label)label.transform.localPosition=Vector3.up*3.1f;
+            var plate=anchor.GetComponentInChildren<WorldNameplate>();if(plate)plate.transform.localPosition=Vector3.up*3.1f;
+            else {var label=anchor.GetComponentInChildren<TMPro.TMP_Text>();if(label)label.transform.localPosition=Vector3.up*3.1f;}
             return true;
         }
     }

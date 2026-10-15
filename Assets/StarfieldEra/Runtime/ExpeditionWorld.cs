@@ -11,12 +11,14 @@ namespace StarfieldEra
         readonly Dictionary<int,Transform> lids=new Dictionary<int,Transform>();
         readonly Dictionary<int,Renderer> runeGems=new Dictionary<int,Renderer>();
         readonly Dictionary<int,Transform> fibers=new Dictionary<int,Transform>();
-        readonly List<TextMeshPro> signs=new List<TextMeshPro>();
+        readonly List<WorldNameplate> signs=new List<WorldNameplate>();
         public void Build(ExpeditionGame owner)
         {
             game=owner;var w=game.Game.World;
             foreach(var e in w.Adventure.Encounters)if(e.kind==EncounterKind.Fish&&e.id!=11)e.root.position=w.HexGrid.SafeLand(new Vector3(-29,0,29),.4f);
             wood=w.Mat("Expedition chest wood","875E3E");metal=w.Mat("Expedition brass","C5A75A");stone=w.Mat("Runestone slate","697A75");crystal=w.Mat("Runestone glow","9D80C1");decoded=w.Mat("Decoded rune","83CEC3");leaves=w.Mat("Forage fibers","A3B663");
+            crystal.shader=Shader.Find("StarfieldEra/Storybook Models");crystal.SetColor("_EmissionColor",new Color(1.1f,.3f,1.9f));
+            decoded.shader=Shader.Find("StarfieldEra/Storybook Models");decoded.SetColor("_EmissionColor",new Color(.2f,1.25f,.85f));
             for(int i=0;i<8;i++)
             {
                 var center=w.Adventure.RegionCenters[i];
@@ -63,7 +65,7 @@ namespace StarfieldEra
             var encounter=new WorldEncounter{name=name,kind=kind,id=id,root=root};landmarks.Add(encounter);game.Game.World.Adventure.Encounters.Add(encounter);
             var target=root.gameObject.AddComponent<ExpeditionTarget>();target.encounter=encounter;
             var hitbox=root.gameObject.AddComponent<BoxCollider>();hitbox.isTrigger=true;hitbox.center=Vector3.up*.75f;hitbox.size=new Vector3(1.1f,1.5f,1.1f);
-            var sign=new GameObject("Landmark label",typeof(TextMeshPro)).GetComponent<TextMeshPro>();sign.transform.SetParent(root,false);sign.transform.localPosition=Vector3.up*1.8f;sign.rectTransform.sizeDelta=new Vector2(7,1);sign.font=game.Game.World.labelFont;sign.fontSize=2.5f;sign.alignment=TextAlignmentOptions.Center;sign.text=name;sign.color=new Color(.98f,.93f,.75f);sign.raycastTarget=false;signs.Add(sign);
+            signs.Add(WorldNameplate.Create(root,name,game.Game.World.labelFont,game.Game.World.View,1.8f));
             return encounter;
         }
         Transform Piece(Transform root,string name,PrimitiveType type,Vector3 p,Vector3 scale,Material material)

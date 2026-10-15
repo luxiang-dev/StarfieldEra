@@ -23,7 +23,7 @@ namespace StarfieldEra
         FarmWorld world;FarmGame owner;
         Material timber, masonry, green, cream, blue, gold, purple;
         Transform workshop, library, windmill, mill, observatory;
-        readonly List<TextMeshPro> signs = new List<TextMeshPro>();
+        readonly List<WorldNameplate> signs = new List<WorldNameplate>();
         readonly List<Transform> creatures = new List<Transform>();
         float zoom=10;
         int followerSpecies=-1;
@@ -209,11 +209,7 @@ namespace StarfieldEra
         {
             var root=new GameObject(label).transform;root.SetParent(transform);root.position=pos;
             Encounters.Add(new WorldEncounter{id=id,kind=kind,name=label,root=root});
-            var sign=new GameObject("World label",typeof(TextMeshPro)).GetComponent<TextMeshPro>();
-            sign.transform.SetParent(root);sign.transform.localPosition=Vector3.up*2.1f;
-            sign.rectTransform.sizeDelta=new Vector2(8,1);
-            sign.font=world.labelFont;sign.fontSize=2.8f;sign.alignment=TextAlignmentOptions.Center;
-            sign.color=new Color(.98f,.93f,.75f);sign.text=label;sign.enableAutoSizing=false;
+            var sign=WorldNameplate.Create(root,label,world.labelFont,world.View,2.1f);
             signs.Add(sign);return root;
         }
         void Villager(Transform root,Material skin,Material clothes)

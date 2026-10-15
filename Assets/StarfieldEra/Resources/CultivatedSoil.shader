@@ -11,12 +11,17 @@ Shader "StarfieldEra/Cultivated Soil"
    ZWrite Off
    Cull Off
    HLSLPROGRAM
+   #pragma target 4.5
    #pragma vertex vert
+   #pragma multi_compile _ _ADDITIONAL_LIGHTS
+   #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
    #pragma fragment frag
+   #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
    #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-   #pragma multi_compile_fragment _ _SHADOWS_SOFT
+   #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+   #include "StorybookLighting.hlsl"
    TEXTURE2D(_Atlas);SAMPLER(sampler_Atlas);
    CBUFFER_START(UnityPerMaterial)
    float4 _Atlas_ST;half4 _BaseColor;
@@ -39,9 +44,7 @@ Shader "StarfieldEra/Cultivated Soil"
     soil=lerp(soil,SRGBToLinear(half3(.58,.40,.25)),crest*noise(i.world.xz*1.2)*.13);
     float grain=noise(i.world.xz*17);
     float alpha=saturate(i.state.a+(grain-.5)*.13)*smoothstep(0,.10,i.state.a);
-    Light sun=GetMainLight(TransformWorldToShadowCoord(i.world));half3 n=normalize(i.normal);
-    half shade=(.80+.20*saturate(dot(n,sun.direction)))*lerp(.76,1,sun.shadowAttenuation);
-    return half4(soil*shade,alpha);
+    return half4(StorybookShade(soil,i.world,i.normal,i.p,0),alpha);
    }
    ENDHLSL
   }

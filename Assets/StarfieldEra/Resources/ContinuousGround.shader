@@ -8,12 +8,17 @@ Shader "StarfieldEra/Continuous Ground"
   {
    Tags {"LightMode"="UniversalForwardOnly"}
    HLSLPROGRAM
+   #pragma target 4.5
    #pragma vertex vert
+   #pragma multi_compile _ _ADDITIONAL_LIGHTS
+   #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
    #pragma fragment frag
+   #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
    #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-   #pragma multi_compile_fragment _ _SHADOWS_SOFT
+   #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+   #include "StorybookLighting.hlsl"
    TEXTURE2D(_Atlas);SAMPLER(sampler_Atlas);
    TEXTURE2D(_GrassVariants);SAMPLER(sampler_GrassVariants);
    CBUFFER_START(UnityPerMaterial)
@@ -70,19 +75,18 @@ Shader "StarfieldEra/Continuous Ground"
     float ink=(1-smoothstep(.008,.024,blades))*step(density,hash(cell))*w.x;
     paint=lerp(paint,grass*.7,ink*.20);
     paint*=lerp(1,half3(.66,.80,.78),i.biome.y*.55);
-    half3 n=normalize(i.normal);Light sun=GetMainLight(TransformWorldToShadowCoord(i.world));
+    half3 n=normalize(i.normal);
     // Steep slopes expose layered ochre-gray rock beneath the grassy terrace.
     float cliff=1-smoothstep(.72,.94,n.y);
     float strata=.88+.12*smoothstep(.35,.65,frac(i.world.y*3.2+noise(i.world.xz*.7)*.25));
     half3 rock=SRGBToLinear(half3(.49,.48,.39))*strata;
     paint=lerp(paint,rock,cliff);
-    half shade=(.82+.18*saturate(dot(n,sun.direction)))*lerp(.73,1,sun.shadowAttenuation);
-    half3 light=half3(shade,shade,shade);
-    return half4(paint*light,1);
+    return half4(StorybookShade(paint,i.world,n,i.positionCS,0),1);
    }
    ENDHLSL
   }
-  UsePass "Universal Render Pipeline/Lit/DepthOnly"
-  UsePass "Universal Render Pipeline/Lit/ShadowCaster"
+  UsePass "StarfieldEra/Opaque Surface Passes/DepthOnly"
+  UsePass "StarfieldEra/Opaque Surface Passes/ShadowCaster"
+  UsePass "StarfieldEra/Opaque Surface Passes/DepthNormals"
  }
 }
