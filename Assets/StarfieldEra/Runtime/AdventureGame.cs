@@ -68,6 +68,8 @@ namespace StarfieldEra
                 case EncounterKind.Camp:Hud.Show("supplies");break;
                 default:
                     if(State.gatheredDay[item.id]==Game.State.day){Game.ShowMessage("今天这里已经采集过了，休息后再来。");return;}
+                    if(item.kind==EncounterKind.Wood&&!EquipmentCatalog.Require(Game,"axe"))return;
+                    if((item.kind==EncounterKind.Stone||item.kind==EncounterKind.Crystal)&&!EquipmentCatalog.Require(Game,"pick"))return;
                     if(!Game.State.SpendEnergy(2)){Game.ShowMessage("体力不足，使用料理或回小屋休息。");return;}
                     State.gatheredDay[item.id]=Game.State.day;
                     if(item.kind==EncounterKind.Wood){int amount=3+State.toolLevel*2;State.wood+=amount;Commit("采集木材 +"+amount+"，体力 -2。");}
@@ -124,6 +126,7 @@ namespace StarfieldEra
         {
             if(InBattle)return;
             if(Target==null||Target.kind!=EncounterKind.Town){Game.ShowMessage("请走到晨风村的城镇议事牌旁进行建设与研究。");return;}
+            if(action!="lore"&&action!="tools"&&!EquipmentCatalog.Require(Game,"hammer"))return;
             bool valid=false;
             switch(action)
             {

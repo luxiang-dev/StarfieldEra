@@ -29,6 +29,7 @@ namespace StarfieldEra
         public void Upgrade()
         {
             if(expedition==null)expedition=new ExpeditionState();
+            if(expedition.equipment==null)expedition.equipment=new EquipmentState();expedition.equipment.Upgrade(expedition);
             if(fences==null)fences=new List<FenceRecord>();
             if(animals==null)animals=new List<AnimalRecord>();
             if(buildings==null)buildings=new List<PlacedBuilding>();

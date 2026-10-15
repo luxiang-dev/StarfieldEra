@@ -7,11 +7,12 @@ namespace StarfieldEra
     {
         public int fiber,shards,bait,campSupplies,fishCaught,quest;
         public bool fishingRod,marshBoots,starAmulet;
+        public EquipmentState equipment=new EquipmentState();
         public bool[] caches=new bool[8],runes=new bool[8];
         public int[] forageDay={-1,-1,-1,-1,-1,-1,-1,-1};
         public int CacheCount=>caches.Count(x=>x);
         public int RuneCount=>runes.Count(x=>x);
-        public bool Valid()=>fiber>=0&&shards>=0&&bait>=0&&campSupplies>=0&&fishCaught>=0&&quest>=0&&quest<=3&&caches!=null&&caches.Length==8&&runes!=null&&runes.Length==8&&forageDay!=null&&forageDay.Length==8&&forageDay.All(d=>d>=-1);
+        public bool Valid()=>equipment!=null&&equipment.Valid()&&fiber>=0&&shards>=0&&bait>=0&&campSupplies>=0&&fishCaught>=0&&quest>=0&&quest<=3&&caches!=null&&caches.Length==8&&runes!=null&&runes.Length==8&&forageDay!=null&&forageDay.Length==8&&forageDay.All(d=>d>=-1);
     }
     public static class ExpeditionContent
     {

@@ -35,6 +35,7 @@ namespace StarfieldEra
         public void Choose(int kind)
         {
             if(kind<0||kind>=Names.Length||game.Adventure.InBattle||game.Expedition.Fishing)return;
+            string missing=EquipmentCatalog.LandMissing(game,kind);if(missing!=""){game.ShowMessage(missing+"，请先学习图纸并制作。");return;}
             game.Management.Close();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.Hide();Cancel();tool=kind;
             preview=new GameObject("Land tool target",typeof(MeshFilter),typeof(MeshRenderer));preview.GetComponent<MeshFilter>().sharedMesh=outline;preview.GetComponent<MeshRenderer>().sharedMaterial=good;
             game.ShowMessage(Names[kind]+"：点击身边六步内地块；右键或 Esc 取消。H 打开土地手册。");
@@ -82,6 +83,7 @@ namespace StarfieldEra
         {
             reason="";if(action<0||action>=Names.Length){reason="请选择土地工具";return false;}if(!grid.Contains(cell)||WorldRelief.PlanarDistance(HexWorldGrid.Center(cell.x,cell.y),game.World.Player.position)>6){reason="请走近六步以内";return false;}
             if(action==5)return true;
+            reason=EquipmentCatalog.LandMissing(game,action);if(reason!="")return false;
             if(Reserved(cell)){reason="请避开农场、建筑、围栏、资源点与牧场";return false;}
             if(S.cells.Count>=512&&S.Find(cell)==null){reason="已达到土地改造上限";return false;}
             var kind=grid.TerrainAt(cell);var c=S.Find(cell);var a=game.State.adventure;
@@ -155,6 +157,8 @@ namespace StarfieldEra
             if(Active||game.Construction.Active||game.Fences.Active)return false;LandCell chosen=null;float best=1.7f;
             foreach(var c in S.cells)if(c.tilled||(water&&c.tree&&c.treeGrowth<3)){float d=WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position);if(d<best){chosen=c;best=d;}}
             if(chosen==null)return false;var crop=chosen.crop;var s=game.State;
+            if((water||chosen.tree)&&!EquipmentCatalog.Require(game,"can"))return true;
+            if(!water&&!chosen.tree&&(crop.Ready||!crop.planted)&&!EquipmentCatalog.Require(game,crop.Ready?"sickle":"hoe"))return true;
             if(chosen.tree)
             {if(chosen.treeWatered){game.ShowMessage("树苗今天已浇水。");return true;}if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}chosen.treeWatered=true;game.Adventure.Commit("树苗浇水完成，夜间会成长。");return true;}
             if(water)

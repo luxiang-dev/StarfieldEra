@@ -59,7 +59,7 @@ namespace StarfieldEra
         }
         public void RemoveInspected(){if(Inspected!=null)Remove(Inspected);}
         void Remove(FenceRecord f)
-        {var key=Key(new Vector2Int(f.column,f.row),f.edge);game.State.adventure.fences.Remove(f);edges.Remove(key);models[key].SetActive(false);Destroy(models[key]);models.Remove(key);game.State.adventure.wood+=f.gate?2:1;Inspected=null;game.Adventure.Hud.Hide();game.Animals.RefreshPens();game.Adventure.Commit("已拆除围栏，返还一半木材。");}
+        {if(!EquipmentCatalog.Require(game,"hammer"))return;var key=Key(new Vector2Int(f.column,f.row),f.edge);game.State.adventure.fences.Remove(f);edges.Remove(key);models[key].SetActive(false);Destroy(models[key]);models.Remove(key);game.State.adventure.wood+=f.gate?2:1;Inspected=null;game.Adventure.Hud.Hide();game.Animals.RefreshPens();game.Adventure.Commit("已拆除围栏，返还一半木材。");}
         bool GameManagementOpen()=>game.Management&&game.Management.IsOpen;
         void Update()
         {
@@ -81,7 +81,7 @@ namespace StarfieldEra
         }
         bool Allowed(FenceRecord f,out string why)
         {
-            why="";var c=new Vector2Int(f.column,f.row);var n=Neighbor(c,f.edge);var center=HexWorldGrid.Center(c.x,c.y)+(HexWorldGrid.Corner(f.edge,HexWorldGrid.Radius)+HexWorldGrid.Corner((f.edge+1)%6,HexWorldGrid.Radius))*.5f;
+            why="";if(!EquipmentCatalog.Has(game,"hammer")){why="需要持有建造锤";return false;}var c=new Vector2Int(f.column,f.row);var n=Neighbor(c,f.edge);var center=HexWorldGrid.Center(c.x,c.y)+(HexWorldGrid.Corner(f.edge,HexWorldGrid.Radius)+HexWorldGrid.Corner((f.edge+1)%6,HexWorldGrid.Radius))*.5f;
             if(edges.ContainsKey(Key(c,f.edge))){why="该边缘已有围栏";return false;}
             if(game.State.adventure.fences.Count>=600){why="围栏已达600段上限";return false;}
             if(!game.World.HexGrid.Contains(n)||!game.World.HexGrid.CanBuildOn(c)||!game.World.HexGrid.CanBuildOn(n)){why="选择稳定陆地内部边缘，避开水面和沼泽";return false;}

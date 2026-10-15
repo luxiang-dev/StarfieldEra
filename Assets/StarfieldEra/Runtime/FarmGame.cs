@@ -30,6 +30,7 @@ namespace StarfieldEra
         void Awake()
         {
             State = FarmSave.TryLoad(SavePath, out var loaded) ? loaded : new FarmState();
+            State.Upgrade();
             World = new GameObject("Farm island").AddComponent<FarmWorld>();
             World.transform.SetParent(transform);
             World.materialTemplate = worldMaterial;
@@ -160,11 +161,13 @@ namespace StarfieldEra
             CropState crop = State.plots[SelectedPlot];
             if (crop.Ready)
             {
+                if(!EquipmentCatalog.Require(this,"sickle"))return;
                 int kind=crop.kind;State.Harvest(SelectedPlot);
                 Changed("收获"+FarmState.CropNames[kind]+"并售出！浆果田会继续生长。可以在小屋购买新种子。");
             }
             else if (!crop.planted)
             {
+                if(!EquipmentCatalog.Require(this,"hoe"))return;
                 if (!State.Plant(SelectedPlot)) { Notify("种子不足，走到小屋旁按 B 购买。"); return; }
                 Changed("已种下"+FarmState.CropNames[State.selectedCrop]+(State.Rainy?"。雨水已浇灌，按 T 切换种子类型。":"。按 R 浇水，按 T 切换种子类型。"));
             }
@@ -174,6 +177,7 @@ namespace StarfieldEra
         public void Water()
         {
             if(Adventure.InBattle||Expedition.Fishing)return;
+            if(!EquipmentCatalog.Require(this,"can"))return;
             if(Land.InteractNearby(true))return;
             if (SelectedPlot < 0) { Notify("走近已播种的农田才能浇水。"); return; }
             if (!State.Water(SelectedPlot)) { Notify("体力不足，或农田今天无需浇水。成熟作物可以收获。"); return; }

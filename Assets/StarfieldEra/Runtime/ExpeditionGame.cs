@@ -64,6 +64,7 @@ namespace StarfieldEra
         {
             if(!Nearby(item)||Game.Adventure.InBattle||Fishing)return;
             if(State.forageDay[item.id]==Game.State.day){Game.ShowMessage("这里的纤维今天已采集，明天恢复。");return;}
+            if(!EquipmentCatalog.Require(Game,"sickle"))return;
             if(!Game.State.SpendEnergy(1)){Game.ShowMessage("采集纤维需要体力1。");return;}
             State.forageDay[item.id]=Game.State.day;State.fiber+=3;Game.Adventure.Commit("采集纤维+3。纤维可制作鱼饵、长靴与野营补给。");
         }
@@ -72,6 +73,7 @@ namespace StarfieldEra
         public void Craft(string recipe)
         {
             if(Game.Adventure.InBattle||Fishing)return;if(!CanCraftHere){Game.ShowMessage("走到小屋、营地或已建工坊旁制作。");return;}
+            int equipment=EquipmentCatalog.Index(recipe);if(equipment>=0){EquipmentCatalog.Craft(Game,equipment);return;}
             var a=Game.State.adventure;bool made=false;string result="";
             switch(recipe)
             {
@@ -105,6 +107,7 @@ namespace StarfieldEra
         public void BeginFishing(WorldEncounter point)
         {
             if(Fishing||Game.Adventure.InBattle||!Nearby(point))return;
+            if(!EquipmentCatalog.Require(Game,"basicRod"))return;
             if(Game.State.adventure.gatheredDay[point.id]==Game.State.day){Game.ShowMessage("这个钓点今天已钓获，明天再来。");return;}
             if(!Game.State.SpendEnergy(2)){Game.ShowMessage("抛竿需要体力2。");return;}
             Game.Construction.Cancel();Game.Fences.Cancel();fishingId=point.id;usingBait=State.bait>0;if(usingBait)State.bait--;

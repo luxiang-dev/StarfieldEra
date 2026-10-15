@@ -12,7 +12,8 @@ namespace StarfieldEra
         TextMeshProUGUI heading,wallet,feedback;
         readonly Dictionary<string,UnityEngine.UI.Button> tabs=new Dictionary<string,UnityEngine.UI.Button>();
         string page="inventory",filter="全部",itemKey="wood",buildingKey="",signature="",openingMessage="";
-        int selectedLandTool;
+        int selectedLandTool,equipmentSelection,equipmentPage,inventoryPage;
+        bool equipmentView=true,blueprintView;
         int selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
         bool expeditionTasks,buildingsView,confirmDemolition;
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
@@ -63,7 +64,7 @@ namespace StarfieldEra
             if(mode=="journal"){expeditionTasks=false;selectedTask=Mathf.Min(A.quest,5);Open("tasks");}
             else if(mode=="expedition"){expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Open("tasks");}
             else if(mode=="supplies")Open("inventory");
-            else if(mode=="craft"||mode=="craft2"){if(mode=="craft2")selectedRecipe=3;Open("craft");}
+            else if(mode=="craft"||mode=="craft2"){equipmentView=true;if(mode=="craft2"){equipmentSelection=11;equipmentPage=1;}Open("craft");}
             else if(mode=="town"||mode=="town2"){buildingsView=false;if(mode=="town2")selectedTech=4;Open("town");}
             else if(mode=="map"||mode=="map2")Open("map");
             else if(mode=="market")Open("market");
@@ -97,34 +98,41 @@ namespace StarfieldEra
             Text(content,"土方 "+game.State.land.soil+" · 木材 "+A.wood+" · 石料 "+A.stone+" · 纤维 "+X.fiber,0,475,620,36,18,cream);
             Text(content,"灌溉技术："+(A.irrigation?"已掌握，临水农田自动浇水":"未研究，临水可保湿；自动浇水需研究"),0,519,630,54,17,cream);
             var detail=Details(LandStewardship.Names[selectedLandTool],LandStewardship.Costs[selectedLandTool],LandStewardship.Descriptions[selectedLandTool]+"\n\n选择工具后点击六步内的地块。\n绿色可施工，红色不可施工。\n右键 / Esc 取消；施工自动保存。");
-            DetailAction(detail,"装备工具并返回地图",0,()=>game.Land.Choose(selectedLandTool));
-            DetailAction(detail,"查看当前位置的土壤",1,()=>game.ShowMessage(game.Land.Describe(CurrentCell())));
+            string missing=EquipmentCatalog.LandMissing(game,selectedLandTool);
+            DetailAction(detail,missing==""?"使用工具并返回地图":missing,0,()=>game.Land.Choose(selectedLandTool),missing=="");
+            if(missing!="")DetailAction(detail,"查看所需工具与图纸",1,()=>{equipmentView=true;blueprintView=true;equipmentSelection=EquipmentCatalog.Index(!EquipmentCatalog.Has(game,"shovel")?"shovel":"forester");equipmentPage=equipmentSelection/6;Open("craft");});
+            else DetailAction(detail,"查看当前位置的土壤",1,()=>game.ShowMessage(game.Land.Describe(CurrentCell())));
         }
         sealed class Item
         {public string key,name,category,description;public int count,symbol;public Item(string k,string n,string cat,int value,int icon,string desc){key=k;name=n;category=cat;count=value;symbol=icon;description=desc;}}
-        List<Item> Items()=>new List<Item>{
+        List<Item> Items(){var items=new List<Item>{
             new Item("wood","木材","材料",A.wood,1,"采集倒木获得，用于建造、围栏和制作。"),new Item("stone","石料","材料",A.stone,2,"开采矿石获得，用于建筑与城镇发展。"),
             new Item("berries","浆果","材料",A.berries,3,"采摘或种植获得，可招募伙伴、喂食野猪、制作鱼饵和料理。"),new Item("fish","鲜鱼","材料",A.fish,4,"在湖岸钓鱼获得，可交易、招募伙伴或制作补给。"),
             new Item("crystals","晶石","材料",A.crystals,5,"矿脉、宝箱与守卫奖励，用于研究和制作护符。"),new Item("fiber","纤维","材料",X.fiber,3,"采集野生草束或开启补给箱获得，用于远行装备。"),
             new Item("shards","遗迹碎片","材料",X.shards,5,"解读石碑或完美收线获得，星辉护符需要三份。"),new Item("truffles","松露","材料",A.truffles,3,"喂食牧场野猪后次日获得，可在动物详情中出售。"),
             new Item("seed0","金萝卜种子","种子",game.State.seeds,3,"两天成熟，收获后售出。选为当前种子，再回农田种植。"),new Item("seed1","小麦种子","种子",game.State.wheatSeeds,3,"三天成熟，每次收获售24金币。"),new Item("seed2","浆果种子","种子",game.State.berrySeeds,3,"四天成熟，可重复收获，产出金币和浆果。"),
             new Item("meal","暖心料理","补给",A.meals,0,"随时使用，体力回复12，最高30。小屋或营地可制作。"),new Item("bait","草编鱼饵","补给",X.bait,4,"抛竿时自动使用一份，扩大绿色收线窗口。"),new Item("camp","野营补给","补给",X.campSupplies,0,"在稳定陆地休整，体力回复15，不推进天数或刷新每日采集。"),
-            new Item("rod","精制鱼竿","装备",X.fishingRod?1:0,4,"永久装备，扩大钓鱼收线窗口。制作后自动生效。"),new Item("boots","湿地长靴","装备",X.marshBoots?1:0,0,"永久装备，使玩家沼泽速度提升到80%、雪地85%，仍不能进入水面。"),new Item("amulet","星辉护符","装备",X.starAmulet?1:0,5,"永久装备，伙伴战斗最大体力+10，攻击与技能伤害+3。")};
+            };
+            for(int i=0;i<EquipmentCatalog.Recipes.Length;i++){var r=EquipmentCatalog.Recipes[i];items.Add(new Item(r.key,r.name,"装备",EquipmentCatalog.Has(game,r.key)?1:0,0,r.effect+"\n\n图纸："+(EquipmentCatalog.State(game).blueprints[i]?"已学习":"未学习")+"\n持有工具即可自动用于操作，无需重复切换装备。"));}
+            return items;
+        }
         void Inventory()
         {
             string[] categories={"全部","材料","种子","补给","装备"};
-            for(int i=0;i<categories.Length;i++){string category=categories[i];Chip(category,i*126,()=>{filter=category;Rebuild();},filter==category);}
+            for(int i=0;i<categories.Length;i++){string category=categories[i];Chip(category,i*126,()=>{filter=category;inventoryPage=0;Rebuild();},filter==category);}
             var all=Items();var items=all.Where(x=>filter=="全部"||x.category==filter).ToList();
             if(!items.Any(x=>x.key==itemKey))itemKey=items[0].key;
-            for(int i=0;i<items.Count;i++)
+            int pages=Mathf.Max(1,Mathf.CeilToInt(items.Count/16f));inventoryPage=Mathf.Clamp(inventoryPage,0,pages-1);
+            for(int i=inventoryPage*16;i<Mathf.Min(items.Count,(inventoryPage+1)*16);i++)
             {
-                var item=items[i];float x=(i%4)*155,y=60+(i/4)*105;
+                var item=items[i];int slot=i-inventoryPage*16;float x=(slot%4)*155,y=60+(slot/4)*105;
                 var button=Button(content,"",x,y,145,95,()=>{itemKey=item.key;Rebuild();});button.GetComponent<UnityEngine.UI.Image>().color=item.key==itemKey?new Color(.29f,.37f,.28f):new Color(.11f,.23f,.2f);
                 Icon(button.transform,12,10,36,item.symbol,gold);
-                var count=Text(button.transform,item.category=="装备"?(item.count>0?"已装备":"未拥有"):item.count.ToString(),55,10,78,36,item.category=="装备"?14:22,item.count>0?cream:new Color(.58f,.66f,.58f));count.alignment=TextAlignmentOptions.Right;
+                var count=Text(button.transform,item.category=="装备"?(item.count>0?"已持有":"未拥有"):item.count.ToString(),55,10,78,36,item.category=="装备"?14:22,item.count>0?cream:new Color(.58f,.66f,.58f));count.alignment=TextAlignmentOptions.Right;
                 Text(button.transform,item.name,10,57,125,30,17,cream);
             }
-            var selected=all.First(x=>x.key==itemKey);var detail=Details(selected.name,selected.category+" · "+(selected.category=="装备"?(selected.count>0?"已装备":"尚未制作"):"持有 "+selected.count),selected.description+"\n\n体力 "+game.State.energy+" / 30\n当前种子："+FarmState.CropNames[game.State.selectedCrop]);
+            Button(content,"上一页",0,514,116,38,()=>{inventoryPage--;Rebuild();},inventoryPage>0);Text(content,(inventoryPage+1)+" / "+pages,132,520,120,28,18,cream);Button(content,"下一页",280,514,116,38,()=>{inventoryPage++;Rebuild();},inventoryPage<pages-1);
+            var selected=all.First(x=>x.key==itemKey);var detail=Details(selected.name,selected.category+" · "+(selected.category=="装备"?(selected.count>0?"已持有":"尚未制作"):"持有 "+selected.count),selected.description+"\n\n体力 "+game.State.energy+" / 30\n当前种子："+FarmState.CropNames[game.State.selectedCrop]);
             if(selected.key=="meal")DetailAction(detail,"使用料理 · 回复体力12",0,()=>game.Adventure.Supply("eat"),selected.count>0&&game.State.energy<30);
             else if(selected.key=="camp")DetailAction(detail,"野营休整 · 回复体力15",0,game.Expedition.UseCamp,selected.count>0&&game.State.energy<30&&game.World.HexGrid.CanBuildOn(CurrentCell()));
             else if(selected.category=="种子")
@@ -133,14 +141,14 @@ namespace StarfieldEra
                 int cost=kind==0?5:kind==1?8:10;DetailAction(detail,"购买一份种子 · 金币"+cost,1,()=>{game.SelectCrop(kind);game.BuySeed();},(game.NearHouse||game.Adventure.Target?.kind==EncounterKind.Market)&&game.State.coins>=cost);
                 Text(detail,"购买需在小屋或商人旁。",22,502,466,26,16,ink);
             }
-            else if(selected.category=="装备")DetailAction(detail,"查看制作配方",0,()=>{selectedRecipe=Array.IndexOf(RecipeKeys,selected.key);Open("craft");});
+            else if(selected.category=="装备")DetailAction(detail,"查看制作配方",0,()=>{equipmentView=true;blueprintView=false;equipmentSelection=EquipmentCatalog.Index(selected.key);equipmentPage=equipmentSelection/6;Open("craft");});
             if(selected.category=="材料")
             {
                 if(selected.key=="truffles")DetailAction(detail,"出售全部松露 · 金币"+A.truffles*18,0,game.Animals.Sell,A.truffles>0);
                 else DetailAction(detail,"查看制作配方",0,()=>Open("craft"));
                 DetailAction(detail,"查看交易与订单",1,()=>Open("market"));
             }
-            if(selected.key=="meal"||selected.key=="camp"||selected.key=="bait")DetailAction(detail,"查看补给配方",1,()=>{selectedRecipe=Array.IndexOf(RecipeKeys,selected.key);Open("craft");});
+            if(selected.key=="meal"||selected.key=="camp"||selected.key=="bait")DetailAction(detail,"查看补给配方",1,()=>{equipmentView=false;selectedRecipe=Array.IndexOf(RecipeKeys,selected.key);Open("craft");});
         }
         Vector2Int CurrentCell(){game.World.HexGrid.TryCell(game.World.Player.position,out var c);return c;}
         void Tasks()
@@ -170,9 +178,13 @@ namespace StarfieldEra
         }
         void Crafting()
         {
-            Text(content,"在小屋、营地或已建工坊旁制作",0,6,620,34,19,cream);
-            for(int i=0;i<RecipeKeys.Length;i++){int id=i;Row(RecipeNames[i],RecipeCosts[i]+(RecipeOwned(i)?" · 已装备":""),i,()=>{selectedRecipe=id;Rebuild();},selectedRecipe==i);}
-            selectedRecipe=Mathf.Clamp(selectedRecipe,0,5);int recipe=selectedRecipe;
+            Chip("装备制作",0,()=>{equipmentView=true;blueprintView=false;Rebuild();},equipmentView&&!blueprintView);
+            Chip("装备图纸",180,()=>{equipmentView=true;blueprintView=true;Rebuild();},equipmentView&&blueprintView);
+            Chip("料理与补给",360,()=>{equipmentView=false;Rebuild();},!equipmentView);
+            if(equipmentView){EquipmentPage();return;}
+            
+            int row=0;foreach(int id in new[]{0,4,5})Row(RecipeNames[id],RecipeCosts[id],row++,()=>{selectedRecipe=id;Rebuild();},selectedRecipe==id);
+            if(selectedRecipe!=0&&selectedRecipe!=4&&selectedRecipe!=5)selectedRecipe=0;int recipe=selectedRecipe;
             string[] effects={"每次制作鱼饵3。钓鱼抛竿时自动使用一份，扩大绿色收线窗口。","永久扩大钓鱼收线窗口，制作后自动生效。","沼泽移动速度提升至80%，雪地85%。不能进入水面。","伙伴战斗最大体力+10，攻击与技能伤害+3。","制作一份野营补给，在稳定陆地使用，体力回复15，不推进天数。","制作一份料理，体力回复12，最高30。需在小屋或营地制作。"};
             string condition=recipe==1||recipe==2?"前置：工坊 "+(A.workshop?"已建造":"未建造"):recipe==3?"前置：书院 "+(A.library?"已建造":"未建造"):"无需科技前置";
             bool location=recipe==5?game.NearHouse||game.Adventure.Target?.kind==EncounterKind.Camp:game.Expedition.CanCraftHere;
@@ -183,6 +195,19 @@ namespace StarfieldEra
         bool RecipeOwned(int id)=>id==1?X.fishingRod:id==2?X.marshBoots:id==3&&X.starAmulet;
         bool CanAfford(int id)
         {switch(id){case 0:return X.fiber>=2&&A.berries>=1;case 1:return A.workshop&&A.wood>=8&&X.fiber>=4&&A.science>=2;case 2:return A.workshop&&X.fiber>=8&&A.wood>=4&&game.State.coins>=20;case 3:return A.library&&X.shards>=3&&A.crystals>=2&&A.science>=6;case 4:return X.fiber>=4&&A.berries>=4&&A.fish>=1;default:return A.berries>=3&&A.fish>=1;}}
+        void EquipmentPage()
+        {
+            var recipes=EquipmentCatalog.Recipes;var state=EquipmentCatalog.State(game);
+            equipmentSelection=Mathf.Clamp(equipmentSelection,0,recipes.Length-1);equipmentPage=Mathf.Clamp(equipmentPage,0,(recipes.Length-1)/6);
+            for(int i=equipmentPage*6;i<Mathf.Min(recipes.Length,equipmentPage*6+6);i++)
+            {int id=i;var r=recipes[i];string status=state.owned[i]?"已持有":state.blueprints[i]?"已学图纸 · 待制作":"图纸未学习 · 金币"+r.plan;Row(r.name,status,i-equipmentPage*6,()=>{equipmentSelection=id;Rebuild();},equipmentSelection==i,74);}
+            Button(content,"上一页",0,514,116,38,()=>{equipmentPage--;equipmentSelection=equipmentPage*6;Rebuild();},equipmentPage>0);Text(content,(equipmentPage+1)+" / 2",140,520,100,28,18,cream);Button(content,"下一页",280,514,116,38,()=>{equipmentPage++;equipmentSelection=equipmentPage*6;Rebuild();},equipmentPage<1);
+            int chosen=equipmentSelection;var recipe=recipes[chosen];string block=EquipmentCatalog.Block(game,chosen);
+            var detail=Details(recipe.name,blueprintView?"装备图纸":"工具与装备",recipe.effect+"\n图纸："+(state.blueprints[chosen]?"已学习":"未学习 · 金币"+recipe.plan)+"\n前置："+(recipe.tech==1?"工坊":recipe.tech==2?"书院":"无需建筑")+"\n制作："+recipe.Cost+"\n持有：木"+A.wood+" 石"+A.stone+" 纤维"+X.fiber+"\n"+(blueprintView?"图纸在小屋、商人或村长旁学习，学习后永久保存。":"持有即可自动使用。缺少工具时不会扣除体力和材料。"));
+            if(blueprintView)DetailAction(detail,state.blueprints[chosen]?"图纸已学习":!EquipmentCatalog.PlanLocation(game)?"请走近小屋、商人或村长":"学习图纸 · 金币"+recipe.plan,0,()=>EquipmentCatalog.Learn(game,chosen),!state.blueprints[chosen]&&EquipmentCatalog.PlanLocation(game)&&game.State.coins>=recipe.plan);
+            else DetailAction(detail,block==""?"制作装备":block,0,()=>EquipmentCatalog.Craft(game,chosen),block=="");
+            DetailAction(detail,blueprintView?"查看装备制作":"查看此装备图纸",1,()=>{blueprintView=!blueprintView;Rebuild();});
+        }
         void Town()
         {
             Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",180,()=>{buildingsView=true;Rebuild();},buildingsView);
@@ -261,7 +286,7 @@ namespace StarfieldEra
         void Chip(string label,float x,UnityEngine.Events.UnityAction callback,bool selected)
         {var button=Button(content,label,x,4,118,38,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.36f,.32f,.2f):new Color(.12f,.25f,.22f);}
         void Row(string title,string description,int row,UnityEngine.Events.UnityAction callback,bool selected,float spacing=78)
-        {var button=Button(content,"",0,60+row*spacing,620,spacing-8,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);Text(button.transform,title,16,spacing<65?3:7,588,spacing<65?30:36,spacing<65?18:20,cream);Text(button.transform,description,16,spacing<65?28:44,588,spacing<65?22:26,spacing<65?13:15,new Color(.74f,.8f,.69f));}
+        {var button=Button(content,"",0,60+row*spacing,620,spacing-8,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);Text(button.transform,title,16,spacing<78?3:7,588,spacing<78?30:36,spacing<78?18:20,cream);Text(button.transform,description,16,spacing<78?28:44,588,spacing<78?22:26,spacing<78?13:15,new Color(.74f,.8f,.69f));}
         RectTransform Box(Transform parent,string name,float x,float y,float width,float height,Color color,bool raycast=false)
         {var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);go.GetComponent<UnityEngine.UI.Image>().color=color;go.GetComponent<UnityEngine.UI.Image>().raycastTarget=raycast;return rect;}
         TextMeshProUGUI Text(Transform parent,string text,float x,float y,float width,float height,float point,Color color)

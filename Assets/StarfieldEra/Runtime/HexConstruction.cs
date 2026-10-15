@@ -70,6 +70,7 @@ namespace StarfieldEra
         public void Choose(int kind)
         {
             if(kind<0||kind>4||Game.Adventure.InBattle)return;
+            if(!EquipmentCatalog.Require(Game,"hammer"))return;
             Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();selected=kind;rotation=0;
             Game.Adventure.Hud.Hide();
             if(kind<4)preview=CreateModel(new PlacedBuilding{kind=kind,footprintVersion=1},true);
@@ -154,6 +155,7 @@ namespace StarfieldEra
         public bool CanBuild(Vector2Int cell,int kind,out string explanation,int facing=0)
         {
             explanation="";
+            if(!EquipmentCatalog.Has(Game,"hammer")){explanation="需要持有建造锤";return false;}
             if(kind<0||kind>=4||facing<0||facing>=6){explanation="无效的建筑类型或朝向";return false;}
             var state=Game.State.adventure;
             if(state.buildings.Count>=80){explanation="已达到80座建筑上限";return false;}
@@ -202,6 +204,7 @@ namespace StarfieldEra
         }
         public bool Demolish(Vector2Int cell)
         {
+            if(!EquipmentCatalog.Require(Game,"hammer"))return false;
             if(Game.Adventure.InBattle||!occupants.TryGetValue(cell,out var building))return false;
             cell=new Vector2Int(building.column,building.row);
             if(!models.TryGetValue(cell,out var root))return false;
