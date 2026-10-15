@@ -17,7 +17,12 @@ namespace StarfieldEra
         readonly HashSet<Vector2Int> excavated=new HashSet<Vector2Int>();
         public void SetExcavated(IEnumerable<LandCell> edits)
         {excavated.Clear();if(edits!=null)foreach(var edit in edits)if(edit.channel)excavated.Add(edit.Cell);}
-        bool WalkableAt(Vector3 p)=>TryCell(p,out var cell)&&!excavated.Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
+        bool WalkableAt(Vector3 p)
+        {
+            if(!TryCell(p,out var cell)||excavated.Contains(cell)||!TerrainTraits.Walkable(TerrainAt(cell)))return false;
+            var surface=GetComponent<ContinuousTerrain>();
+            return !surface||surface.SupportsWalking(p);
+        }
         readonly HashSet<Vector2Int> cells=new HashSet<Vector2Int>();
 
         public void Build(FarmWorld world, Material edge)

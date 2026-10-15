@@ -35,6 +35,13 @@ namespace StarfieldEra
             }
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }
+        // The blended shoreline depresses neighbouring dry hexes too. Terrain enums alone
+        // cannot describe the safe bank: keep feet above the actual water surface.
+        public bool SupportsWalking(Vector3 p)
+        {
+            if(WaterDistance(p)<-.8f)return true;
+            return HeightAt(p)>=WaterLevelAt(p)+.12f;
+        }
         public float WaterLevelAt(Vector3 p)
         {
             float nearest=float.MaxValue,level=.015f;p.y=0;
