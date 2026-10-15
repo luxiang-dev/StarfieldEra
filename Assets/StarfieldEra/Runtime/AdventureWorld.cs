@@ -85,7 +85,7 @@ namespace StarfieldEra
                 var root=Marker("矿石",pos,EncounterKind.Stone,6+i);
                 world.Shape("Ore",PrimitiveType.Sphere,pos+Vector3.up*.35f,new Vector3(1.1f,.85f,1),masonry).SetParent(root,true);
                 world.Cone("Ore fleck",pos+Vector3.up*.6f,new Vector3(.4f,.6f,.4f),purple).SetParent(root,true);
-                if(StoreVisuals.Current)StoreVisuals.Current.Replace(StoreVisuals.Current.ore,root,1.1f);
+                if(!LocalEnvironment.ReplaceRock(root,1.1f)&&StoreVisuals.Current)StoreVisuals.Current.Replace(StoreVisuals.Current.ore,root,1.1f);
             }
             for(int i=0;i<2;i++)
             {
@@ -156,7 +156,8 @@ namespace StarfieldEra
                     var root=Marker(kind==EncounterKind.Crystal?"晶石矿":kind==EncounterKind.Stone?"山地矿石":kind==EncounterKind.Wood?"林地倒木":kind==EncounterKind.Fish?"湿地钓点":"野生浆果",pos,kind,id);
                     var art=StoreVisuals.Current;
                     var prefab=art?(kind==EncounterKind.Stone?art.ore:kind==EncounterKind.Wood?art.fallenLog:kind==EncounterKind.Crystal||kind==EncounterKind.Fish?null:art.shrub):null;
-                    if(prefab)art.Place(prefab,root,pos,kind==EncounterKind.Wood?.5f:1,0,2);
+                    if(kind==EncounterKind.Stone&&LocalEnvironment.ReplaceRock(root,1.1f)){}
+                    else if(prefab)art.Place(prefab,root,pos,kind==EncounterKind.Wood?.5f:1,0,2);
                     else world.Cone("Frontier resource",pos,new Vector3(1,1.2f,1),kind==EncounterKind.Crystal?purple:green).SetParent(root,true);
                 }
             }
@@ -169,7 +170,7 @@ namespace StarfieldEra
                 world.Cone("Camp tent",pos+Vector3.forward,new Vector3(2,1.7f,2),gold).SetParent(camp,true);
                 world.Shape("Campfire",PrimitiveType.Cylinder,pos+Vector3.up*.1f,new Vector3(.7f,.1f,.7f),masonry).SetParent(camp,true);
             }
-            var summit=Marker("白岩守卫",new Vector3(27,0,26),EncounterKind.Guardian,1);Creature(summit,3);
+            var summit=Marker("白岩首领 · 野蛮人",new Vector3(27,0,26),EncounterKind.Guardian,1);Creature(summit,4);
             var mire=Marker("幽光守卫",new Vector3(-29,0,23),EncounterKind.Guardian,2);Creature(mire,3);
             mill=House("Southern mill",new Vector3(-1,0,-12.5f),3,gold);
             observatory=House("Observatory",new Vector3(-14,0,13.5f),3.5f,purple);
@@ -224,6 +225,7 @@ namespace StarfieldEra
         }
         void Creature(Transform root,int species)
         {
+            if(species==4){if(LocalCharacterMotion.AttachBoss(root))return;species=3;}
             var art=StoreVisuals.Current;
             var prefab=art?(species==3?art.guardian:(art.companions!=null && species<art.companions.Length?art.companions[species]:null)):null;
             if(art && art.Replace(prefab,root,species==3?2.2f:1.1f))return;

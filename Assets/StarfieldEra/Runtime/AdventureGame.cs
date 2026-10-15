@@ -178,7 +178,7 @@ namespace StarfieldEra
         {
             if(State.CompanionCount==0){Game.ShowMessage("遗迹危机四伏，先招募一位伙伴再来挑战。");return;}
             if(State.bossDay[id]==Game.State.day){Game.ShowMessage("守卫今日已被击退，明天可以再次挑战。");return;}
-            enemyId=id;EnemyName=id==0?"岩甲兽":id==1?"白岩守卫":"幽光守卫";
+            enemyId=id;EnemyName=id==0?"岩甲兽":id==1?"白岩首领 · 野蛮人":"幽光守卫";
             InBattle=true;AllyMaxHP=40+Mathf.Min(State.victories,10)*2+(State.expedition.starAmulet?10:0);AllyHP=AllyMaxHP;EnemyMaxHP=id==0?42:id==1?68:58;EnemyHP=EnemyMaxHP;
             Turn=1;Cooldown=0;BattleLog=EnemyName+"挡住了道路。每三回合重击，水系克制白岩，火系克制幽光。";
             Revision++;Hud.Show("battle");

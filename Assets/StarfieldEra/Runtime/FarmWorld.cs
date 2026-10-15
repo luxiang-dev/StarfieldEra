@@ -106,7 +106,8 @@ namespace StarfieldEra
                 float x = -7 + (float)random.NextDouble() * 14;
                 float z = -11.7f + (float)random.NextDouble();
                 var boundary = Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
-                if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
+                if(LocalEnvironment.Rock(transform,new Vector3(x,0,z),.65f,i*137.5f))boundary.GetComponent<Renderer>().enabled=false;
+                else if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
             }
             for (int i = 0; i < 8; i++)
             {
@@ -139,7 +140,8 @@ namespace StarfieldEra
             var crown = Shape("Hat crown", PrimitiveType.Cylinder, new Vector3(0, 1.68f, 0), new Vector3(.42f, .08f, .42f), flowers);
             crown.SetParent(Player, false);
 
-            if (StoreVisuals.Current) StoreVisuals.Current.Replace(StoreVisuals.Current.farmer, Player, 1.85f, true);
+            if (!LocalCharacterMotion.AttachHero(Player) && StoreVisuals.Current)
+                StoreVisuals.Current.Replace(StoreVisuals.Current.farmer, Player, 1.85f, true);
 
             View = new GameObject("Farm camera", typeof(Camera), typeof(AudioListener)).GetComponent<Camera>();
             View.transform.SetParent(transform);

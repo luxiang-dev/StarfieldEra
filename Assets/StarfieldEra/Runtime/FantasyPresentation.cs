@@ -74,6 +74,7 @@ namespace StarfieldEra
         {
             Transform local=null;
             if(spriteIndex==0||spriteIndex==1)local=LocalEnvironment.Tree(transform,p,height,p.x*17+p.z*13);
+            else if(spriteIndex==2)local=LocalEnvironment.Rock(transform,p,height,p.x*37+p.z*13);
             else if(spriteIndex==3)local=LocalEnvironment.House(transform,p,height,name.Contains("farmhouse")?5.2f:4.5f);
             if(local){local.name=name.Replace("Painted","Model");return local;}
             var go=new GameObject(name,typeof(SpriteRenderer));go.transform.SetParent(transform,false);go.transform.position=p;

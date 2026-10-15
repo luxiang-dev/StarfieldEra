@@ -8,6 +8,18 @@ namespace StarfieldEra
             =>Place("Environment/PineTree",parent,position,height,0,yaw,"Local pine tree");
         public static Transform House(Transform parent,Vector3 position,float height,float width=5)
             =>Place("Environment/ResidentHouse",parent,position,height,width,0,"Local resident house");
+        public static Transform Rock(Transform parent,Vector3 position,float height,float yaw=0)
+            =>Place("Environment/FieldRock",parent,position,height,height*2.5f,yaw,"Local moss rock");
+        public static Transform Chest(Transform parent,Vector3 position)
+            =>Place("Environment/SupplyChest",parent,position,.85f,1.4f,0,"Local supply chest");
+        public static Transform Character(string resource,Transform parent,Vector3 position,float height)
+            =>Place("Environment/"+resource,parent,position,height,0,0,"Local "+resource);
+        public static bool ReplaceRock(Transform anchor,float height)
+        {
+            if(!Resources.Load<GameObject>("Environment/FieldRock"))return false;
+            foreach(var r in anchor.GetComponentsInChildren<Renderer>())if(!r.GetComponent<TMPro.TMP_Text>())r.enabled=false;
+            return Rock(anchor,anchor.position,height,anchor.position.x*37)!=null;
+        }
         static Transform Place(string resource,Transform parent,Vector3 position,float height,float maxWidth,float yaw,string name)
         {
             var prefab=Resources.Load<GameObject>(resource);if(!prefab)return null;

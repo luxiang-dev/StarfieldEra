@@ -7,6 +7,7 @@ namespace StarfieldEra
     {
         ExpeditionGame game;Material wood,metal,stone,crystal,leaves,decoded;
         readonly List<WorldEncounter> landmarks=new List<WorldEncounter>();
+        readonly Dictionary<int,LocalChestVisual> localChests=new Dictionary<int,LocalChestVisual>();
         readonly Dictionary<int,Transform> lids=new Dictionary<int,Transform>();
         readonly Dictionary<int,Renderer> runeGems=new Dictionary<int,Renderer>();
         readonly Dictionary<int,Transform> fibers=new Dictionary<int,Transform>();
@@ -20,11 +21,16 @@ namespace StarfieldEra
             {
                 var center=w.Adventure.RegionCenters[i];
                 var chest=Point("旅人补给箱",EncounterKind.Treasure,i,center+new Vector3(4,0,3));
+                var model=LocalEnvironment.Chest(chest.root,chest.root.position);
+                if(model)localChests[i]=model.GetComponent<LocalChestVisual>();
+                else
+                {
                 Piece(chest.root,"Chest body",PrimitiveType.Cube,new Vector3(0,.32f,0),new Vector3(1,.6f,.75f),wood);
                 var hinge=new GameObject("Chest lid hinge").transform;hinge.SetParent(chest.root,false);hinge.localPosition=new Vector3(0,.65f,.35f);lids[i]=hinge;
                 Piece(hinge,"Chest lid",PrimitiveType.Cube,new Vector3(0,0,-.35f),new Vector3(1.08f,.12f,.82f),wood);
                 for(int x=-1;x<=1;x+=2)Piece(chest.root,"Chest band",PrimitiveType.Cube,new Vector3(x*.33f,.33f,-.4f),new Vector3(.08f,.62f,.04f),metal);
                 Piece(chest.root,"Chest latch",PrimitiveType.Cube,new Vector3(0,.48f,-.4f),new Vector3(.14f,.2f,.06f),metal);
+                }
                 var obstacle=chest.root.gameObject.AddComponent<BoxCollider>();obstacle.center=Vector3.up*.3f;obstacle.size=new Vector3(1,.6f,.75f);
                 var rune=Point(ExpeditionContent.RuneNames[i],EncounterKind.Rune,i,center+new Vector3(-4,0,3));
                 Piece(rune.root,"Rune pedestal",PrimitiveType.Cylinder,Vector3.up*.12f,new Vector3(1.1f,.12f,1.1f),stone);
@@ -67,7 +73,7 @@ namespace StarfieldEra
         public void Refresh()
         {
             for(int i=0;i<8;i++)
-            {if(lids.TryGetValue(i,out var lid))lid.localRotation=Quaternion.Euler(game.State.caches[i]?65:0,0,0);if(runeGems.TryGetValue(i,out var gem))gem.sharedMaterial=game.State.runes[i]?decoded:crystal;if(fibers.TryGetValue(i,out var plant))plant.gameObject.SetActive(game.State.forageDay[i]!=game.Game.State.day);}
+            {if(localChests.TryGetValue(i,out var localChest))localChest.SetOpened(game.State.caches[i]);if(lids.TryGetValue(i,out var lid))lid.localRotation=Quaternion.Euler(game.State.caches[i]?65:0,0,0);if(runeGems.TryGetValue(i,out var gem))gem.sharedMaterial=game.State.runes[i]?decoded:crystal;if(fibers.TryGetValue(i,out var plant))plant.gameObject.SetActive(game.State.forageDay[i]!=game.Game.State.day);}
         }
         public string NextLandmark()
         {
