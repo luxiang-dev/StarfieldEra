@@ -183,6 +183,7 @@ namespace StarfieldEra
         }
         void Tree(Vector3 pos,float height)
         {
+            if(LocalEnvironment.Tree(transform,pos,height+1,pos.x*17+pos.z*13))return;
             if (StoreVisuals.Current && StoreVisuals.Current.tree) { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, pos, height + 1); return; }
             world.Shape("Forest trunk",PrimitiveType.Cylinder,pos+Vector3.up*.6f,new Vector3(.3f,.6f,.3f),timber,true);
             world.Cone("Forest canopy",pos+Vector3.up*.8f,new Vector3(2.1f,height,2.1f),green);

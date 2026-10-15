@@ -44,7 +44,7 @@ namespace StarfieldEra
             invalidMaterial=game.World.Mat("Build preview blocked","D16B54");
             wallMaterial=game.World.Mat("Self built walls","D8C8A6");roofMaterial=game.World.Mat("Self built roof","8C6245");
             foreach(var anchor in game.World.GetComponentsInChildren<Transform>())
-                if(anchor.name.StartsWith("Store art - PT_Pine"))trees.Add(anchor.position);
+                if(anchor.name.StartsWith("Store art - PT_Pine")||anchor.name=="Local pine tree")trees.Add(anchor.position);
             selectionMaterial=game.World.Mat("Building selected","E5C578");platformMaterial=game.World.Mat("Building foundation","B7AD8A");
             footingMaterial=game.World.Mat("Terrace retaining stone","827A61");
             platformMesh=HexWorldGrid.Prism(HexWorldGrid.Radius-.025f,.07f,"Building footprint tile");

@@ -95,6 +95,7 @@ namespace StarfieldEra
                 float x = i < 11 ? -9 + (float)random.NextDouble() * 1.5f : 8.5f + (float)random.NextDouble() * 1.4f;
                 float z = -8.5f + (float)random.NextDouble() * 17;
                 float height = 1.7f + (float)random.NextDouble() * 1.3f;
+                if(LocalEnvironment.Tree(transform,new Vector3(x,0,z),height+.5f,i*137.5f))continue;
                 if (StoreVisuals.Current && StoreVisuals.Current.tree)
                 { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, new Vector3(x, 0, z), height + .5f); continue; }
                 Shape("Trunk", PrimitiveType.Cylinder, new Vector3(x, height / 3, z), new Vector3(.25f, height / 3, .25f), wood, true);

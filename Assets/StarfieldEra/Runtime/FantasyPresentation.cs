@@ -40,7 +40,7 @@ namespace StarfieldEra
             {
                 Hide(anchor);var visual=Add(anchor.position,3,anchor.name=="Library"?4.5f:3.8f,"Painted "+anchor.name);
                 visual.SetParent(anchor,true);
-                if(anchor.name=="Library"||anchor.name=="Observatory")visual.GetComponent<SpriteRenderer>().color=new Color(.88f,.94f,1);
+                if(anchor.name=="Library"||anchor.name=="Observatory"){var sprite=visual.GetComponent<SpriteRenderer>();if(sprite)sprite.color=new Color(.88f,.94f,1);}
             }
             for(int i=0;i<10;i++)
             {
@@ -72,6 +72,10 @@ namespace StarfieldEra
         static void Hide(Transform root){foreach(var r in root.GetComponentsInChildren<Renderer>())r.enabled=false;}
         Transform Add(Vector3 p,int spriteIndex,float height,string name)
         {
+            Transform local=null;
+            if(spriteIndex==0||spriteIndex==1)local=LocalEnvironment.Tree(transform,p,height,p.x*17+p.z*13);
+            else if(spriteIndex==3)local=LocalEnvironment.House(transform,p,height,name.Contains("farmhouse")?5.2f:4.5f);
+            if(local){local.name=name.Replace("Painted","Model");return local;}
             var go=new GameObject(name,typeof(SpriteRenderer));go.transform.SetParent(transform,false);go.transform.position=p;
             var renderer=go.GetComponent<SpriteRenderer>();renderer.sprite=sprites[spriteIndex];renderer.sharedMaterial=spriteMaterial;renderer.shadowCastingMode=ShadowCastingMode.Off;
             float scale=height/renderer.sprite.bounds.size.y;go.transform.localScale=Vector3.one*scale;billboards.Add(go.transform);return go.transform;
@@ -83,7 +87,7 @@ namespace StarfieldEra
             if(sprites==null)return;
             foreach(var renderer in root.GetComponentsInChildren<Renderer>())if(renderer.name!="Terrace foundation")renderer.enabled=false;
             var visual=Add(center,kind==1?2:3,kind==1?4.7f:kind==0?height*1.3f:height,"Painted constructed building");visual.SetParent(root,true);
-            if(kind==2)visual.GetComponent<SpriteRenderer>().color=new Color(.88f,.94f,1);
+            if(kind==2){var sprite=visual.GetComponent<SpriteRenderer>();if(sprite)sprite.color=new Color(.88f,.94f,1);}
         }
         public void Stylize(Transform root)
         {
