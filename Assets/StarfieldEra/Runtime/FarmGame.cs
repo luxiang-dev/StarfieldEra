@@ -58,8 +58,18 @@ namespace StarfieldEra
             hud.Refresh();
         }
 
+        // Terrain edits and old saves can leave the capsule in a trench. Recover before UI/input gates.
+        void RecoverFromUnsafeGround()
+        {
+            var grid=World.HexGrid;var p=World.Player.position;
+            if(grid.CanStand(p,World.Controller.radius)&&p.y>=grid.GroundHeight(p)-.35f)return;
+            var safe=grid.SafeLand(p,World.Controller.radius);
+            World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;gravity=-2;
+        }
+
         void Update()
         {
+            RecoverFromUnsafeGround();
             var keyboard = Keyboard.current;
             if(Management.IsOpen)
             {

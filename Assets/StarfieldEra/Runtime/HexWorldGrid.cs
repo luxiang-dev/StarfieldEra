@@ -14,6 +14,10 @@ namespace StarfieldEra
             new Vector3(.5f + ColumnSpacing * (column + .5f * (row & 1)), 0, .15f + RowSpacing * row);
 
         readonly Dictionary<Vector2Int,TerrainKind> terrain=new Dictionary<Vector2Int,TerrainKind>();
+        readonly HashSet<Vector2Int> excavated=new HashSet<Vector2Int>();
+        public void SetExcavated(IEnumerable<LandCell> edits)
+        {excavated.Clear();if(edits!=null)foreach(var edit in edits)if(edit.channel)excavated.Add(edit.Cell);}
+        bool WalkableAt(Vector3 p)=>TryCell(p,out var cell)&&!excavated.Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
         readonly HashSet<Vector2Int> cells=new HashSet<Vector2Int>();
 
         public void Build(FarmWorld world, Material edge)
@@ -44,9 +48,9 @@ namespace StarfieldEra
         public bool CanBuildOn(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Buildable(TerrainAt(cell));
         public bool CanStand(Vector3 position,float radius=.3f)
         {
-            if(!TerrainTraits.Walkable(TerrainAt(position)))return false;
+            if(!WalkableAt(position))return false;
             for(int i=0;i<12;i++)
-            {float angle=i*Mathf.PI/6;if(!TerrainTraits.Walkable(TerrainAt(position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius))))return false;}
+            {float angle=i*Mathf.PI/6;if(!WalkableAt(position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius)))return false;}
             return true;
         }
         public Vector3 ConstrainMovement(Vector3 start,Vector3 displacement,float radius=.3f)

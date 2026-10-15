@@ -46,6 +46,7 @@ namespace StarfieldEra
         }
         public static void Apply(HexWorldGrid grid,LandState state)
         {
+            grid.SetExcavated(state?.cells);
             if(state==null)return;var levels=Resolve(grid,state);
             foreach(var c in state.cells)if(c.channel){c.kind=(int)(levels.ContainsKey(c.Cell)?TerrainKind.Water:TerrainKind.Rock);grid.SetTerrain(c.Cell,(TerrainKind)c.kind);}
         }

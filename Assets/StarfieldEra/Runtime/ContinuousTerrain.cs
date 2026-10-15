@@ -11,6 +11,7 @@ namespace StarfieldEra
         readonly List<Object> owned=new List<Object>();
         HexWorldGrid grid;
         Texture2D atlas;
+        readonly List<Vector3> shoreEdges=new List<Vector3>();
         readonly Dictionary<Vector2Int,float> waterLevels=new Dictionary<Vector2Int,float>();
         MeshCollider groundCollider;
         public bool IsGround(Collider collider)=>collider==groundCollider;
@@ -42,6 +43,10 @@ namespace StarfieldEra
         }
         void BuildWaterLevels()
         {
+            shoreEdges.Clear();
+            foreach(var cell in grid.Cells)if(grid.TerrainAt(cell)==TerrainKind.Water)
+                for(int edge=0;edge<6;edge++)if(grid.TerrainAt(PastureFences.Neighbor(cell,edge))!=TerrainKind.Water)
+                {var center=HexWorldGrid.Center(cell.x,cell.y);shoreEdges.Add(center+HexWorldGrid.Corner(edge,HexWorldGrid.Radius));shoreEdges.Add(center+HexWorldGrid.Corner((edge+1)%6,HexWorldGrid.Radius));}
             waterLevels.Clear();var owner=GetComponentInParent<FarmGame>();
             foreach(var pair in CanalHydrology.Resolve(grid,owner?owner.State.land:null))waterLevels[pair.Key]=pair.Value;
         }
@@ -141,6 +146,14 @@ namespace StarfieldEra
             }
             return best;
         }
+        // Distance only to exposed shore edges; internal hex borders must never fade.
+        float ShoreDistance(Vector3 p)
+        {
+            p.y=0;float best=100;
+            for(int n=0;n<shoreEdges.Count;n+=2)
+            {var a=shoreEdges[n];var ab=shoreEdges[n+1]-a;var q=a+ab*Mathf.Clamp01(Vector3.Dot(p-a,ab)/ab.sqrMagnitude);best=Mathf.Min(best,(p-q).sqrMagnitude);}
+            return Mathf.Sqrt(best);
+        }
         void WaterTriangle(Vector3 a,Vector3 b,Vector3 c,List<Vector3> vertices,List<Color> colors,List<int> triangles)
         {
             var input=new[]{a,b,c};var polygon=new List<Vector3>(4);
@@ -152,7 +165,7 @@ namespace StarfieldEra
             }
             if(polygon.Count<3)return;int offset=vertices.Count;
             foreach(var p0 in polygon)
-            {var p=p0;p.y=WaterLevelAt(p)+.015f;vertices.Add(p);Sample(p,out _,out float depth,out _);colors.Add(new Color(depth,0,0,1));}
+            {var p=p0;p.y=WaterLevelAt(p)+.015f;vertices.Add(p);Sample(p,out _,out float depth,out _);colors.Add(new Color(depth,ShoreDistance(p),0,1));}
             for(int i=1;i<polygon.Count-1;i++)triangles.AddRange(new[]{offset,offset+i,offset+i+1});
         }
         void DecorateBanks(FarmWorld world)
