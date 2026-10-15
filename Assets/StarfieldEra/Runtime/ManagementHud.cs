@@ -19,8 +19,8 @@ namespace StarfieldEra
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
         public string Page=>page;
         public bool IsOpen=>overlay&&overlay.gameObject.activeSelf;
-        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market","land"};
-        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易","土地工具"};
+        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market","land","camera"};
+        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易","土地工具","视角"};
         static readonly string[] RecipeKeys={"bait","rod","boots","amulet","camp","meal"};
         static readonly string[] RecipeNames={"草编鱼饵","精制鱼竿","湿地长靴","星辉护符","野营补给","暖心料理"};
         static readonly string[] RecipeCosts={"纤维2 · 浆果1","木材8 · 纤维4 · 知识2","纤维8 · 木材4 · 金币20","碎片3 · 晶石2 · 知识6","纤维4 · 浆果4 · 鲜鱼1","浆果3 · 鲜鱼1"};
@@ -41,7 +41,6 @@ namespace StarfieldEra
             Box(window,"Navigation rail",0,86,202,674,new Color(.04f,.12f,.11f));
             for(int i=0;i<PageKeys.Length;i++)
             {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,110+i*57,154,49,()=>Open(key));}
-            Text(window,"I 背包   Q 任务\nL 制作   M 地图\nH 土地工具 · Tab 开关",26,590,158,70,16,new Color(.72f,.79f,.68f));
             Button(window,"返回世界 · Esc",24,680,154,46,Close);
             content=Box(window,"Management page",208,96,1168,598,new Color(0,0,0,0));
             feedback=Text(window,"",232,708,1140,32,17,new Color(.93f,.84f,.64f));
@@ -84,11 +83,30 @@ namespace StarfieldEra
         {
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
-            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":"大陆与旅途");
+            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="camera"?"观察与跟随":"大陆与旅途");
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs)pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
             feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存 · Tab / Esc 返回世界":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else Map();
+            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="camera")CameraSettings();else Map();
+        }
+        void CameraSettings()
+        {
+            var rig=game.World.Adventure.CameraRig;
+            Text(content,"当前视角："+PlayerCameraRig.ModeNames[rig.Mode],0,4,1100,42,26,cream);
+            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。"};
+            for(int i=0;i<3;i++)
+            {
+                int mode=i;float x=i*388;var card=Box(content,"View card",x,66,370,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
+                Text(card,PlayerCameraRig.ModeNames[i],22,20,326,40,24,gold);Text(card,descriptions[i],22,78,326,144,18,cream);
+                Button(card,rig.Mode==i?"已启用":"使用此视角",22,238,326,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
+            }
+            Text(content,"V 切换视角 · 鼠标中键转动视角 · 滚轮调整远近 · Home 恢复视野",0,390,1120,38,19,cream);
+            Button(content,"向左转动",0,452,270,48,()=>{rig.Turn(-45);Rebuild();});
+            Button(content,"向右转动",292,452,270,48,()=>{rig.Turn(45);Rebuild();});
+            Button(content,"拉近视野",584,452,270,48,()=>rig.AdjustZoom(-2));
+            Button(content,"拉远视野",876,452,270,48,()=>rig.AdjustZoom(2));
+            Button(content,"恢复默认方向与距离",0,524,562,46,()=>{rig.ResetView();Rebuild();});
+            Text(content,"视角偏好自动保存。",590,531,540,36,18,gold);
         }
         void LandTools()
         {

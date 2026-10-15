@@ -25,12 +25,13 @@ namespace StarfieldEra
         Transform workshop, library, windmill, mill, observatory;
         readonly List<WorldNameplate> signs = new List<WorldNameplate>();
         readonly List<Transform> creatures = new List<Transform>();
-        float zoom=10;
+        public PlayerCameraRig CameraRig {get;private set;}
         int followerSpecies=-1;
 
         public void Build(FarmWorld farm)
         {
             world=farm;owner=farm.GetComponentInParent<FarmGame>();
+            CameraRig=world.View.gameObject.AddComponent<PlayerCameraRig>();CameraRig.Initialize(owner);
             timber=world.Mat("Cedar timber","72554A"); masonry=world.Mat("Slate","87927E");
             green=world.Mat("Moss","557B48"); cream=world.Mat("Limestone","D1C493");
             blue=world.Mat("Lake","4597A8"); gold=world.Mat("Harvest gold","E6BF69"); purple=world.Mat("Star crystal","9D80C1");
@@ -257,18 +258,12 @@ namespace StarfieldEra
                 Follower.gameObject.SetActive(true);
             }
         }
+        public void AdjustZoom(float amount) { CameraRig.AdjustZoom(amount); }
         void LateUpdate()
         {
             if(world==null || world.View==null)return;
             Vector3 player=world.Player.position;
             Region=player.z<-16&&player.x>10?4:player.z>20&&player.x>0?5:player.x<-22&&player.z>8?6:player.x<-22&&player.z<-6?7:player.z>9&&player.x>3?3:player.x>8?1:player.x<-7&&player.z<-3?2:0;
-            Vector3 target=player+new Vector3(12,17,-17);
-            world.View.transform.position=Vector3.Lerp(world.View.transform.position,target,Time.deltaTime*4);
-            world.View.transform.rotation=Quaternion.Euler(39, -35,0);
-            world.View.transform.LookAt(player+Vector3.up*.2f);
-            var mouse=UnityEngine.InputSystem.Mouse.current;
-            if(mouse!=null&&!(owner.Management&&owner.Management.IsOpen))zoom=Mathf.Clamp(zoom-mouse.scroll.ReadValue().y*.008f,7,30);
-            world.View.orthographicSize=Mathf.Lerp(world.View.orthographicSize,zoom,Time.deltaTime*5);
             foreach(var sign in signs)
             {
                 if(sign==null)continue;

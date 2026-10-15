@@ -14,6 +14,7 @@ namespace StarfieldEra.Editor
             if(EditorApplication.isPlaying)throw new InvalidOperationException("Stop Play before importing models.");
             foreach(string name in new[]{"FieldRock","SupplyChest","Hero","WildBarbarian"})
             {
+                if(name=="Hero" && AssetDatabase.LoadAssetAtPath<GameObject>(Folder+"/Starfarer/Starfarer.fbx")){StarfarerHeroSetup.Build();continue;}
                 bool character=name=="Hero"||name=="WildBarbarian";string path=Folder+"/"+name+".fbx";
                 var importer=(ModelImporter)AssetImporter.GetAtPath(path);importer.importAnimation=character;importer.materialImportMode=ModelImporterMaterialImportMode.None;importer.isReadable=false;importer.meshCompression=ModelImporterMeshCompression.Low;
                 if(character)

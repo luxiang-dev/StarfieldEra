@@ -13,7 +13,17 @@ namespace StarfieldEra
         public static Transform Chest(Transform parent,Vector3 position)
             =>Place("Environment/SupplyChest",parent,position,.85f,1.4f,0,"Local supply chest");
         public static Transform Character(string resource,Transform parent,Vector3 position,float height)
-            =>Place("Environment/"+resource,parent,position,height,0,0,"Local "+resource);
+        {
+            var prefab=Resources.Load<GameObject>("Environment/"+resource);
+            // Starfarer has an authored 1 m prefab. Animated renderer bounds include
+            // swing poses and must not be used to lift or resize the standing actor.
+            if(prefab && prefab.GetComponent<HeroFootContact>())
+            {
+                var root=Object.Instantiate(prefab,parent).transform;root.name="Local "+resource;
+                root.localScale=Vector3.one*height;root.position=position;root.localRotation=Quaternion.identity;return root;
+            }
+            return Place("Environment/"+resource,parent,position,height,0,0,"Local "+resource);
+        }
         public static Transform Fence(Transform parent,Vector3 a,Vector3 b,bool hideStart=false)
         {
             var prefab=Resources.Load<GameObject>("Environment/FantasyFence");if(!prefab)return null;
