@@ -17,6 +17,7 @@ namespace StarfieldEra
         public PastureFences Fences { get; private set; }
         public FarmAnimals Animals { get; private set; }
         public ExpeditionGame Expedition { get; private set; }
+        public LandStewardship Land {get;private set;}
         public ManagementHud Management { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
         public bool NearHouse => World != null && Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f;
@@ -44,6 +45,7 @@ namespace StarfieldEra
             Fences=gameObject.AddComponent<PastureFences>();Fences.Initialize(this);
             Animals=gameObject.AddComponent<FarmAnimals>();Animals.Initialize(this);
             Expedition=gameObject.AddComponent<ExpeditionGame>();Expedition.Initialize(this);
+            Land=gameObject.AddComponent<LandStewardship>();Land.Initialize(this);
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
@@ -67,6 +69,7 @@ namespace StarfieldEra
                     else if(keyboard.qKey.wasPressedThisFrame)Management.Toggle("tasks");
                     else if(keyboard.lKey.wasPressedThisFrame)Management.Toggle("craft");
                     else if(keyboard.mKey.wasPressedThisFrame)Management.Toggle("map");
+                    else if(keyboard.hKey.wasPressedThisFrame)Management.Toggle("land");
                 }
                 hud.Refresh();return;
             }
@@ -105,6 +108,7 @@ namespace StarfieldEra
                 if (keyboard.tabKey.wasPressedThisFrame) Management.Toggle("inventory");
                 if (keyboard.lKey.wasPressedThisFrame) Management.Toggle("craft");
                 if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
+                if (keyboard.hKey.wasPressedThisFrame) Management.Toggle("land");
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
                 if (keyboard.tKey.wasPressedThisFrame) CycleCrop();
@@ -122,7 +126,7 @@ namespace StarfieldEra
                 if (keyboard.rKey.wasPressedThisFrame) {if(Construction.Active)Construction.Rotate();else Water();}
                 if (keyboard.fKey.wasPressedThisFrame) Sleep();
                 if (keyboard.bKey.wasPressedThisFrame) BuySeed();
-                if (keyboard.escapeKey.wasPressedThisFrame) { Construction.Cancel(); Fences.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
+                if (keyboard.escapeKey.wasPressedThisFrame) { Construction.Cancel(); Fences.Cancel(); Land.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
             }
             hud.Refresh();
         }
@@ -146,7 +150,8 @@ namespace StarfieldEra
         public void Interact()
         {
             if(Expedition.Fishing){Expedition.Reel();return;}
-            if(Adventure.InBattle||Construction.Active||Fences.Active)return;
+            if(Adventure.InBattle||Construction.Active||Fences.Active||Land.Active)return;
+            if(Land.InteractNearby(false))return;
             if(Animals.InteractNearby())return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
             if (SelectedPlot < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
@@ -169,6 +174,7 @@ namespace StarfieldEra
         public void Water()
         {
             if(Adventure.InBattle||Expedition.Fishing)return;
+            if(Land.InteractNearby(true))return;
             if (SelectedPlot < 0) { Notify("走近已播种的农田才能浇水。"); return; }
             if (!State.Water(SelectedPlot)) { Notify("体力不足，或农田今天无需浇水。成熟作物可以收获。"); return; }
             Changed("浇水完成！湿润的农田会在夜间成长。");
@@ -178,7 +184,9 @@ namespace StarfieldEra
         {
             if(Adventure.InBattle||Expedition.Fishing)return;
             if (!NearHouse) { Notify("走到小屋门前，再按 F 结束一天。"); return; }
+            Land.BeforeSleep();
             State.Sleep();
+            Land.NewDay();
             Adventure.Commit("新的一天！工坊与书院完成了生产，伙伴和灌溉设施会照料农田。");
             World.RefreshCrops(State);
         }

@@ -44,7 +44,9 @@ namespace StarfieldEra
             {var expanded=new CropState[PlotCount];Array.Copy(plots,expanded,12);for(int i=12;i<PlotCount;i++)expanded[i]=new CropState();plots=expanded;}
             if(adventure==null)adventure=new AdventureState();
             adventure.Upgrade();
+            if(land==null)land=new LandState();land.Upgrade();
         }
+        public LandState land = new LandState();
         public AdventureState adventure = new AdventureState();
         public float playerX = -1;
         public float playerZ = -3;
@@ -110,6 +112,7 @@ namespace StarfieldEra
 
         public bool IsValid()
         {
+            if(land!=null&&!land.Valid())return false;
             if (adventure != null && !adventure.Valid()) return false;
             if (schema!=2 || energy<0 || energy>30 || selectedCrop<0 || selectedCrop>2 || wheatSeeds<0 || berrySeeds<0 || version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
                 plots == null || plots.Length != PlotCount || float.IsNaN(playerX) || float.IsNaN(playerZ) ||

@@ -76,6 +76,8 @@ namespace StarfieldEra
             var renderer=go.GetComponent<SpriteRenderer>();renderer.sprite=sprites[spriteIndex];renderer.sharedMaterial=spriteMaterial;renderer.shadowCastingMode=ShadowCastingMode.Off;
             float scale=height/renderer.sprite.bounds.size.y;go.transform.localScale=Vector3.one*scale;billboards.Add(go.transform);return go.transform;
         }
+        public Transform PlantTree(Vector3 position,float height)
+        {return sprites==null?null:Add(position,1,height,"Restored woodland tree");}
         public void IllustrateBuilding(Transform root,int kind,Vector3 center,float height)
         {
             if(sprites==null)return;
@@ -105,7 +107,7 @@ namespace StarfieldEra
                 if(changed)renderer.sharedMaterials=materials;
             }
         }
-        void FaceCamera(){if(!world||!world.View)return;foreach(var t in billboards)if(t)t.rotation=world.View.transform.rotation;}
+        void FaceCamera(){if(!world||!world.View)return;billboards.RemoveAll(t=>!t);foreach(var t in billboards)if(t)t.rotation=world.View.transform.rotation;}
         void LateUpdate(){FaceCamera();}
         void OnDestroy(){foreach(var o in owned)if(o)Destroy(o);}
     }

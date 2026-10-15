@@ -19,6 +19,7 @@ namespace StarfieldEra
         {
             p.y=0;Sample(p,out _,out float water,out _);
             float h=WorldRelief.LandHeight(p);
+            var owner=GetComponentInParent<FarmGame>();if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell)){var edit=owner.State.land.Find(cell);if(edit!=null&&edit.channel)h-=.22f;}
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }
         public float WaterLevelAt(Vector3 p)
@@ -29,7 +30,7 @@ namespace StarfieldEra
         }
         void BuildWaterLevels()
         {
-            var seen=new HashSet<Vector2Int>();
+            waterLevels.Clear();var seen=new HashSet<Vector2Int>();
             for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
             {
                 var cell=new Vector2Int(c,r);if(!grid.Contains(cell)||grid.TerrainAt(cell)!=TerrainKind.Water||seen.Contains(cell))continue;
@@ -50,7 +51,20 @@ namespace StarfieldEra
         const float Step=.4f;
         public void Build(HexWorldGrid source,FarmWorld world)
         {
-            grid=source;BuildWaterLevels();atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
+            grid=source;atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
+            RebuildSurface();
+            var cameraData=world.View.GetComponent<UniversalAdditionalCameraData>();if(cameraData)cameraData.requiresDepthTexture=true;
+            DecorateBanks(world);GroundWorld(world);
+            world.gameObject.AddComponent<FantasyPresentation>().Build(world);
+            world.gameObject.AddComponent<GrassPatches>().Build(world);
+            world.gameObject.AddComponent<FarmFieldArt>().Build(world);
+        }
+        public void RebuildSurface()
+        {
+            BuildWaterLevels();
+            foreach(Transform child in transform)if(child.name=="Continuous land and lakebed"||child.name=="Animated translucent water")
+            {child.gameObject.SetActive(false);Destroy(child.gameObject);}
+            foreach(var asset in owned)if(asset)Destroy(asset);owned.Clear();
             var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var varieties=new List<Vector4>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(HexWorldGrid.HalfWidth*2/Step),nz=Mathf.CeilToInt(HexWorldGrid.HalfDepth*2/Step);
             for(int z=0;z<=nz;z++)for(int x=0;x<=nx;x++)
@@ -76,11 +90,8 @@ namespace StarfieldEra
             var waterMesh=new Mesh{name="Connected shoreline water",indexFormat=IndexFormat.UInt32};
             waterMesh.SetVertices(waterVertices);waterMesh.SetColors(waterColors);waterMesh.SetTriangles(waterTriangles,0);waterMesh.RecalculateNormals();waterMesh.RecalculateBounds();owned.Add(waterMesh);
             var waterRenderer=Draw("Animated translucent water",waterMesh,Material("StarfieldEra/Painted Water"));waterRenderer.shadowCastingMode=ShadowCastingMode.Off;
-            var cameraData=world.View.GetComponent<UniversalAdditionalCameraData>();if(cameraData)cameraData.requiresDepthTexture=true;
-            DecorateBanks(world);GroundWorld(world);
-            world.gameObject.AddComponent<FantasyPresentation>().Build(world);
-            world.gameObject.AddComponent<GrassPatches>().Build(world);
-            world.gameObject.AddComponent<FarmFieldArt>().Build(world);
+            foreach(Transform child in transform)if(child.name=="Floating lily pad"||child.name=="Submerged pebble")child.gameObject.SetActive(grid.TerrainAt(child.position)==TerrainKind.Water);
+            Physics.SyncTransforms();
         }
         Material Material(string shaderName)
         {

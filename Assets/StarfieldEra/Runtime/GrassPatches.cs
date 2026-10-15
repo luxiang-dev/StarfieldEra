@@ -11,6 +11,8 @@ namespace StarfieldEra
         public int[] VarietyCounts {get;}=new int[4];
         public void Build(FarmWorld world)
         {
+            if(mesh)Destroy(mesh);if(material)Destroy(material);ClumpCount=0;System.Array.Clear(VarietyCounts,0,4);
+            foreach(Transform child in transform)if(child.name=="Mixed grass sizes"){child.gameObject.SetActive(false);Destroy(child.gameObject);}
             var random=new System.Random(1947);var vertices=new List<Vector3>();var colors=new List<Color>();var triangles=new List<int>();
             var occupied=new HashSet<Vector2Int>();var owner=world.GetComponentInParent<FarmGame>();
             foreach(var building in owner.State.adventure.buildings)foreach(var cell in BuildingFootprints.Cells(building))occupied.Add(cell);
@@ -22,6 +24,7 @@ namespace StarfieldEra
                 if(!world.HexGrid.CanStand(p,.35f)||!world.HexGrid.TryCell(p,out var cell)||occupied.Contains(cell))continue;
                 bool reserved=false;foreach(var plot in world.PlotPositions)if(WorldRelief.PlanarDistance(p,plot)<1.4f){reserved=true;break;}
                 foreach(var encounter in world.Adventure.Encounters)if(WorldRelief.PlanarDistance(p,encounter.Position)<1.6f){reserved=true;break;}
+                if(owner.State.land.Find(cell)?.tilled==true)reserved=true;
                 if(reserved)continue;
                 var weights=GrassEcology.Weights(p,world.HexGrid);if(random.NextDouble()>GrassEcology.Density(weights))continue;
                 p=world.HexGrid.SurfacePoint(p,.01f);int variety=GrassEcology.Dominant(weights);ClumpCount++;VarietyCounts[variety]++;

@@ -41,6 +41,7 @@ namespace StarfieldEra
             }
             // Hex data provides the shoreline boundary for both movement and construction.
             foreach(var col in world.GetComponentsInChildren<Collider>())if(col.name=="Lake collision"||col.name=="Pond obstacle")col.enabled=false;
+            LandStewardship.ApplySaved(this,state.land);
             gameObject.AddComponent<ContinuousTerrain>().Build(this,world);
         }
         void MarkBox(Vector3 center,Vector3 size,TerrainKind kind)

@@ -65,12 +65,12 @@ namespace StarfieldEra
         public void Open()
         {
             if(Game.Adventure.InBattle)return;
-            Game.Fences?.Cancel();Cancel();Game.Adventure.Hud.Show("build");
+            Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();Game.Adventure.Hud.Show("build");
         }
         public void Choose(int kind)
         {
             if(kind<0||kind>4||Game.Adventure.InBattle)return;
-            Game.Fences?.Cancel();Cancel();selected=kind;rotation=0;
+            Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();selected=kind;rotation=0;
             Game.Adventure.Hud.Hide();
             if(kind<4)preview=CreateModel(new PlacedBuilding{kind=kind,footprintVersion=1},true);
             else
@@ -98,6 +98,7 @@ namespace StarfieldEra
             Vector2 pixel=mouse.position.ReadValue();
             bool blocked=(EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||pixel.y<Screen.height*.12f||pixel.y>Screen.height*.91f;
             var ray=Game.World.View.ScreenPointToRay(pixel);
+            if(Game.Land&&Game.Land.Active)return;
             if(Game.Fences&&Game.Fences.Active)return;
             if(!Active)
             {
@@ -165,6 +166,8 @@ namespace StarfieldEra
         }
         bool SiteAllowed(Vector2Int cell,PlacedBuilding ignore,bool migrating,out string explanation)
         {
+            var changed=Game.State.land?.Find(cell);if(changed!=null&&(changed.tree||changed.tilled||changed.channel)){explanation="请保留改造后的农田、树木和河道";return false;}
+
             explanation="";
             if(!Game.World.HexGrid.Contains(cell)){explanation="建筑占地超出大陆边界";return false;}
             if(occupants.TryGetValue(cell,out var owner)&&owner!=ignore){explanation="占地与已有建筑重叠";return false;}

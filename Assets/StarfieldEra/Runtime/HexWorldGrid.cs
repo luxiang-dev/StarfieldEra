@@ -35,6 +35,8 @@ namespace StarfieldEra
         public bool IsGroundCollider(Collider col)=>col==GetComponent<Collider>()||(GetComponent<ContinuousTerrain>()&&GetComponent<ContinuousTerrain>().IsGround(col));
         public bool RaycastGround(Ray ray,out Vector3 point)
         {var surface=GetComponent<ContinuousTerrain>();if(surface&&surface.Raycast(ray,out var hit)){point=hit.point;return true;}point=default;return false;}
+        public IEnumerable<Vector2Int> Cells=>cells;
+        public void SetTerrain(Vector2Int cell,TerrainKind kind){if(cells.Contains(cell))terrain[cell]=kind;}
         public bool Contains(Vector2Int cell)=>cells.Contains(cell);
         public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
         public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;

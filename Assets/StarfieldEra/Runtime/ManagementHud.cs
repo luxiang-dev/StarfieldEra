@@ -12,13 +12,14 @@ namespace StarfieldEra
         TextMeshProUGUI heading,wallet,feedback;
         readonly Dictionary<string,UnityEngine.UI.Button> tabs=new Dictionary<string,UnityEngine.UI.Button>();
         string page="inventory",filter="全部",itemKey="wood",buildingKey="",signature="",openingMessage="";
+        int selectedLandTool;
         int selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
         bool expeditionTasks,buildingsView,confirmDemolition;
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
         public string Page=>page;
         public bool IsOpen=>overlay&&overlay.gameObject.activeSelf;
-        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market"};
-        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易"};
+        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market","land"};
+        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易","土地工具"};
         static readonly string[] RecipeKeys={"bait","rod","boots","amulet","camp","meal"};
         static readonly string[] RecipeNames={"草编鱼饵","精制鱼竿","湿地长靴","星辉护符","野营补给","暖心料理"};
         static readonly string[] RecipeCosts={"纤维2 · 浆果1","木材8 · 纤维4 · 知识2","纤维8 · 木材4 · 金币20","碎片3 · 晶石2 · 知识6","纤维4 · 浆果4 · 鲜鱼1","浆果3 · 鲜鱼1"};
@@ -38,8 +39,8 @@ namespace StarfieldEra
             wallet=Text(header,"",1000,20,370,60,16,ink);wallet.alignment=TextAlignmentOptions.Right;
             Box(window,"Navigation rail",0,86,202,674,new Color(.04f,.12f,.11f));
             for(int i=0;i<PageKeys.Length;i++)
-            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,118+i*58,154,50,()=>Open(key));}
-            Text(window,"I 背包   Q 任务\nL 制作   M 地图\nTab 开关手册",26,554,158,86,16,new Color(.72f,.79f,.68f));
+            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,110+i*57,154,49,()=>Open(key));}
+            Text(window,"I 背包   Q 任务\nL 制作   M 地图\nH 土地工具 · Tab 开关",26,590,158,70,16,new Color(.72f,.79f,.68f));
             Button(window,"返回世界 · Esc",24,680,154,46,Close);
             content=Box(window,"Management page",208,96,1168,598,new Color(0,0,0,0));
             feedback=Text(window,"",232,708,1140,32,17,new Color(.93f,.84f,.64f));
@@ -52,7 +53,7 @@ namespace StarfieldEra
             if(game.Expedition.Fishing)game.Expedition.CancelFishing();
             if(!PageKeys.Contains(target))target="inventory";
             bool changed=page!=target;if(!IsOpen||changed)openingMessage=game.Message;
-            game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
+            game.Land?.Cancel();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
             page=target;worldHud.SetWorldVisible(false);overlay.gameObject.SetActive(true);overlay.SetAsLastSibling();
             if(changed&&target=="tasks")selectedTask=Mathf.Clamp(expeditionTasks?X.quest:A.quest,0,expeditionTasks?2:5);
             confirmDemolition=false;signature="";Rebuild();
@@ -82,11 +83,22 @@ namespace StarfieldEra
         {
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
-            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":"大陆与旅途");
+            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":"大陆与旅途");
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs)pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
             feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存 · Tab / Esc 返回世界":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else Map();
+            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else Map();
+        }
+        void LandTools()
+        {
+            Text(content,"改造与生态 · H 打开",0,4,620,40,24,cream);
+            for(int i=0;i<LandStewardship.Names.Length;i++)
+            {int id=i;Row(LandStewardship.Names[i],LandStewardship.Costs[i],i,()=>{selectedLandTool=id;Rebuild();},selectedLandTool==i,60);}
+            Text(content,"土方 "+game.State.land.soil+" · 木材 "+A.wood+" · 石料 "+A.stone+" · 纤维 "+X.fiber,0,475,620,36,18,cream);
+            Text(content,"灌溉技术："+(A.irrigation?"已掌握，临水农田自动浇水":"未研究，临水可保湿；自动浇水需研究"),0,519,630,54,17,cream);
+            var detail=Details(LandStewardship.Names[selectedLandTool],LandStewardship.Costs[selectedLandTool],LandStewardship.Descriptions[selectedLandTool]+"\n\n选择工具后点击六步内的地块。\n绿色可施工，红色不可施工。\n右键 / Esc 取消；施工自动保存。");
+            DetailAction(detail,"装备工具并返回地图",0,()=>game.Land.Choose(selectedLandTool));
+            DetailAction(detail,"查看当前位置的土壤",1,()=>game.ShowMessage(game.Land.Describe(CurrentCell())));
         }
         sealed class Item
         {public string key,name,category,description;public int count,symbol;public Item(string k,string n,string cat,int value,int icon,string desc){key=k;name=n;category=cat;count=value;symbol=icon;description=desc;}}

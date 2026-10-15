@@ -43,7 +43,7 @@ namespace StarfieldEra
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             string terrain=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
-            string signature=managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
             counters.text=AdventureContent.Regions[game.World.Adventure.Region]+" · 第"+state.day+"天 "+state.Season+" · "+(state.Rainy?"雨天":"晴天")+"    体力 "+state.energy+"/30    金币 "+state.coins;
@@ -59,8 +59,10 @@ namespace StarfieldEra
             else if(game.NearHouse)context="小屋 · F 休息 · 打开背包购买种子、制作料理";
             if(game.Adventure.Target!=null){context=game.Adventure.TargetHint;canInteract=true;}
             if(game.Animals.HasNearby){context="附近动物 · E 查看与照料";canInteract=true;}
+            if(game.Land.NearNewPlot){context="新农田 · E 播种或收获 · R 浇水";canInteract=true;}
             if(game.Expedition.Fishing){context="钓鱼 · E 收线 · 光标进入绿色区域";actionLabel.text="E 收线";canInteract=true;}
             if(game.Adventure.InBattle){context="遭遇战 · 在战斗面板选择行动";canInteract=false;}
+            if(game.Land.Active){context=game.Land.Hint;canInteract=false;}
             if(game.Construction.Active){context=game.Construction.Hint;canInteract=false;}if(game.Fences.Active){context=game.Fences.Hint;canInteract=false;}
             target.text=context+" · "+terrain;actionButton.interactable=canInteract&&!managed;
             game.Adventure.Hud.Refresh();

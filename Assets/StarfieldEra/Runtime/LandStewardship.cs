@@ -1,0 +1,228 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+namespace StarfieldEra
+{
+    /// <summary>Saved hex edits, source-connected waterways and local soil stewardship.</summary>
+    public sealed class LandStewardship:MonoBehaviour
+    {
+        public static readonly string[] Names={"开垦土地","植树造林","开挖河道","填埋土地","覆草复绿","查看土地"};
+        public static readonly string[] Costs={"体力2","体力2 · 木材2 · 浆果1","体力3 · 获得土方3","体力3 · 土方2 · 石料2","体力2 · 纤维2","免费"};
+        public static readonly string[] Descriptions={
+            "将草地或沙地开垦为新的农田。\n回到地块旁按 E 播种或收获、R 浇水。\n使用背包中当前选择的种子。",
+            "种下树苗，滋养三天后长成林木。\n成树为两格以内的土地保湿固土。\n沙地上的树苗需要水源或雨水滋养，也可按 R 浇水。",
+            "挖出低洼河床并获得土方。\n河道连通水源后才会出现水流。\n从河岸向外逐格开挖，不能向高坡引水。\n水面不可行走，可灌溉邻接农田。",
+            "用土方和石料填平水面或干河道。\n填后变为沙地，可再覆草或植树。\n填断水路会让下游人工河道干涸。",
+            "将裸露沙土覆草恢复成草地。\n水源和树木能帮助保持土地湿润。\n无水无树的裸露地与新开农田，\n持续干旱后会沙化；有作物时减缓。",
+            "查看地形、土壤湿度、干旱天数、\n河道水源与树木生长状态。\n新农田也可直接按 E 播种或收获。"};
+        FarmGame game;HexWorldGrid grid;LandState S=>game.State.land;
+        readonly Dictionary<Vector2Int,TerrainKind> baseline=new Dictionary<Vector2Int,TerrainKind>();
+        readonly List<GameObject> visuals=new List<GameObject>();readonly List<Object> owned=new List<Object>();
+        int tool=-1;GameObject preview;Material good,bad;Mesh outline;
+        public bool Active=>tool>=0;
+        public string Hint {get;private set;}="";
+        public static void ApplySaved(HexWorldGrid grid,LandState state)
+        {if(state==null)return;foreach(var c in state.cells)grid.SetTerrain(c.Cell,(TerrainKind)c.kind);}
+        public void Initialize(FarmGame owner)
+        {
+            game=owner;grid=game.World.HexGrid;
+            foreach(var c in grid.Cells)baseline[c]=grid.TerrainAt(c);
+            foreach(var c in S.cells)baseline[c.Cell]=(TerrainKind)c.original;
+            good=game.World.Mat("Land tool allowed","A6CD82");bad=game.World.Mat("Land tool blocked","DA846C");outline=HexWorldGrid.Outline(HexWorldGrid.Radius,.055f);
+            RefreshArt();
+        }
+        public void Choose(int kind)
+        {
+            if(kind<0||kind>=Names.Length||game.Adventure.InBattle||game.Expedition.Fishing)return;
+            game.Management.Close();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.Hide();Cancel();tool=kind;
+            preview=new GameObject("Land tool target",typeof(MeshFilter),typeof(MeshRenderer));preview.GetComponent<MeshFilter>().sharedMesh=outline;preview.GetComponent<MeshRenderer>().sharedMaterial=good;
+            game.ShowMessage(Names[kind]+"：点击身边六步内地块；右键或 Esc 取消。H 打开土地手册。");
+        }
+        public void Cancel(){tool=-1;Hint="";if(preview)Destroy(preview);preview=null;}
+        void Update()
+        {
+            if(!Active)return;
+            if(game.Management.IsOpen||game.Adventure.InBattle||game.Expedition.Fishing||game.Construction.Active||game.Fences.Active){Cancel();return;}
+            var mouse=Mouse.current;if(mouse==null)return;
+            if(mouse.rightButton.wasPressedThisFrame){Cancel();return;}
+            if(EventSystem.current&&EventSystem.current.IsPointerOverGameObject()){preview.SetActive(false);return;}
+            if(!grid.RaycastGround(game.World.View.ScreenPointToRay(mouse.position.ReadValue()),out var p)||!grid.TryCell(p,out var cell)){preview.SetActive(false);return;}
+            bool valid=Allowed(cell,tool,out var reason);preview.SetActive(true);preview.transform.position=grid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y),.15f);if(grid.TerrainAt(cell)==TerrainKind.Water){var raised=preview.transform.position;raised.y=grid.GetComponent<ContinuousTerrain>().WaterLevelAt(raised)+.08f;preview.transform.position=raised;}preview.GetComponent<MeshRenderer>().sharedMaterial=valid?good:bad;
+            Hint=Names[tool]+" · "+(valid?Describe(cell):reason)+" · 左键施工 / 右键取消";
+            if(mouse.leftButton.wasPressedThisFrame)Execute(cell,tool);
+        }
+        LandCell Record(Vector2Int cell)
+        {
+            var found=S.Find(cell);if(found!=null)return found;
+            found=new LandCell{column=cell.x,row=cell.y,original=(int)baseline[cell],kind=(int)grid.TerrainAt(cell)};S.cells.Add(found);return found;
+        }
+        bool Reserved(Vector2Int cell)
+        {
+            var p=HexWorldGrid.Center(cell.x,cell.y);
+            foreach(var b in game.State.adventure.buildings)if(BuildingFootprints.Cells(b).Contains(cell))return true;
+            foreach(var f in game.State.adventure.fences)if(cell==new Vector2Int(f.column,f.row)||cell==PastureFences.Neighbor(new Vector2Int(f.column,f.row),f.edge))return true;
+            foreach(var e in game.World.Adventure.Encounters)if(WorldRelief.PlanarDistance(p,e.Position)<3.2f)return true;
+            foreach(var plot in game.World.PlotPositions)if(WorldRelief.PlanarDistance(p,plot)<1.85f)return true;
+            foreach(var root in game.World.GetComponentsInChildren<BuildingInspectable>())if(WorldRelief.PlanarDistance(p,root.transform.position)<4)return true;
+            foreach(var a in game.State.adventure.animals)if(cell==new Vector2Int(a.homeColumn,a.homeRow))return true;
+            // Preserve authored scenery, buildings and forest colliders. Decorative ground is excluded.
+            foreach(var hit in Physics.OverlapSphere(grid.SurfacePoint(p,.7f),1.02f,~0,QueryTriggerInteraction.Ignore))
+                if(!grid.IsGroundCollider(hit)&&!(hit is CharacterController)&&!hit.GetComponentInParent<AnimalActor>())return true;
+            return false;
+        }
+        bool ActorHere(Vector2Int cell)
+        {
+            var p=HexWorldGrid.Center(cell.x,cell.y);if(WorldRelief.PlanarDistance(p,game.World.Player.position)<1.9f)return true;
+            foreach(var actor in game.Animals.GetComponentsInChildren<AnimalActor>())if(WorldRelief.PlanarDistance(p,actor.transform.position)<1.9f)return true;
+            foreach(var actor in game.World.GetComponentsInChildren<AnimalActor>())if(WorldRelief.PlanarDistance(p,actor.transform.position)<1.9f)return true;
+            return false;
+        }
+        public bool Allowed(Vector2Int cell,int action,out string reason)
+        {
+            reason="";if(action<0||action>=Names.Length){reason="请选择土地工具";return false;}if(!grid.Contains(cell)||WorldRelief.PlanarDistance(HexWorldGrid.Center(cell.x,cell.y),game.World.Player.position)>6){reason="请走近六步以内";return false;}
+            if(action==5)return true;
+            if(Reserved(cell)){reason="请避开农场、建筑、围栏、资源点与牧场";return false;}
+            if(S.cells.Count>=512&&S.Find(cell)==null){reason="已达到土地改造上限";return false;}
+            var kind=grid.TerrainAt(cell);var c=S.Find(cell);var a=game.State.adventure;
+            if(c!=null&&(c.tree||c.crop.planted)){reason="先收获作物，保留已栽种的树木";return false;}
+            if(action==0&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand||c?.tilled==true)){reason="只能开垦空草地或沙地";return false;}
+            if(action==1&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand)){reason="树苗需要空草地或沙地";return false;}
+            if(action==1&&(a.wood<2||a.berries<1)){reason="需要木材2、浆果1";return false;}
+            if(action==2&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand||c?.channel==true)){reason="只能开挖空草地或沙地";return false;}
+            if((action==1||action==2||action==3)&&ActorHere(cell)){reason="请让角色和动物离开目标地块";return false;}
+            if(action==3&&(kind!=TerrainKind.Water&&c?.channel!=true)){reason="只能填埋水面或干河道";return false;}
+            if(action==3&&(S.soil<2||a.stone<2)){reason="需要土方2、石料2；开挖可获得土方";return false;}
+            if(action==4&&(kind!=TerrainKind.Sand&&c?.tilled!=true)){reason="选择沙地或空耕地进行复绿";return false;}
+            if(action==4&&a.expedition.fiber<2){reason="需要纤维2";return false;}
+            if(game.State.energy<(action==2||action==3?3:2)){reason="体力不足";return false;}
+            return true;
+        }
+        public void Execute(Vector2Int cell,int action)
+        {
+            if(game.Adventure.InBattle||game.Expedition.Fishing)return;
+            if(!Allowed(cell,action,out var reason)){game.ShowMessage(reason);return;}
+            if(action==5){game.ShowMessage(Describe(cell));return;}
+            // Check the whole newly connected flood area before spending resources.
+            if(action==2)
+            {
+                var wet=WetChannels(cell);foreach(var flood in wet)if(grid.TerrainAt(flood)!=TerrainKind.Water&&ActorHere(flood)){game.ShowMessage("接通水源会淹到角色或动物，请先离开河道。");return;}
+            }
+            var c=Record(cell);var a=game.State.adventure;game.State.SpendEnergy(action==2||action==3?3:2);c.dryDays=0;
+            if(action==0){c.tilled=true;c.channel=false;c.kind=(int)TerrainKind.Meadow;}
+            else if(action==1){a.wood-=2;a.berries--;c.tree=true;c.treeDay=game.State.day;c.tilled=false;}
+            else if(action==2){c.channel=true;c.tilled=false;c.kind=(int)TerrainKind.Rock;S.soil+=3;}
+            else if(action==3){S.soil-=2;a.stone-=2;c.channel=false;c.tilled=false;c.kind=(int)TerrainKind.Sand;}
+            else {a.expedition.fiber-=2;c.tilled=false;c.channel=false;c.kind=(int)TerrainKind.Meadow;}
+            UpdateWater();RefreshTerrain();game.Adventure.Commit(Names[action]+"完成。"+Describe(cell));
+        }
+        HashSet<Vector2Int> WetChannels(Vector2Int? extra=null)
+        {
+            var channels=new HashSet<Vector2Int>();foreach(var c in S.cells)if(c.channel)channels.Add(c.Cell);if(extra.HasValue)channels.Add(extra.Value);
+            var wet=new HashSet<Vector2Int>();var queue=new Queue<Vector2Int>();var level=new Dictionary<Vector2Int,float>();
+            foreach(var cell in grid.Cells)
+            {
+                if(channels.Contains(cell))continue;
+                var record=S.Find(cell);var kind=record==null?baseline[cell]:(TerrainKind)record.kind;
+                if(kind!=TerrainKind.Water)continue;queue.Enqueue(cell);level[cell]=WorldRelief.LandHeight(HexWorldGrid.Center(cell.x,cell.y))-.1f;
+            }
+            while(queue.Count>0)
+            {
+                var cell=queue.Dequeue();for(int edge=0;edge<6;edge++)
+                {var n=PastureFences.Neighbor(cell,edge);if(!channels.Contains(n)||wet.Contains(n))continue;if(WorldRelief.LandHeight(HexWorldGrid.Center(n.x,n.y))-.22f>level[cell]+.08f)continue;wet.Add(n);level[n]=level[cell];queue.Enqueue(n);}
+            }
+            return wet;
+        }
+        void UpdateWater(){var wet=WetChannels();foreach(var c in S.cells)if(c.channel)c.kind=(int)(wet.Contains(c.Cell)?TerrainKind.Water:TerrainKind.Rock);ApplySaved(grid,S);}
+        public bool Moist(Vector2Int cell)
+        {
+            if(game.State.Rainy)return true;var p=HexWorldGrid.Center(cell.x,cell.y);
+            for(int i=0;i<6;i++)if(grid.TerrainAt(PastureFences.Neighbor(cell,i))==TerrainKind.Water)return true;
+            foreach(var c in S.cells)if(c.tree&&c.treeGrowth>=3&&WorldRelief.PlanarDistance(p,HexWorldGrid.Center(c.column,c.row))<4.2f)return true;
+            for(int r=cell.y-2;r<=cell.y+2;r++)for(int col=cell.x-2;col<=cell.x+2;col++){var n=new Vector2Int(col,r);if(grid.TerrainAt(n)==TerrainKind.Forest&&grid.Contains(n)&&WorldRelief.PlanarDistance(p,HexWorldGrid.Center(col,r))<4.2f)return true;}
+            return false;
+        }
+        bool Irrigated(Vector2Int cell){if(!game.State.adventure.irrigation)return false;for(int i=0;i<6;i++)if(grid.TerrainAt(PastureFences.Neighbor(cell,i))==TerrainKind.Water)return true;return false;}
+        public string Describe(Vector2Int cell)
+        {
+            var c=S.Find(cell);return (c?.tilled==true?"新农田":TerrainTraits.Names[(int)grid.TerrainAt(cell)])+" · "+(Moist(cell)?"湿润":"偏干")+(c==null?"":" · 干旱 "+c.dryDays+" 天")+(c?.channel==true?(grid.TerrainAt(cell)==TerrainKind.Water?" · 已通水":" · 等待接通水源"):"")+(c?.tree==true?" · 树苗成长 "+c.treeGrowth+" / 3":"");
+        }
+        public bool NearNewPlot
+        {get {foreach(var c in S.cells)if(c.tilled&&WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position)<1.7f)return true;return false;}}
+        public bool InteractNearby(bool water)
+        {
+            if(Active||game.Construction.Active||game.Fences.Active)return false;LandCell chosen=null;float best=1.7f;
+            foreach(var c in S.cells)if(c.tilled||(water&&c.tree&&c.treeGrowth<3)){float d=WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position);if(d<best){chosen=c;best=d;}}
+            if(chosen==null)return false;var crop=chosen.crop;var s=game.State;
+            if(chosen.tree)
+            {if(chosen.treeWatered){game.ShowMessage("树苗今天已浇水。");return true;}if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}chosen.treeWatered=true;game.Adventure.Commit("树苗浇水完成，夜间会成长。");return true;}
+            if(water)
+            {if(!crop.planted||crop.Ready||crop.watered){game.ShowMessage("这块农田无需浇水。");return true;}if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}crop.watered=true;}
+            else if(crop.Ready)
+            {if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}int kind=crop.kind;s.coins+=kind==0?12:kind==1?24:18;s.harvests++;if(kind==2){crop.growth=0;crop.watered=s.Rainy;s.adventure.berries+=2;}else chosen.crop=new CropState();}
+            else if(!crop.planted)
+            {if(s.SelectedSeeds<1||s.energy<1){game.ShowMessage("需要当前作物种子和体力1。");return true;}s.SpendEnergy(1);crop.kind=s.selectedCrop;crop.planted=true;crop.watered=s.Rainy||Irrigated(chosen.Cell);if(s.selectedCrop==0)s.seeds--;else if(s.selectedCrop==1)s.wheatSeeds--;else s.berrySeeds--;}
+            else {game.ShowMessage(crop.watered?"新农田今天已浇水，等待成长。":"新农田需要浇水，按 R。" );return true;}
+            RefreshArt();game.Adventure.Commit(water?"新农田浇水完成。":"农田操作完成。");return true;
+        }
+        public void BeforeSleep()
+        {foreach(var c in S.cells)if(c.tree&&Moist(c.Cell))c.treeWatered=true;
+            foreach(var c in S.cells)if(c.tilled&&c.crop.planted){if(Irrigated(c.Cell))c.crop.watered=true;if(c.crop.watered)c.crop.growth=Mathf.Min(c.crop.RequiredDays,c.crop.growth+1);}}
+        public void NewDay()
+        {
+            foreach(var c in S.cells)
+            {
+                bool moist=Moist(c.Cell);c.crop.watered=c.crop.planted&&(game.State.Rainy||Irrigated(c.Cell));
+                // Only managed ground changes; authored scenery and productive crops stay safe.
+                if(c.tree)
+                {
+                    if(moist||c.treeWatered){c.treeGrowth=Mathf.Min(3,c.treeGrowth+1);c.dryDays=0;}else c.dryDays++;
+                    c.treeWatered=false;if(c.treeGrowth>=3)c.kind=(int)TerrainKind.Forest;continue;
+                }
+                if(c.channel)continue;
+                if(moist)c.dryDays=Mathf.Max(0,c.dryDays-2);else c.dryDays++;
+                int limit=game.State.Season=="夏季"?4:8;if(c.crop.planted)limit*=2;
+                if(c.dryDays>=limit&&!c.crop.planted){c.kind=(int)TerrainKind.Sand;c.tilled=false;}
+            }
+            UpdateWater();RefreshTerrain();
+        }
+        void RefreshTerrain()
+        {
+            ApplySaved(grid,S);grid.GetComponent<ContinuousTerrain>().RebuildSurface();
+            game.World.GetComponent<GrassPatches>().Build(game.World);RefreshArt();game.Animals.RefreshPens();
+        }
+        void RefreshArt()
+        {
+            foreach(var go in visuals)if(go){go.SetActive(false);Destroy(go);}visuals.Clear();foreach(var asset in owned)if(asset)Destroy(asset);owned.Clear();
+            foreach(var c in S.cells)
+            {
+                var p=grid.SurfacePoint(HexWorldGrid.Center(c.column,c.row),.018f);
+                if(c.tree)
+                {var tree=game.World.GetComponent<FantasyPresentation>().PlantTree(p,Mathf.Lerp(.65f,3.5f,Mathf.Clamp01(c.treeGrowth/3f)));if(tree)visuals.Add(tree.gameObject);}
+                if(!c.tilled)continue;
+                var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var tris=new List<int>();
+                const int count=22;
+                for(int z=0;z<=count;z++)for(int x=0;x<=count;x++)
+                {
+                    var v=p+new Vector3((x/(float)count-.5f)*2.25f,0,(z/(float)count-.5f)*2.25f);var delta=v-p;float edge=-10;
+                    for(int i=0;i<6;i++){float angle=i*Mathf.PI/3;edge=Mathf.Max(edge,delta.x*Mathf.Cos(angle)+delta.z*Mathf.Sin(angle));}
+                    float fade=Mathf.SmoothStep(0,1,Mathf.InverseLerp(1.02f,.75f,edge));v.y=grid.GroundHeight(v)+.01f+FarmFieldArt.Ridge(v)*fade;
+                    vertices.Add(v);uv.Add(new Vector2(v.x-FarmFieldArt.Bend(v.z),v.z));colors.Add(new Color(c.crop.watered?.85f:0,c.crop.planted?1:0,.3f,fade));
+                    if(x<count&&z<count){int a=z*(count+1)+x;tris.AddRange(new[]{a,a+count+1,a+1,a+1,a+count+1,a+count+2});}
+                }
+                var mesh=new Mesh{name="Player tilled soft furrows"};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);mesh.SetColors(colors);mesh.SetTriangles(tris,0);mesh.RecalculateNormals();mesh.RecalculateBounds();owned.Add(mesh);
+                var mat=new Material(Shader.Find("StarfieldEra/Cultivated Soil"));mat.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas"));owned.Add(mat);
+                var bed=new GameObject("Player cultivated bed",typeof(MeshFilter),typeof(MeshRenderer));bed.transform.SetParent(transform,false);bed.GetComponent<MeshFilter>().sharedMesh=mesh;bed.GetComponent<MeshRenderer>().sharedMaterial=mat;visuals.Add(bed);
+                if(!c.crop.planted)continue;
+                for(int row=-1;row<=1;row++)for(int i=-1;i<=1;i++)
+                {
+                    var v=p+new Vector3(i*.48f,0,row*.52f);v.x=Mathf.Round((v.x-FarmFieldArt.Bend(v.z))/.64f)*.64f+FarmFieldArt.Bend(v.z);v.y=grid.GroundHeight(v)+FarmFieldArt.Ridge(v)+.04f;
+                    float size=c.crop.Ready?.27f:.07f+c.crop.growth*.04f;
+                    var leaf=game.World.Shape("New crop leaves",PrimitiveType.Sphere,v,new Vector3(size,.09f+size,size*.7f),good);leaf.SetParent(transform,true);visuals.Add(leaf.gameObject);
+                    if(c.crop.growth>0){var fruit=game.World.Shape("New crop fruit",PrimitiveType.Sphere,v+Vector3.up*.1f,Vector3.one*size*.8f,c.crop.Ready?bad:good);fruit.SetParent(transform,true);visuals.Add(fruit.gameObject);}
+                }
+            }
+        }
+        void OnDestroy(){foreach(var go in visuals)if(go)Destroy(go);foreach(var asset in owned)if(asset)Destroy(asset);if(outline)Destroy(outline);if(preview)Destroy(preview);}
+    }
+}

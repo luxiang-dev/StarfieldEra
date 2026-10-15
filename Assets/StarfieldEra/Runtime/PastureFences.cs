@@ -32,7 +32,7 @@ namespace StarfieldEra
             foreach(var f in game.State.adventure.fences){var key=Key(new Vector2Int(f.column,f.row),f.edge);edges[key]=f;models[key]=Model(f,false);}
         }
         public void Choose(int next)
-        {game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：点击边缘，返还一份木材。":"围栏沿六边形边缘放置，左键连续建造；右键取消。围栏木2，牧场门木4。围住至少三格可驯养野猪。");}
+        {game.Land?.Cancel();game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：点击边缘，返还一份木材。":"围栏沿六边形边缘放置，左键连续建造；右键取消。围栏木2，牧场门木4。围住至少三格可驯养野猪。");}
         public void Cancel(){mode=-1;Hint="";if(preview)Destroy(preview);preview=null;previewKey="";}
         public bool Blocks(Vector2Int c,int edge)=>edges.TryGetValue(Key(c,edge),out var f)&&(!f.gate||!f.open);
         public List<Vector2Int> Enclosure(Vector2Int start)
