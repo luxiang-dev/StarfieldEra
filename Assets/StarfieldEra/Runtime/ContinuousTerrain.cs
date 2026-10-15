@@ -19,7 +19,19 @@ namespace StarfieldEra
         {
             p.y=0;Sample(p,out _,out float water,out _);
             float h=WorldRelief.LandHeight(p);
-            var owner=GetComponentInParent<FarmGame>();if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell)){var edit=owner.State.land.Find(cell);if(edit!=null&&edit.channel)h-=.22f;}
+            var owner=GetComponentInParent<FarmGame>();
+            if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell))
+            {
+                var edit=owner.State.land.Find(cell);
+                if(edit!=null&&edit.channel)
+                {
+                    var delta=p-HexWorldGrid.Center(cell.x,cell.y);float edge=-10;
+                    for(int i=0;i<6;i++){float angle=i*Mathf.PI/3;edge=Mathf.Max(edge,delta.x*Mathf.Cos(angle)+delta.z*Mathf.Sin(angle));}
+                    float cut=Mathf.SmoothStep(0,1,Mathf.InverseLerp(0,.38f,HexWorldGrid.Radius*Mathf.Sqrt(3)*.5f-edge));
+                    float bed=waterLevels.TryGetValue(cell,out float level)?Mathf.Min(h,level-CanalHydrology.BedDepth):h-.45f;
+                    h=Mathf.Lerp(h,bed,cut);
+                }
+            }
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }
         public float WaterLevelAt(Vector3 p)
@@ -30,23 +42,8 @@ namespace StarfieldEra
         }
         void BuildWaterLevels()
         {
-            waterLevels.Clear();var seen=new HashSet<Vector2Int>();
-            for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
-            {
-                var cell=new Vector2Int(c,r);if(!grid.Contains(cell)||grid.TerrainAt(cell)!=TerrainKind.Water||seen.Contains(cell))continue;
-                var queue=new Queue<Vector2Int>();var group=new List<Vector2Int>();queue.Enqueue(cell);seen.Add(cell);float shore=float.MaxValue;
-                while(queue.Count>0)
-                {
-                    var current=queue.Dequeue();group.Add(current);
-                    for(int edge=0;edge<6;edge++)
-                    {
-                        var neighbor=PastureFences.Neighbor(current,edge);
-                        if(grid.Contains(neighbor)&&grid.TerrainAt(neighbor)==TerrainKind.Water){if(seen.Add(neighbor))queue.Enqueue(neighbor);}
-                        else shore=Mathf.Min(shore,WorldRelief.LandHeight((HexWorldGrid.Center(current.x,current.y)+HexWorldGrid.Center(neighbor.x,neighbor.y))*.5f));
-                    }
-                }
-                foreach(var item in group)waterLevels[item]=Mathf.Max(.03f,shore-.1f);
-            }
+            waterLevels.Clear();var owner=GetComponentInParent<FarmGame>();
+            foreach(var pair in CanalHydrology.Resolve(grid,owner?owner.State.land:null))waterLevels[pair.Key]=pair.Value;
         }
         const float Step=.4f;
         public void Build(HexWorldGrid source,FarmWorld world)
