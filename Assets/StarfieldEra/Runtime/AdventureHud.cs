@@ -155,7 +155,7 @@ namespace StarfieldEra
             {
                 var f=game.Game.Fences.Inspected;if(f==null){Hide();return;}
                 title.text=f.gate?"牧场门":"木围栏";
-                body.text="坐标 ["+f.column+","+f.row+"]   边缘 "+(f.edge+1)+"\n\n"+(f.gate?(f.open?"状态：已打开。牧场未封闭。":"状态：已关闭，可围住牧场。") :"阻挡角色与动物，不占用整格。")+"\n\n费用：木材 "+(f.gate?4:2)+"\n拆除返还一半木材。";
+                body.text=(f.free?"连续围栏 · 长度 "+UnityEngine.Vector2.Distance(new UnityEngine.Vector2(f.ax,f.az),new UnityEngine.Vector2(f.bx,f.bz)).ToString("0.00")+" 米":"坐标 ["+f.column+","+f.row+"]   边缘 "+(f.edge+1))+"\n\n"+(f.gate?(f.open?"状态：已打开。牧场未封闭。":"状态：已关闭，可围住牧场。") :"阻挡角色与动物，不占用整格。")+"\n\n费用：木材 "+(f.gate?4:2)+"\n拆除返还一半木材。";
                 if(f.gate)Action(f.open?"关闭牧场门":"打开牧场门",0,game.Game.Fences.ToggleGate);
                 Action("拆除这段围栏",1,game.Game.Fences.RemoveInspected);
                 Action("继续建造围栏",2,()=>game.Game.Fences.Choose(0));

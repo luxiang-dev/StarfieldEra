@@ -14,6 +14,14 @@ namespace StarfieldEra
             =>Place("Environment/SupplyChest",parent,position,.85f,1.4f,0,"Local supply chest");
         public static Transform Character(string resource,Transform parent,Vector3 position,float height)
             =>Place("Environment/"+resource,parent,position,height,0,0,"Local "+resource);
+        public static Transform Fence(Transform parent,Vector3 a,Vector3 b,bool hideStart=false)
+        {
+            var prefab=Resources.Load<GameObject>("Environment/FantasyFence");if(!prefab)return null;
+            var root=Object.Instantiate(prefab,parent).transform;root.name="Local painted fence";
+            root.position=(a+b)*.5f;root.rotation=Quaternion.LookRotation((b-a).normalized);root.localScale=Vector3.one*WorldRelief.PlanarDistance(a,b);
+            if(hideStart)foreach(var part in root.GetComponentsInChildren<Transform>())if(part.name=="FencePostStart")part.gameObject.SetActive(false);
+            return root;
+        }
         public static bool ReplaceRock(Transform anchor,float height)
         {
             if(!Resources.Load<GameObject>("Environment/FieldRock"))return false;

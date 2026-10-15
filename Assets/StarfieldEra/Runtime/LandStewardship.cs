@@ -62,7 +62,7 @@ namespace StarfieldEra
         {
             var p=HexWorldGrid.Center(cell.x,cell.y);
             foreach(var b in game.State.adventure.buildings)if(BuildingFootprints.Cells(b).Contains(cell))return true;
-            foreach(var f in game.State.adventure.fences)if(cell==new Vector2Int(f.column,f.row)||cell==PastureFences.Neighbor(new Vector2Int(f.column,f.row),f.edge))return true;
+            if(game.Fences.Occupies(cell))return true;
             foreach(var e in game.World.Adventure.Encounters)if(WorldRelief.PlanarDistance(p,e.Position)<3.2f)return true;
             foreach(var plot in game.World.PlotPositions)if(WorldRelief.PlanarDistance(p,plot)<1.85f)return true;
             foreach(var root in game.World.GetComponentsInChildren<BuildingInspectable>())if(WorldRelief.PlanarDistance(p,root.transform.position)<4)return true;

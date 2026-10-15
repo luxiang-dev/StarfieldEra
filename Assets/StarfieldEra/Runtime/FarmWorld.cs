@@ -109,12 +109,15 @@ namespace StarfieldEra
                 if(LocalEnvironment.Rock(transform,new Vector3(x,0,z),.65f,i*137.5f))boundary.GetComponent<Renderer>().enabled=false;
                 else if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
             }
-            for (int i = 0; i < 8; i++)
+            if(Resources.Load<GameObject>("Environment/FantasyFence"))
             {
-                float x = -.4f + i * 1.05f;
-                Shape("Fence post", PrimitiveType.Cube, new Vector3(x, .43f, 1.9f), new Vector3(.12f, .85f, .12f), wood);
+                for(int i=0;i<7;i++)LocalEnvironment.Fence(transform,new Vector3(-.4f+i*1.05f,0,1.9f),new Vector3(-.4f+(i+1)*1.05f,0,1.9f),i>0);
             }
-            Shape("Fence rail", PrimitiveType.Cube, new Vector3(3.2f, .54f, 1.9f), new Vector3(7.5f, .14f, .12f), wood);
+            else
+            {
+                for(int i=0;i<8;i++)Shape("Fence post",PrimitiveType.Cube,new Vector3(-.4f+i*1.05f,.43f,1.9f),new Vector3(.12f,.85f,.12f),wood);
+                Shape("Fence rail",PrimitiveType.Cube,new Vector3(3.2f,.54f,1.9f),new Vector3(7.5f,.14f,.12f),wood);
+            }
 
             var water = Mat("Pond", "639C9D");
             HexGrid.PaintBox(new Vector3(-5.6f, 0, -4), new Vector3(4.4f, 0, 4), sand);
