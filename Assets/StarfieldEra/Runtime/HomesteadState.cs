@@ -18,9 +18,9 @@ namespace StarfieldEra
         {
             if(downtime>0){downtime--;return;}
             if(level==0||workers==0||damage>=100)return;
-            int raw=workers*(level+1);
+            int raw=workers*(level+1)*2;
             stock+=Math.Min(raw,Math.Max(0,capacity-stock));
-            if(processing){int amount=Math.Min(workers,Math.Min(stock/2,Math.Max(0,capacity-goods)));stock-=amount*2;goods+=amount;}
+            if(processing){int amount=Math.Min(workers*2,Math.Min(stock/2,Math.Max(0,capacity-goods)));stock-=amount*2;goods+=amount;}
         }
     }
     [Serializable] public sealed class HomesteadState

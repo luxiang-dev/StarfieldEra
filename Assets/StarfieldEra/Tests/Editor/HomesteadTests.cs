@@ -27,9 +27,9 @@ namespace StarfieldEra.Tests
         {
             var farm=new FarmState();var h=farm.adventure.homestead;
             h.lumber.level=2;h.lumber.workers=2;h.lumber.processing=true;
-            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(2));Assert.That(h.lumber.goods,Is.EqualTo(2));Assert.That(farm.adventure.wood,Is.Zero);
+            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(4));Assert.That(h.lumber.goods,Is.EqualTo(4));Assert.That(farm.adventure.wood,Is.Zero);
             h.Collect(farm.adventure,h.lumber,0);h.Collect(farm.adventure,h.lumber,0);
-            Assert.That(farm.adventure.wood,Is.EqualTo(2));Assert.That(h.planks,Is.EqualTo(2));
+            Assert.That(farm.adventure.wood,Is.EqualTo(4));Assert.That(h.planks,Is.EqualTo(4));
             h.lumber.stock=29;h.lumber.goods=30;farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(30));Assert.That(h.lumber.goods,Is.EqualTo(30));
             h.lumber.workers=0;h.lumber.stock=0;h.lumber.goods=0;farm.Sleep();Assert.That(h.lumber.stock+h.lumber.goods,Is.Zero);
         }

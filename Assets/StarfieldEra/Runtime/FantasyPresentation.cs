@@ -10,7 +10,7 @@ namespace StarfieldEra
         readonly List<Object> owned=new List<Object>();
         readonly List<Transform> billboards=new List<Transform>();
         readonly Dictionary<Material,Material> painted=new Dictionary<Material,Material>();
-        FarmWorld world;Sprite[] sprites;Material spriteMaterial;
+        FarmWorld world;Sprite[] sprites,buildingSprites;Material spriteMaterial;
         public void Build(FarmWorld source)
         {
             world=source;var texture=Resources.Load<Texture2D>("FantasyArt/StorybookProps");if(!texture)return;
@@ -75,12 +75,12 @@ namespace StarfieldEra
         float BoundsHeight(Transform root,float fallback)
         {var renderers=root.GetComponentsInChildren<Renderer>();if(renderers.Length==0)return fallback;var b=renderers[0].bounds;foreach(var r in renderers)b.Encapsulate(r.bounds);return b.size.y;}
         static void Hide(Transform root){foreach(var r in root.GetComponentsInChildren<Renderer>())r.enabled=false;}
-        Transform Add(Vector3 p,int spriteIndex,float height,string name)
+        Transform Add(Vector3 p,int spriteIndex,float height,string name,bool forceSprite=false)
         {
             Transform local=null;
-            if(spriteIndex==0||spriteIndex==1)local=LocalEnvironment.Tree(transform,p,height,p.x*17+p.z*13);
-            else if(spriteIndex==2)local=LocalEnvironment.Rock(transform,p,height,p.x*37+p.z*13);
-            else if(spriteIndex==3)local=LocalEnvironment.House(transform,p,height,name.Contains("farmhouse")?5.2f:4.5f);
+            if(!forceSprite&&(spriteIndex==0||spriteIndex==1))local=LocalEnvironment.Tree(transform,p,height,p.x*17+p.z*13);
+            else if(!forceSprite&&spriteIndex==2)local=LocalEnvironment.Rock(transform,p,height,p.x*37+p.z*13);
+            else if(!forceSprite&&spriteIndex==3)local=LocalEnvironment.House(transform,p,height,name.Contains("farmhouse")?5.2f:4.5f);
             if(local){local.name=name.Replace("Painted","Model");return local;}
             var go=new GameObject(name,typeof(SpriteRenderer));go.transform.SetParent(transform,false);go.transform.position=p;
             var renderer=go.GetComponent<SpriteRenderer>();renderer.sprite=sprites[spriteIndex];renderer.sharedMaterial=spriteMaterial;renderer.shadowCastingMode=ShadowCastingMode.TwoSided;renderer.receiveShadows=true;
@@ -92,8 +92,17 @@ namespace StarfieldEra
         {
             if(sprites==null||LocalEnvironment.HasBuildingVisual(root))return;
             foreach(var renderer in root.GetComponentsInChildren<Renderer>())if(renderer.name!="Terrace foundation")renderer.enabled=false;
-            var visual=Add(center,kind==1?2:3,kind==1?4.7f:kind==0?height*1.3f:height,"Painted constructed building");visual.SetParent(root,true);
-            if(kind==2){var sprite=visual.GetComponent<SpriteRenderer>();if(sprite)sprite.color=new Color(.88f,.94f,1);}
+            bool illustrated=kind==2||kind==5||kind>=7&&kind<=10;
+            var visual=Add(center,kind==1?2:3,kind==1?4.7f:kind==0?height*1.3f:height,"Painted constructed building",illustrated);visual.SetParent(root,true);
+            if(illustrated)
+            {
+                if(buildingSprites==null)
+                {
+                    var atlas=Resources.Load<Texture2D>("UI/BuildingIcons");
+                    if(atlas){buildingSprites=new Sprite[12];int w=atlas.width/4,h=atlas.height/4;for(int i=0;i<12;i++){buildingSprites[i]=Sprite.Create(atlas,new Rect(i%4*w,(3-i/4)*h,w,h),new Vector2(.5f,.04f),100);owned.Add(buildingSprites[i]);}}
+                }
+                if(buildingSprites!=null){var renderer=visual.GetComponent<SpriteRenderer>();renderer.sprite=buildingSprites[kind];visual.localScale=Vector3.one*(height/renderer.sprite.bounds.size.y);}
+            }
         }
         public void Stylize(Transform root)
         {

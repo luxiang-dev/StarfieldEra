@@ -95,14 +95,14 @@ namespace StarfieldEra
         {
             var rig=game.World.Adventure.CameraRig;
             Text(content,"当前视角："+PlayerCameraRig.ModeNames[rig.Mode],0,4,1100,42,26,cream);
-            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n中键拖动转身与抬头低头。\nWASD 前后移动和左右平移。"};
+            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n移动鼠标转身与抬头低头。\nWASD 前后移动和左右平移。"};
             for(int i=0;i<PlayerCameraRig.ModeNames.Length;i++)
             {
                 int mode=i;float x=i*291;var card=Box(content,"View card",x,66,275,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
                 Text(card,PlayerCameraRig.ModeNames[i],18,20,239,40,24,gold);Text(card,descriptions[i],18,78,239,144,18,cream);
                 Button(card,rig.Mode==i?"已启用":"使用此视角",18,238,239,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
             }
-            Text(content,"V 切换四种视角 · 中键转向 · Shift 奔跑 · 空格跳跃 · X 砍树",0,390,1120,38,19,cream);
+            Text(content,"V 切换视角 · 鼠标转向 · Esc 释放鼠标 · H 建造 · Shift 奔跑 · 空格跳跃",0,390,1120,38,19,cream);
             Button(content,"向左转动",0,452,270,48,()=>{rig.Turn(-45);Rebuild();});
             Button(content,"向右转动",292,452,270,48,()=>{rig.Turn(45);Rebuild();});
             Button(content,"拉近视野",584,452,270,48,()=>rig.AdjustZoom(-2));
@@ -140,7 +140,7 @@ namespace StarfieldEra
             }
             if(tutorialSection==0)
             {
-                TutorialCard(0,"探索与视野","W / A / S / D 或方向键\n按画面方向移动，角色自动转向。\nShift 奔跑 · 空格跳跃 · X 砍树\nV 切换第一人称，中键拖动转身。\n\n鼠标滚轮\n拉近或拉远地图视野。\n\nC · 切换随行伙伴\n需要先招募伙伴。\n\n鼠标左键\n查看建筑、牧场门或动物详情。");
+                TutorialCard(0,"探索与视野","W / A / S / D 或方向键\n按画面方向移动，角色自动转向。\nShift 奔跑 · 空格跳跃 · X 砍树\nV 切换第一人称，移动鼠标转身。\n\n鼠标滚轮\n拉近或拉远地图视野。\n\nC · 切换随行伙伴\n需要先招募伙伴。\n\n鼠标左键\n查看建筑、牧场门或动物详情。");
                 TutorialCard(590,"旅人手册","Tab · 打开手册；已打开时关闭\nI · 背包    Q · 任务\nL · 制作    M · 地图\n\n手册打开时，以上按键可切换页面；\n再次按当前页面的快捷键会关闭手册。\n\nEsc · 关闭手册或普通面板\n取消建造、围栏或钓鱼；战斗中不撤退。\n\n阅览手册时暂停角色移动。\n战斗中无法打开手册。");
             }
             else if(tutorialSection==1)
@@ -150,7 +150,7 @@ namespace StarfieldEra
             }
             else if(tutorialSection==2)
             {
-                TutorialCard(0,"G · 打开建造菜单","先关闭旅人手册，再按 G 进入建造。\n\n1. 选择林场、采石场、学舍或营地。\n2. 移动鼠标选择地图上的位置。\n3. 按 R 旋转建筑，每次转动六十度。\n4. 鼠标左键确认放置。\n\n绿色表示可建，红色表示不可建。\n全部占地都须有效，且资源足够。\n角色需在地块十步以内。\n\n鼠标右键或 Esc · 取消建造");
+                TutorialCard(0,"H · 打开建造菜单","先关闭旅人手册，再按 H 进入独立建造菜单。\n\n1. 选择林场、采石场、学舍或营地。\n2. 移动鼠标选择地图上的位置。\n3. 按 R 旋转建筑，每次转动六十度。\n4. 鼠标左键确认放置。\n\n绿色表示可建，红色表示不可建。\n全部占地都须有效，且资源足够。\n可在地图的稳定陆地自由选址。\n\n鼠标右键或 Esc · 取消建造");
                 TutorialCard(590,"围栏、牧场与拆除","在建造菜单中进入围栏与牧场。\n\n鼠标左键 · 放置围栏或牧场门\n每次点击放置一段，可连续点击铺设。\n鼠标右键或 Esc · 取消放置\n\n围住至少三格、关好门后，\n查看野猪详情并进行驯养。\n\n拆除模式：左键选择自建建筑或围栏。\n拆除建筑返还一半木材、石料和金币。\n点击建筑可查看占地、产出与拆除选项。");
             }
             else
@@ -273,7 +273,7 @@ namespace StarfieldEra
             else DetailAction(detail,block==""?"制作装备":block,0,()=>EquipmentCatalog.Craft(game,chosen),block=="");
             DetailAction(detail,blueprintView?"查看装备制作":"查看此装备图纸",1,()=>{blueprintView=!blueprintView;Rebuild();});
         }
-        public void OpenWorkshop(){buildingsView=false;selectedTech=0;Open("town");}
+        public void OpenWorkshop(){game.Construction.Choose(6);}
         void Town()
         {
             Chip("牧场与经营",360,()=>OpenHomestead(true),false);
@@ -281,11 +281,11 @@ namespace StarfieldEra
             Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",180,()=>{buildingsView=true;Rebuild();},buildingsView);
             if(buildingsView){Buildings();return;}
             for(int i=0;i<TechKeys.Length;i++){int id=i;Row(TechNames[i],TechOwned(i)?"已完成":TechCosts[i],i,()=>{selectedTech=id;Rebuild();},selectedTech==i,58);}
-            string[] effects={"每天木材+2，解锁书院、农场扩建和采集工具。","每天知识+2，解锁灌溉与观星台。","每天照料前6块农田，农场扩建后照料12块。","伙伴战斗伤害增加3。","解锁南侧12块农田，总共24块。","每天金币+6。","采集木材、石料每次额外获得2份。","每天知识+4，需书院和白岩守卫胜利。"};
-            string[] prerequisite={"无前置","工坊","书院","灌溉技术","工坊","农场扩建","工坊","书院、击败白岩守卫"};int tech=selectedTech;
-            bool near=game.Adventure.Target?.kind==EncounterKind.Town;
-            var detail=Details(TechNames[tech],TechOwned(tech)?"已完成":"城镇项目",effects[tech]+"\n\n费用："+TechCosts[tech]+"\n前置："+prerequisite[tech]+"\n\n木材 "+A.wood+" · 石料 "+A.stone+"\n金币 "+game.State.coins+" · 知识 "+A.science+"\n\n建设与研究需站在城镇议事牌旁。");
-            DetailAction(detail,TechOwned(tech)?"项目已完成":near?(tech==0?"建造工坊 · 木6 石4 金15":"建设或研究"):"请走近城镇议事牌",0,()=>game.Adventure.BuildOrResearch(TechKeys[tech]),!TechOwned(tech)&&near);
+            string[] effects={"每天木材+6，解锁书院、农场扩建和采集工具。","每天知识+6，解锁灌溉与观星台。","每天照料前6块农田，农场扩建后照料12块。","伙伴战斗伤害增加3。","解锁南侧12块农田，总共24块。","每天金币+18。","采集木材、石料每次额外获得2份。","每天知识+12，需书院和白岩守卫胜利。"};
+            string[] prerequisite={"无前置","工坊","书院","灌溉技术","工坊","工坊","工坊","书院、击败白岩守卫"};int tech=selectedTech;
+            bool near=game.Adventure.Target?.kind==EncounterKind.Town;bool physical=tech==0||tech==1||tech==5||tech==7;
+            var detail=Details(TechNames[tech],physical?"自由选址建筑":TechOwned(tech)?"已完成":"城镇项目",effects[tech]+"\n\n费用："+TechCosts[tech]+"\n前置："+prerequisite[tech]+"\n\n木材 "+A.wood+" · 石料 "+A.stone+"\n金币 "+game.State.coins+" · 知识 "+A.science+(physical?"\n\n点击后在地图自由选址，建成后解锁科技并逐座产出。":"\n\n研究需站在城镇议事牌旁。"));
+            DetailAction(detail,physical?"选择位置建造"+TechNames[tech]:TechOwned(tech)?"项目已完成":near?"开始研究":"请走近城镇议事牌",0,()=>game.Adventure.BuildOrResearch(TechKeys[tech]),physical||!TechOwned(tech)&&near);
             DetailAction(detail,"进入自由建造",1,game.Construction.Open);
         }
         bool TechOwned(int id)=>id==0?A.workshop:id==1?A.library:id==2?A.irrigation:id==3?A.lore:id==4?A.expandedFarm:id==5?A.mill:id==6?A.toolLevel>0:A.observatory;
@@ -297,7 +297,7 @@ namespace StarfieldEra
             for(int i=start;i<Mathf.Min(start+8,A.buildings.Count);i++){var b=A.buildings[i];string key=b.column+":"+b.row;Row(HexConstruction.Names[b.kind],"坐标 "+key+" · "+BuildingFootprints.Cells(b).Count+"格",i-start,()=>{buildingKey=key;confirmDemolition=false;Rebuild();},key==buildingKey,56);}
             Button(content,"上一页",0,528,116,38,()=>{buildingPage--;Rebuild();},buildingPage>0);Text(content,(buildingPage+1)+" / "+pages,128,536,140,28,17,cream);Button(content,"下一页",286,528,116,38,()=>{buildingPage++;Rebuild();},buildingPage<pages-1);
             if(selected==null){var empty=Details("尚无自建建筑","聚落档案","在地图上自由建造林场、采石场、学舍或营地。围栏沿六边形边缘布置。");DetailAction(empty,"开始建造",0,game.Construction.Open);return;}
-            var chosen=selected;string output=chosen.kind<2?"经营页分配村民后，每日生产；升级解锁加工":chosen.kind==2?"每日知识+1":chosen.kind==4?"村民容量+2（总上限9），可在房屋旁休息":chosen.kind==5?"各资源点库存容量+30（总上限120）":"可在营地制作料理与装备";
+            var chosen=selected;string output=BuildingEconomy.Description(chosen.kind);
             var detail=Details(HexConstruction.Names[chosen.kind],"占地 "+BuildingFootprints.Cells(chosen).Count+" 格",output+"\n\n坐标 ["+chosen.column+","+chosen.row+"]\n朝向 "+chosen.rotation*60+"度\n建造："+(chosen.builtDay>0?"第"+chosen.builtDay+"天":"旧存档建筑")+"\n\n拆除返还一半木材、石料和金币。"+(confirmDemolition?"\n\n确认拆除这座建筑？":""));
             DetailAction(detail,confirmDemolition?"确认拆除并返还资源":"拆除这座建筑",0,()=>{if(confirmDemolition){game.Construction.Demolish(new Vector2Int(chosen.column,chosen.row));confirmDemolition=false;buildingKey="";}else{confirmDemolition=true;Rebuild();}});
             DetailAction(detail,chosen.kind<2&&!confirmDemolition?"管理生产":confirmDemolition?"取消拆除":"继续建造",1,()=>{if(chosen.kind<2&&!confirmDemolition){OpenHomestead(false,game.Homestead.SiteIndex(chosen));return;}if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});

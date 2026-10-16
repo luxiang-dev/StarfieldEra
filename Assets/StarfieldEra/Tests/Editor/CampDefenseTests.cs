@@ -28,8 +28,8 @@ namespace StarfieldEra.Tests
             h.quarry.level=1;h.quarry.workers=1;h.quarry.stock=10;
             farm.adventure.defense.Begin(farm);farm.adventure.defense.Finish(farm,false);
             Assert.That(h.lumber.stock,Is.EqualTo(6));Assert.That(h.lumber.goods,Is.EqualTo(2));Assert.That(h.quarry.stock,Is.EqualTo(10));
-            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(6));Assert.That(h.lumber.downtime,Is.Zero);Assert.That(h.quarry.stock,Is.EqualTo(12));
-            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(8));
+            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(6));Assert.That(h.lumber.downtime,Is.Zero);Assert.That(h.quarry.stock,Is.EqualTo(14));
+            farm.Sleep();Assert.That(h.lumber.stock,Is.EqualTo(10));
         }
         [Test] public void TrapsArePaidOnceRejectDuplicatesAndCanReplaceSpentTraps()
         {

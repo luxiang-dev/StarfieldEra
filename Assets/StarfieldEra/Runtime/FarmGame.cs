@@ -30,7 +30,7 @@ namespace StarfieldEra
         public WeatherManager WeatherManager {get;private set;}
         public ManagementHud Management { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
-        public bool NearHouse => World != null && (Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f || State.adventure.buildings.Exists(b=>b.kind==4&&WorldRelief.PlanarDistance(World.Player.position,HexWorldGrid.Center(b.column,b.row))<4));
+        public bool NearHouse => World != null && (Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f || State.adventure.buildings.Exists(b=>(b.kind==4||b.kind==11)&&WorldRelief.PlanarDistance(World.Player.position,HexWorldGrid.Center(b.column,b.row))<4));
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
         public bool SaveHealthy { get; private set; } = true;
         public string SavePath => Path.Combine(Application.persistentDataPath, "farm-v1.json");
@@ -65,6 +65,7 @@ namespace StarfieldEra
             hud.transform.SetParent(transform);
             hud.Create(this, interfaceFont);
             Management=hud.GetComponent<ManagementHud>();
+            Construction.CreateMenu(hud.transform,interfaceFont);
             World.GetComponent<FantasyPresentation>()?.Stylize(transform);
             Weather = gameObject.AddComponent<WeatherSystem>();
             Weather.Initialize(this);
@@ -89,6 +90,12 @@ namespace StarfieldEra
             if(State.RecoverEnergy(Time.deltaTime))Persist();
             RecoverFromUnsafeGround();IsSprinting=false;
             var keyboard = Keyboard.current;
+            if(Construction.Menu&&Construction.Menu.IsOpen)
+            {
+                jumpRequested=false;
+                if(keyboard!=null&&(keyboard.escapeKey.wasPressedThisFrame||keyboard.hKey.wasPressedThisFrame||keyboard.gKey.wasPressedThisFrame))Construction.Menu.Close();
+                hud.Refresh();return;
+            }
             if(Management.IsOpen)
             {
                 jumpRequested=false;
@@ -99,7 +106,7 @@ namespace StarfieldEra
                     else if(keyboard.qKey.wasPressedThisFrame)Management.Toggle("tasks");
                     else if(keyboard.lKey.wasPressedThisFrame)Management.Toggle("craft");
                     else if(keyboard.mKey.wasPressedThisFrame)Management.Toggle("map");
-                    else if(keyboard.hKey.wasPressedThisFrame)Management.Toggle("land");
+                    else if(keyboard.hKey.wasPressedThisFrame)Construction.Open();
                     else if(keyboard.yKey.wasPressedThisFrame)Management.Toggle("weather");
                 }
                 hud.Refresh();return;
@@ -148,7 +155,7 @@ namespace StarfieldEra
                 if (keyboard.tabKey.wasPressedThisFrame) Management.Toggle("inventory");
                 if (keyboard.lKey.wasPressedThisFrame) Management.Toggle("craft");
                 if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
-                if (keyboard.hKey.wasPressedThisFrame) Management.Toggle("land");
+                if (keyboard.hKey.wasPressedThisFrame) Construction.Open();
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
                 if (keyboard.tKey.wasPressedThisFrame) CycleCrop();

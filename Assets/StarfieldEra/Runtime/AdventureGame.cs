@@ -126,23 +126,17 @@ namespace StarfieldEra
         public void BuildOrResearch(string action)
         {
             if(InBattle)return;
+            int building=action=="workshop"?6:action=="library"?7:action=="mill"?8:action=="observatory"?9:-1;
+            if(building>=0){Game.Construction.Choose(building);return;}
             if(Target==null||Target.kind!=EncounterKind.Town){Game.ShowMessage("请走到晨风村的城镇议事牌旁进行建设与研究。");return;}
             if(action!="lore"&&action!="tools"&&!EquipmentCatalog.Require(Game,"hammer"))return;
             bool valid=false;
             switch(action)
             {
-                case "workshop":
-                    if(!State.workshop&&State.wood>=6&&State.stone>=4&&Game.State.coins>=15){State.wood-=6;State.stone-=4;Game.State.coins-=15;State.workshop=true;valid=true;}break;
-                case "library":
-                    if(!State.library&&State.workshop&&State.wood>=8&&State.stone>=6&&Game.State.coins>=20){State.wood-=8;State.stone-=6;Game.State.coins-=20;State.library=true;valid=true;}break;
                 case "irrigation":
                     if(!State.irrigation&&State.library&&State.science>=4&&State.wood>=4&&State.stone>=4){State.science-=4;State.wood-=4;State.stone-=4;State.irrigation=true;valid=true;}break;
                 case "farm":
                     if(!State.expandedFarm&&State.workshop&&State.wood>=8&&State.stone>=6&&Game.State.coins>=30){State.wood-=8;State.stone-=6;Game.State.coins-=30;State.expandedFarm=true;valid=true;}break;
-                case "mill":
-                    if(!State.mill&&State.expandedFarm&&State.wood>=10&&State.stone>=8&&Game.State.coins>=30){State.wood-=10;State.stone-=8;Game.State.coins-=30;State.mill=true;valid=true;}break;
-                case "observatory":
-                    if(!State.observatory&&State.library&&State.mountainWon&&State.wood>=18&&State.stone>=14&&State.crystals>=3&&State.science>=20){State.wood-=18;State.stone-=14;State.crystals-=3;State.science-=20;State.observatory=true;valid=true;}break;
                 case "tools":
                     if(State.toolLevel==0&&State.workshop&&State.wood>=6&&State.stone>=5&&Game.State.coins>=25){State.wood-=6;State.stone-=5;Game.State.coins-=25;State.toolLevel=1;valid=true;}break;
                 case "lore":

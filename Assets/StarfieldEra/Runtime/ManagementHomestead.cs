@@ -78,7 +78,7 @@ namespace StarfieldEra
             var panel=Box(content,"Production details",654,8,506,574,cream);HudOrnament.Border(panel);
             Text(panel,h.SiteName(chosen),22,18,462,46,25,ink);
             string cost=s.level==0?"修复：木4 石4 金10":s.level==1?"升级：木8 石6 金20":s.level==2?"升级：木12 石10 金35 木板2 石砖2":"已达到三级上限";
-            Text(panel,(s.level==0?"废弃":s.level+"级 · 每人每日原料+"+(s.level+1))+"\n"+cost+"\n库存："+(kind==0?"木材":"石料")+s.stock+" / "+state.StorageCapacity(A)+" · "+(kind==0?"木板":"石砖")+s.goods+" / "+state.StorageCapacity(A)+"\n耐久："+(100-s.damage)+" / 100 · 停产"+s.downtime+"天\n加工："+(s.processing?"开启":"关闭")+" · 二级解锁\n每人每日消耗2原料，产出1成品。\n位置 ["+h.SitePosition(chosen).x.ToString("F0")+","+h.SitePosition(chosen).z.ToString("F0")+"] · "+(near?"可施工与领取":"需靠近六步内施工与领取"),22,82,462,210,18,ink);
+            Text(panel,(s.level==0?"废弃":s.level+"级 · 每人每日原料+"+((s.level+1)*2))+"\n"+cost+"\n库存："+(kind==0?"木材":"石料")+s.stock+" / "+state.StorageCapacity(A)+" · "+(kind==0?"木板":"石砖")+s.goods+" / "+state.StorageCapacity(A)+"\n耐久："+(100-s.damage)+" / 100 · 停产"+s.downtime+"天\n加工："+(s.processing?"开启":"关闭")+" · 二级解锁\n每人每日消耗4原料，产出2成品。\n位置 ["+h.SitePosition(chosen).x.ToString("F0")+","+h.SitePosition(chosen).z.ToString("F0")+"] · "+(near?"可施工与领取":"需靠近六步内施工与领取"),22,82,462,210,18,ink);
             Button(panel,s.level==0?"修复资源点":s.level<3?"升级资源点":"已经满级",22,302,462,42,()=>h.Improve(chosen),s.level<3&&near);
             Button(panel,"派驻村民 +1",22,354,224,42,()=>h.Assign(chosen,1),s.level>0&&s.workers<2&&state.UsedWorkers(A)<state.WorkerCapacity(A));
             Button(panel,"召回村民 -1",260,354,224,42,()=>h.Assign(chosen,-1),s.workers>0);

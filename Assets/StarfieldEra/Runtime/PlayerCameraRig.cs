@@ -14,6 +14,8 @@ namespace StarfieldEra
         static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
         static float Safe(float value,float fallback)=>Finite(value)?value:fallback;
         static bool Finite(Vector3 value)=>Finite(value.x)&&Finite(value.y)&&Finite(value.z);
+        bool lookCaptured=true;
+        public bool MouseLookActive {get;private set;}
         public int Mode {get;private set;}
         public bool IsFirstPerson=>Mode==3;
         readonly Dictionary<Renderer,ShadowCastingMode> bodyShadows=new Dictionary<Renderer,ShadowCastingMode>();
@@ -35,7 +37,7 @@ namespace StarfieldEra
             else RestoreBody();
         }
         void RestoreBody(){foreach(var item in bodyShadows)if(item.Key)item.Key.shadowCastingMode=item.Value;bodyShadows.Clear();}
-        void OnDisable(){RestoreBody();}
+        void OnDisable(){RestoreBody();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
         void OnEnable(){if(ready)UpdateBodyVisibility();}
         public void SetMode(int mode){Mode=Mathf.Clamp(mode,0,3);ApplyMode();pitch=targetPitch;Save();if(ready)Place(true);}
         public void Turn(float degrees){if(IsFirstPerson){game.World.Player.Rotate(0,degrees,0);return;}targetYaw=Mathf.Repeat(Safe(targetYaw,-35)+Mathf.Clamp(Safe(degrees,0),-180,180)+180,360)-180;Save();}
@@ -48,23 +50,26 @@ namespace StarfieldEra
             float dt=Mathf.Min(Time.unscaledDeltaTime,.1f);
             targetYaw=Safe(targetYaw,-35);targetPitch=Mathf.Clamp(Safe(targetPitch,43),IsFirstPerson?-75:12,IsFirstPerson?75:78);targetZoom=Mathf.Clamp(Safe(targetZoom,10),5,26);
             yaw=Safe(yaw,targetYaw);pitch=Safe(pitch,targetPitch);zoom=Safe(zoom,targetZoom);
-            bool inputAllowed=!(game.Management&&game.Management.IsOpen)&&!game.Adventure.InBattle&&!game.Expedition.Fishing;
+            bool inputAllowed=!(game.Management&&game.Management.IsOpen)&&!(game.Construction.Menu&&game.Construction.Menu.IsOpen)&&!game.Construction.Active&&!game.Land.Active&&!game.Fences.Active&&!(game.Night&&(game.Night.Active||game.Night.TrapPlacing))&&!game.Adventure.Hud.IsContextOpen&&!game.Adventure.InBattle&&!game.Expedition.Fishing;
+            var keyboard=Keyboard.current;var mouse=Mouse.current;
+            if(keyboard!=null&&keyboard.escapeKey.wasPressedThisFrame)lookCaptured=false;
+            if(inputAllowed&&mouse!=null&&mouse.leftButton.wasPressedThisFrame&&!(EventSystem.current&&EventSystem.current.IsPointerOverGameObject()))lookCaptured=true;
+            MouseLookActive=inputAllowed&&lookCaptured&&mouse!=null&&!Application.isMobilePlatform;
+            Cursor.lockState=MouseLookActive?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!MouseLookActive;
             if(inputAllowed)
             {
-                var keyboard=Keyboard.current;var mouse=Mouse.current;
                 if(keyboard!=null&&keyboard.vKey.wasPressedThisFrame)SetMode((Mode+1)%ModeNames.Length);
                 if(keyboard!=null&&keyboard.homeKey.wasPressedThisFrame)ResetView();
-                if(mouse!=null&&!(EventSystem.current&&EventSystem.current.IsPointerOverGameObject()))
+                if(mouse!=null)
                 {
                     float scroll=Safe(mouse.scroll.ReadValue().y,0);if(Mathf.Abs(scroll)>.01f)AdjustZoom(-scroll*.008f);
-                    if(mouse.middleButton.isPressed)
+                    if(MouseLookActive)
                     {
                         var delta=mouse.delta.ReadValue();
                         if(IsFirstPerson){game.World.Player.Rotate(0,Mathf.Clamp(Safe(delta.x,0),-400,400)*.18f,0);targetPitch=Mathf.Clamp(targetPitch-Mathf.Clamp(Safe(delta.y,0),-400,400)*.12f,-75,75);}
                         else {targetYaw=Mathf.Repeat(targetYaw+Mathf.Clamp(Safe(delta.x,0),-400,400)*.18f+180,360)-180;
-                        if(Mode!=1)targetPitch=Mathf.Clamp(targetPitch-Mathf.Clamp(Safe(delta.y,0),-400,400)*.12f,Mode==0?28:12,Mode==0?65:55);}
+                            targetPitch=Mathf.Clamp(targetPitch-Mathf.Clamp(Safe(delta.y,0),-400,400)*.12f,Mode==0?28:12,Mode==0?65:78);}
                     }
-                    if(mouse.middleButton.wasReleasedThisFrame)Save();
                 }
             }
             if(IsFirstPerson){pitch=Mathf.Lerp(pitch,targetPitch,1-Mathf.Exp(-15*dt));Place(false);return;}

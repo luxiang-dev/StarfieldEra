@@ -16,9 +16,11 @@ namespace StarfieldEra
 
     public sealed class HexConstruction : MonoBehaviour
     {
-        public static readonly string[] Names={"林场","采石场","学舍","营地","居民房屋","仓库"};
-        public static readonly int[] WoodCost={6,4,12,4,10,8}, StoneCost={4,8,6,2,6,8}, GoldCost={10,15,20,5,15,12};
-        public const int DemolitionKind=6;
+        public static readonly string[] Names={"林场","采石场","学舍","营地","居民房屋","仓库","工坊","书院","磨坊","观星台","市集","农场小屋"};
+        public static readonly int[] WoodCost={6,4,12,4,10,8,6,8,10,18,8,12}, StoneCost={4,8,6,2,6,8,4,6,8,14,4,8}, GoldCost={10,15,20,5,15,12,15,20,30,0,15,20};
+        public const int DemolitionKind=12;
+        public BuildingMenu Menu {get;private set;}
+        public void CreateMenu(Transform parent,TMPro.TMP_FontAsset font){Menu=parent.gameObject.AddComponent<BuildingMenu>();Menu.Initialize(Game,font);}
         public FarmGame Game { get; private set; }
         public bool Active => selected>=0;
         public string Hint { get; private set; }="";
@@ -67,14 +69,14 @@ namespace StarfieldEra
         public void Open()
         {
             if(Game.Adventure.InBattle||Game.Night&&Game.Night.Active)return;
-            Game.Night?.CancelTrap();Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();Game.Adventure.Hud.Show("build");
+            Game.Night?.CancelTrap();Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();Menu.Show();
         }
         public void Choose(int kind)
         {
             if(kind<0||kind>DemolitionKind||Game.Adventure.InBattle||Game.Night&&Game.Night.Active)return;
             if(!EquipmentCatalog.Require(Game,"hammer"))return;
             Game.Night?.CancelTrap();Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();selected=kind;rotation=0;
-            Game.Adventure.Hud.Hide();
+            Menu.Close();Game.Adventure.Hud.Hide();
             if(kind<Names.Length)preview=CreateModel(new PlacedBuilding{kind=kind,footprintVersion=1},true);
             else
             {
@@ -83,11 +85,12 @@ namespace StarfieldEra
                 preview.GetComponent<MeshRenderer>().sharedMaterial=invalidMaterial;
             }
             preview.SetActive(false);
-            Game.ShowMessage(kind==DemolitionKind?"拆除模式：点击自己建造的建筑，返还一半木材、石料和金币。":"已选择"+Names[kind]+"。");
+            Game.ShowMessage(kind==DemolitionKind?"拆除模式：点击自己建造的建筑，返还一半木材、石料和金币。":"已选择"+Names[kind]+"。"+BuildingEconomy.Description(kind));
         }
         public void Rotate() {if(Active&&selected<Names.Length)rotation=(rotation+1)%6;}
         public void Cancel()
         {
+            Menu?.Close();
             if(preview)Destroy(preview);
             preview=null;selected=-1;Hint="";hasTile=false;
             ClearInspection();
@@ -96,7 +99,7 @@ namespace StarfieldEra
         {
 
             if(Game.Night&&(Game.Night.Active||Game.Night.TrapPlacing))return;
-            if(Game.Management&&Game.Management.IsOpen)return;
+            if(Menu&&Menu.IsOpen||Game.Management&&Game.Management.IsOpen)return;
             if(Game.Expedition&&Game.Expedition.Fishing)return;
             if(Game.Adventure.InBattle||!WorldPointer.Available){if(Active)Cancel();return;}
             Vector2 pixel=WorldPointer.Position;
@@ -164,9 +167,10 @@ namespace StarfieldEra
             if(!EquipmentCatalog.Has(Game,"hammer")){explanation="需要持有建造锤";return false;}
             if(kind<0||kind>=Names.Length||facing<0||facing>=6){explanation="无效的建筑类型或朝向";return false;}
             var state=Game.State.adventure;
+            if((kind==7||kind==8)&&!state.workshop){explanation="需要先建造工坊";return false;}
+            if(kind==9&&(!state.library||!state.mountainWon)){explanation="需要书院并击败白岩守卫";return false;}
+            if(kind==9&&(state.crystals<3||state.science<20)){explanation="还需晶石3、知识20";return false;}
             if(state.buildings.Count>=80){explanation="已达到80座建筑上限";return false;}
-            var delta=HexWorldGrid.Center(cell.x,cell.y)-Game.World.Player.position;delta.y=0;
-            if(delta.magnitude>10){explanation="请走到地块十步以内建造";return false;}
             foreach(var tile in BuildingFootprints.Cells(cell,kind,facing))
                 if(!SiteAllowed(tile,null,false,out explanation))return false;
             if(state.wood<WoodCost[kind]||state.stone<StoneCost[kind]||Game.State.coins<GoldCost[kind]){explanation="木材、石料或金币不足";return false;}
@@ -186,8 +190,6 @@ namespace StarfieldEra
                 if(WorldRelief.PlanarDistance(pos,plot)<2.1f){explanation="占地覆盖农田或通道";return false;}
             foreach(var encounter in Game.World.Adventure.Encounters)
                 if(WorldRelief.PlanarDistance(pos,encounter.Position)<2.6f){explanation="占地覆盖人物或资源预留地";return false;}
-            var reserved=new[]{new Vector3(-5,0,5.3f),new Vector3(-10,0,8.5f),new Vector3(-1,0,11.5f),new Vector3(-10,0,13),new Vector3(-5,0,13.6f),new Vector3(-1,0,-12.5f),new Vector3(-14,0,13.5f),new Vector3(-28,0,-22)};
-            foreach(var point in reserved)if(WorldRelief.PlanarDistance(pos,point)<3.4f){explanation="占地覆盖村庄建筑预留地";return false;}
             foreach(var collider in Physics.OverlapSphere(pos+Vector3.up*.65f,1.15f))
                 if(!Game.World.HexGrid.IsGroundCollider(collider)&&!collider.isTrigger&&!(migrating&&collider==Game.World.Controller)){explanation="占地有障碍或角色";return false;}
             foreach(var tree in Game.World.GetComponentsInChildren<HarvestableTree>())if(!tree.Felled&&WorldRelief.PlanarDistance(pos,tree.transform.position)<1.4f){explanation="占地有树木，选择空地";return false;}
@@ -199,14 +201,16 @@ namespace StarfieldEra
             var state=Game.State.adventure;
             state.wood-=WoodCost[kind];state.stone-=StoneCost[kind];Game.State.coins-=GoldCost[kind];
             var building=new PlacedBuilding{kind=kind,column=cell.x,row=cell.y,rotation=Mathf.Clamp(facing,0,5),footprintVersion=1,builtDay=Game.State.day,operation=kind<2?new ResourceSiteState{level=1}:null};
-            state.buildings.Add(building);Claim(building);Spawn(building);
-            Game.Adventure.Commit("建成"+Names[kind]+"！"+(kind==4?"村民容量增加，可在房屋旁休息。":kind==5?"资源点库存容量增加。":"林场与采石场在经营页安排村民；学舍每天知+1，营地可料理。"));return true;
+            if(kind==9){state.crystals-=3;state.science-=20;}
+            state.buildings.Add(building);state.ReconcileTown();Claim(building);Spawn(building);
+            Game.Adventure.Commit("建成"+Names[kind]+"！"+BuildingEconomy.Description(kind));return true;
         }
         void Spawn(PlacedBuilding building)
         {
             var cell=new Vector2Int(building.column,building.row);
             var root=CreateModel(building,false);
             models[cell]=root;
+            if(building.kind==10)Game.World.Adventure.Encounters.Add(new WorldEncounter{kind=EncounterKind.Market,id=0,name="自建市集",root=root.transform});
             if(building.kind==3)Game.World.Adventure.Encounters.Add(new WorldEncounter{kind=EncounterKind.Camp,id=0,name="自建营地",root=root.transform});
         }
         public bool Demolish(Vector2Int cell)
@@ -220,7 +224,7 @@ namespace StarfieldEra
             if(building.kind<2)Game.State.adventure.homestead.Collect(Game.State.adventure,building.operation,building.kind);
 
             Game.State.adventure.wood+=WoodCost[building.kind]/2;Game.State.adventure.stone+=StoneCost[building.kind]/2;Game.State.coins+=GoldCost[building.kind]/2;
-            list.Remove(building);models.Remove(cell);Release(building);
+            list.Remove(building);Game.State.adventure.ReconcileTown();models.Remove(cell);Release(building);
             if(Inspected&&Inspected.record==building){Inspected=null;if(selectionOutline)Destroy(selectionOutline);Game.Adventure.Hud.Hide();}
             Game.World.Adventure.Encounters.RemoveAll(e=>e.root==root.transform);
             root.SetActive(false);Destroy(root);Game.Adventure.Commit("建筑已拆除，返还一半木材、石料和金币。");return true;
@@ -238,10 +242,11 @@ namespace StarfieldEra
             root.transform.rotation=Quaternion.Euler(0,-building.rotation*60,0);
             var art=StoreVisuals.Current;
             var prefab=art?(kind==0?art.workshop:kind==1?(art.quarry?art.quarry:art.rock):kind==2?art.library:art.market):null;
-            float width=building.footprintVersion==0?1.8f:kind<2?5.2f:kind==2?3.9f:3.2f;
+            float width=building.footprintVersion==0?1.8f:kind<2?5.2f:kind==6||kind==8?4.6f:kind==2?3.9f:3.2f;
             float height=building.footprintVersion==0?2:kind==1?3.1f:kind==3?2.6f:3.7f;
-            if(kind==3&&LocalEnvironment.Camp(root.transform,center,height,width)){}
-            else if(kind==4&&LocalEnvironment.House(root.transform,center,height,width)){}
+            if(kind==6&&LocalEnvironment.Workshop(root.transform,center)){}
+            else if(kind==3&&LocalEnvironment.Camp(root.transform,center,height,width)){}
+            else if((kind==4||kind==11)&&LocalEnvironment.House(root.transform,center,height,width)){}
             else if(LocalEnvironment.ProductionBuilding(kind,root.transform,center,height,width)){}
             else if(prefab){var visual=art.Place(prefab,root.transform,center,height,0,width);if(kind>=4&&visual)visual.rotation=root.transform.rotation;}
             else
@@ -275,7 +280,7 @@ namespace StarfieldEra
                 if(!ghost){var obstacle=root.AddComponent<BoxCollider>();obstacle.center=root.transform.InverseTransformPoint(new Vector3(pos.x,foundation+1.1f,pos.z));obstacle.size=new Vector3(1.65f,2.2f,1.65f);}
             }
             if(ghost)CreateOutline(cells,validMaterial).transform.SetParent(root.transform,true);
-            if(!ghost){var presentation=Game.World.GetComponent<FantasyPresentation>();if(presentation){presentation.Stylize(root.transform);if(kind<4)presentation.IllustrateBuilding(root.transform,kind,center,height);}}
+            if(!ghost){var presentation=Game.World.GetComponent<FantasyPresentation>();if(presentation){presentation.Stylize(root.transform);if(kind<4||kind>=5)presentation.IllustrateBuilding(root.transform,kind,center,height);}}
             return root;
         }
         GameObject CreateOutline(List<Vector2Int> cells,Material material)
@@ -311,10 +316,10 @@ namespace StarfieldEra
             {
                 string description=null;
                 if(node.name=="Farmhouse")description="小屋：休息恢复体力、购买种子、制作料理。";
-                else if(node.name=="Workshop")description="工坊：每天木材+2，解锁农场扩建、工具和书院。";
-                else if(node.name=="Library")description="书院：每天知识+2，解锁灌溉与观星台。";
-                else if(node.name=="Southern mill")description="磨坊：每天金币+6。";
-                else if(node.name=="Observatory")description="观星台：每天知识+4。";
+                else if(node.name=="Workshop")description="工坊：每天木材+6，解锁农场扩建、工具和书院。";
+                else if(node.name=="Library")description="书院：每天知识+6，解锁灌溉与观星台。";
+                else if(node.name=="Southern mill")description="磨坊：每天金币+18。";
+                else if(node.name=="Observatory")description="观星台：每天知识+12。";
                 else if(node.name=="Seed market"||node.name=="Village bakery"||node.name=="Outpost market")description="村庄市集建筑，商人和议事项目提供交易与建设。";
                 if(description==null)continue;
                 var info=node.gameObject.AddComponent<BuildingInspectable>();info.displayName=node.name=="Farmhouse"?"农场小屋":node.name=="Workshop"?"工坊":node.name=="Library"?"书院":node.name=="Southern mill"?"磨坊":node.name=="Observatory"?"观星台":"村庄市集";info.description=description;

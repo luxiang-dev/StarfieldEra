@@ -111,7 +111,7 @@ namespace StarfieldEra
             else if(mode=="town" || mode=="town2")
             {
                 title.text="晨风村 · 建设与科技";
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   知识 "+s.science+"\n\n工坊每天木+2，书院知识+2。\n农场扩建解锁南侧12块农田；磨坊每天金+6。\n工具让采集木材和石料每次多两份。\n观星台每天知识+4，需先击败白岩守卫。\n\n建设须站在城镇议事牌旁。";
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   知识 "+s.science+"\n\n工坊每天木+6，书院知识+6。\n农场扩建解锁南侧12块农田；磨坊每天金+18。\n工具让采集木材和石料每次多两份。\n观星台每天知识+12，需先击败白岩守卫。\n\n建设须站在城镇议事牌旁。";
                 if(mode=="town")
                 {
                     Action(s.workshop?"工坊 · 已建造":"工坊 · 木6 石4 金15",0,()=>game.BuildOrResearch("workshop"),!s.workshop);
@@ -140,7 +140,7 @@ namespace StarfieldEra
             {
                 title.text="六边形建造 · 自由选址";
                 body.rectTransform.sizeDelta=new Vector2(400,116);
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n林场和采石场需派驻村民；学舍每天知+1。\n绿色可建，红色不可建；R旋转。\n工坊在村内固定位置建设，需靠近议事牌。";
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n林场和采石场需派驻村民；学舍每天知+3。\n绿色可建，红色不可建；R旋转。\n工坊在村内固定位置建设，需靠近议事牌。";
                 AddButton(actions,s.workshop?"工坊 · 已建造 / 查看":"建造工坊 · 木6 石4 金15",new Vector2(24,-202),new Vector2(400,36),game.Game.Management.OpenWorkshop);
                 for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" "+BuildingFootprints.Counts[i]+"格 · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
                 Page("下一页 · 房屋、仓库与守卫",()=>Show("campbuild"));
@@ -200,7 +200,7 @@ namespace StarfieldEra
                 }
                 else
                 {
-                    string output=b.kind==0?"每天木材 +2":b.kind==1?"每天石料 +2":b.kind==2?"每天知识 +1":b.kind==4?"村民容量+2，可在房屋旁休息":b.kind==5?"各资源点库存容量+30":"可制作料理，需走近营地";
+                    string output=BuildingEconomy.Description(b.kind);
                     int count=BuildingFootprints.Cells(b).Count;
                     if(mode=="confirm-demolition")
                     {

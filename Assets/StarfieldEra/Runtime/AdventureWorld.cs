@@ -257,9 +257,9 @@ namespace StarfieldEra
 
         public void Refresh(AdventureState state)
         {
-            workshop.gameObject.SetActive(state.workshop);windmill.gameObject.SetActive(state.workshop&&!Resources.Load<GameObject>("Environment/Lumberyard"));
-            library.gameObject.SetActive(state.library);
-            mill.gameObject.SetActive(state.mill);observatory.gameObject.SetActive(state.observatory);
+            workshop.gameObject.SetActive(state.FixedTown(6));windmill.gameObject.SetActive(state.FixedTown(6)&&!Resources.Load<GameObject>("Environment/Lumberyard"));
+            library.gameObject.SetActive(state.FixedTown(7));
+            mill.gameObject.SetActive(state.FixedTown(8));observatory.gameObject.SetActive(state.FixedTown(9));
             for(int i=0;i<3;i++)creatures[i].gameObject.SetActive(!state.companions[i]);
             if(state.CompanionCount>0)
             {

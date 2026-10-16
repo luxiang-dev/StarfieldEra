@@ -5,7 +5,7 @@ namespace StarfieldEra
 {
     public static class BuildingFootprints
     {
-        public static readonly int[] Counts={7,7,4,3,4,4};
+        public static readonly int[] Counts={7,7,4,3,4,4,7,4,7,4,4,4};
         static readonly Vector2Int[] Ring={new Vector2Int(0,0),new Vector2Int(1,0),new Vector2Int(1,-1),new Vector2Int(0,-1),new Vector2Int(-1,0),new Vector2Int(-1,1),new Vector2Int(0,1)};
         static readonly Vector2Int[] School={new Vector2Int(0,0),new Vector2Int(1,0),new Vector2Int(0,1),new Vector2Int(1,1)};
         static readonly Vector2Int[] Camp={new Vector2Int(0,0),new Vector2Int(1,0),new Vector2Int(0,1)};
@@ -14,7 +14,7 @@ namespace StarfieldEra
             : Cells(new Vector2Int(building.column,building.row),building.kind,building.rotation);
         public static List<Vector2Int> Cells(Vector2Int anchor,int kind,int facing)
         {
-            var offsets=kind<2?Ring:(kind==2||kind>=4)?School:Camp;
+            var offsets=(kind<2||kind==6||kind==8)?Ring:(kind==2||kind>=4)?School:Camp;
             int q=anchor.x-(anchor.y-(anchor.y&1))/2,r=anchor.y;
             var result=new List<Vector2Int>();
             foreach(var offset in offsets)
