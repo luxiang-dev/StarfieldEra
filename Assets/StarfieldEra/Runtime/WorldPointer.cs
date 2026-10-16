@@ -10,11 +10,13 @@ namespace StarfieldEra
     {
         static int frame = -1;
         static Vector2 position;
-        static bool pressed, blocked;
+        static bool pressed, blocked, clicked, trackingClick;
+        static float dragTravel;
         static readonly List<RaycastResult> hits = new List<RaycastResult>();
         public static bool Available => Mouse.current != null || Touchscreen.current != null;
         public static Vector2 Position { get { Read(); return position; } }
         public static bool Pressed { get { Read(); return pressed; } }
+        public static bool Clicked { get { Read(); return clicked; } }
         public static bool Blocked { get { Read(); return blocked; } }
         public static bool Cancel => Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
         static bool OverUI(Vector2 point)
@@ -28,7 +30,7 @@ namespace StarfieldEra
         {
             if (frame == Time.frameCount) return;
             frame = Time.frameCount;
-            pressed = false;
+            pressed = clicked = false;
             blocked = true;
             if (Touchscreen.current != null)
                 foreach (var touch in Touchscreen.current.touches)
@@ -36,7 +38,7 @@ namespace StarfieldEra
                     if (!touch.press.isPressed && !touch.press.wasPressedThisFrame) continue;
                     var point = touch.position.ReadValue();
                     if (OverUI(point)) continue;
-                    position = point; pressed = touch.press.wasPressedThisFrame; blocked = false;
+                    position = point; clicked = pressed = touch.press.wasPressedThisFrame; blocked = false;
                     return;
                 }
             if (Application.isMobilePlatform) return;
@@ -44,6 +46,11 @@ namespace StarfieldEra
             position = Mouse.current.position.ReadValue();
             pressed = Mouse.current.leftButton.wasPressedThisFrame;
             blocked = OverUI(position);
+            if(pressed){trackingClick=!blocked;dragTravel=0;}
+            if(trackingClick)dragTravel+=Mouse.current.delta.ReadValue().magnitude;
+            if(Mouse.current.leftButton.wasReleasedThisFrame)
+            {clicked=trackingClick&&!blocked&&dragTravel<=5;trackingClick=false;}
+            else if(!Mouse.current.leftButton.isPressed)trackingClick=false;
         }
     }
 }

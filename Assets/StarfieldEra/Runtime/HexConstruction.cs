@@ -109,7 +109,7 @@ namespace StarfieldEra
             if(Game.Fences&&Game.Fences.Active)return;
             if(!Active)
             {
-                if(!blocked&&WorldPointer.Pressed)
+                if(!blocked&&WorldPointer.Clicked)
                 {
                     if(Physics.Raycast(ray,out var hit,150,~0,QueryTriggerInteraction.Collide))
                     {

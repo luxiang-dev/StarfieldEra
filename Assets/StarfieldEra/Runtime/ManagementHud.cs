@@ -95,14 +95,14 @@ namespace StarfieldEra
         {
             var rig=game.World.Adventure.CameraRig;
             Text(content,"当前视角："+PlayerCameraRig.ModeNames[rig.Mode],0,4,1100,42,26,cream);
-            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n移动鼠标转身与抬头低头。\nWASD 前后移动和左右平移。"};
+            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n按住鼠标左键拖动转身与抬头低头。\nWASD 前后移动和左右平移。"};
             for(int i=0;i<PlayerCameraRig.ModeNames.Length;i++)
             {
                 int mode=i;float x=i*291;var card=Box(content,"View card",x,66,275,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
                 Text(card,PlayerCameraRig.ModeNames[i],18,20,239,40,24,gold);Text(card,descriptions[i],18,78,239,144,18,cream);
                 Button(card,rig.Mode==i?"已启用":"使用此视角",18,238,239,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
             }
-            Text(content,"V 切换视角 · 鼠标转向 · Esc 释放鼠标 · H 建造 · Shift 奔跑 · 空格跳跃",0,390,1120,38,19,cream);
+            Text(content,"V 切换视角 · 左键拖动转向 · H 建造 · Shift 奔跑 · 空格跳跃",0,390,1120,38,19,cream);
             Button(content,"向左转动",0,452,270,48,()=>{rig.Turn(-45);Rebuild();});
             Button(content,"向右转动",292,452,270,48,()=>{rig.Turn(45);Rebuild();});
             Button(content,"拉近视野",584,452,270,48,()=>rig.AdjustZoom(-2));
@@ -140,7 +140,7 @@ namespace StarfieldEra
             }
             if(tutorialSection==0)
             {
-                TutorialCard(0,"探索与视野","W / A / S / D 或方向键\n按画面方向移动，角色自动转向。\nShift 奔跑 · 空格跳跃 · X 砍树\nV 切换第一人称，移动鼠标转身。\n\n鼠标滚轮\n拉近或拉远地图视野。\n\nC · 切换随行伙伴\n需要先招募伙伴。\n\n鼠标左键\n查看建筑、牧场门或动物详情。");
+                TutorialCard(0,"探索与视野","W / A / S / D 或方向键\n按画面方向移动，角色自动转向。\nShift 奔跑 · 空格跳跃 · X 砍树\nV 切换第一人称，按住鼠标左键拖动转身。\n\n鼠标滚轮\n拉近或拉远地图视野。\n\nC · 切换随行伙伴\n需要先招募伙伴。\n\n鼠标左键\n查看建筑、牧场门或动物详情。");
                 TutorialCard(590,"旅人手册","Tab · 打开手册；已打开时关闭\nI · 背包    Q · 任务\nL · 制作    M · 地图\n\n手册打开时，以上按键可切换页面；\n再次按当前页面的快捷键会关闭手册。\n\nEsc · 关闭手册或普通面板\n取消建造、围栏或钓鱼；战斗中不撤退。\n\n阅览手册时暂停角色移动。\n战斗中无法打开手册。");
             }
             else if(tutorialSection==1)

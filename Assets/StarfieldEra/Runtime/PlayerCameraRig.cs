@@ -14,7 +14,7 @@ namespace StarfieldEra
         static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
         static float Safe(float value,float fallback)=>Finite(value)?value:fallback;
         static bool Finite(Vector3 value)=>Finite(value.x)&&Finite(value.y)&&Finite(value.z);
-        bool lookCaptured=true;
+        bool lookCaptured;
         public bool MouseLookActive {get;private set;}
         public int Mode {get;private set;}
         public bool IsFirstPerson=>Mode==3;
@@ -53,9 +53,12 @@ namespace StarfieldEra
             bool inputAllowed=!(game.Management&&game.Management.IsOpen)&&!(game.Construction.Menu&&game.Construction.Menu.IsOpen)&&!game.Construction.Active&&!game.Land.Active&&!game.Fences.Active&&!(game.Night&&(game.Night.Active||game.Night.TrapPlacing))&&!game.Adventure.Hud.IsContextOpen&&!game.Adventure.InBattle&&!game.Expedition.Fishing;
             var keyboard=Keyboard.current;var mouse=Mouse.current;
             if(keyboard!=null&&keyboard.escapeKey.wasPressedThisFrame)lookCaptured=false;
-            if(inputAllowed&&mouse!=null&&mouse.leftButton.wasPressedThisFrame&&!(EventSystem.current&&EventSystem.current.IsPointerOverGameObject()))lookCaptured=true;
-            MouseLookActive=inputAllowed&&lookCaptured&&mouse!=null&&!Application.isMobilePlatform;
-            Cursor.lockState=MouseLookActive?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!MouseLookActive;
+            if(mouse!=null&&mouse.leftButton.wasPressedThisFrame)lookCaptured=inputAllowed&&!WorldPointer.Blocked;
+            if(!inputAllowed||mouse==null||!mouse.leftButton.isPressed)lookCaptured=false;
+            bool wasLooking=MouseLookActive;
+            MouseLookActive=inputAllowed&&lookCaptured&&mouse!=null&&mouse.leftButton.isPressed&&!Application.isMobilePlatform;
+            if(wasLooking&&!MouseLookActive){targetYaw=yaw;targetPitch=pitch;Save();}
+            Cursor.lockState=MouseLookActive?CursorLockMode.Confined:CursorLockMode.None;Cursor.visible=!MouseLookActive;
             if(inputAllowed)
             {
                 if(keyboard!=null&&keyboard.vKey.wasPressedThisFrame)SetMode((Mode+1)%ModeNames.Length);
