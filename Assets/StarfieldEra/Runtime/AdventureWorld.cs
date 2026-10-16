@@ -174,8 +174,11 @@ namespace StarfieldEra
             foreach(var pos in new[]{new Vector3(-25,0,-19),new Vector3(22,0,-22),new Vector3(-27,0,20)})
             {
                 var camp=Marker("营地 · 料理与补给",pos,EncounterKind.Camp,0);
-                world.Cone("Camp tent",pos+Vector3.forward,new Vector3(2,1.7f,2),gold).SetParent(camp,true);
-                world.Shape("Campfire",PrimitiveType.Cylinder,pos+Vector3.up*.1f,new Vector3(.7f,.1f,.7f),masonry).SetParent(camp,true);
+                if(!LocalEnvironment.Camp(camp,pos,2.6f,3.2f))
+                {
+                    world.Cone("Camp tent",pos+Vector3.forward,new Vector3(2,1.7f,2),gold).SetParent(camp,true);
+                    world.Shape("Campfire",PrimitiveType.Cylinder,pos+Vector3.up*.1f,new Vector3(.7f,.1f,.7f),masonry).SetParent(camp,true);
+                }
             }
             var summit=Marker("白岩首领 · 野蛮人",new Vector3(27,0,26),EncounterKind.Guardian,1);Creature(summit,4);
             var mire=Marker("幽光守卫",new Vector3(-29,0,23),EncounterKind.Guardian,2);Creature(mire,3);
@@ -209,7 +212,12 @@ namespace StarfieldEra
             world.Shape("Village door",PrimitiveType.Cube,pos+new Vector3(0,.7f,-size*.41f),new Vector3(.65f,1.4f,.08f),timber).SetParent(root,true);
             world.Shape("Village window",PrimitiveType.Cube,pos+new Vector3(-size*.3f,1.3f,-size*.41f),new Vector3(.5f,.6f,.09f),blue).SetParent(root,true);
             var art=StoreVisuals.Current;
-            if(art) art.Replace(name=="Workshop"||name=="Southern mill"?art.workshop:name=="Library"||name=="Observatory"?art.library:art.market,root,3.1f);
+            if(name=="Workshop"&&Resources.Load<GameObject>("Environment/Workshop"))
+            {
+                foreach(var renderer in root.GetComponentsInChildren<Renderer>())renderer.enabled=false;
+                LocalEnvironment.Workshop(root,pos);
+            }
+            else if(art) art.Replace(name=="Workshop"||name=="Southern mill"?art.workshop:name=="Library"||name=="Observatory"?art.library:art.market,root,3.1f);
             return root;
         }
         Transform Marker(string label,Vector3 pos,EncounterKind kind,int id)

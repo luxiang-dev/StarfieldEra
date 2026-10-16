@@ -33,7 +33,10 @@ namespace StarfieldEra
                 var center=centers[region];var sign=Prop(center+Vector3.left*5,2,1.8f,"Outer trail sign");
                 if(sign)WorldNameplate.Create(sign,"荒野营地",game.interfaceFont,game.World.View,2.2f);
                 var camp=Anchor("荒野营地 · 料理与补给",center,EncounterKind.Camp,0);
-                var tent=game.World.Cone("Outer camp tent",camp.position+Vector3.up*.05f,new Vector3(2,1.8f,2),game.World.Mat("Outer camp canvas","B9A274"));tent.SetParent(camp,true);
+                if(!LocalEnvironment.Camp(camp,camp.position))
+                {
+                    var tent=game.World.Cone("Outer camp tent",camp.position+Vector3.up*.05f,new Vector3(2,1.8f,2),game.World.Mat("Outer camp canvas","B9A274"));tent.SetParent(camp,true);
+                }
                 for(int i=0;i<4;i++)
                 {
                     var p=center+new Vector3((i-1.5f)*4,0,6+i%2*3);

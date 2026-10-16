@@ -240,7 +240,8 @@ namespace StarfieldEra
             var prefab=art?(kind==0?art.workshop:kind==1?(art.quarry?art.quarry:art.rock):kind==2?art.library:art.market):null;
             float width=building.footprintVersion==0?1.8f:kind<2?5.2f:kind==2?3.9f:3.2f;
             float height=building.footprintVersion==0?2:kind==1?3.1f:kind==3?2.6f:3.7f;
-            if(kind==4&&LocalEnvironment.House(root.transform,center,height,width)){}
+            if(kind==3&&LocalEnvironment.Camp(root.transform,center,height,width)){}
+            else if(kind==4&&LocalEnvironment.House(root.transform,center,height,width)){}
             else if(LocalEnvironment.ProductionBuilding(kind,root.transform,center,height,width)){}
             else if(prefab){var visual=art.Place(prefab,root.transform,center,height,0,width);if(kind>=4&&visual)visual.rotation=root.transform.rotation;}
             else

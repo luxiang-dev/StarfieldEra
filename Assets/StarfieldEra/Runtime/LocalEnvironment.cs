@@ -30,15 +30,22 @@ namespace StarfieldEra
             =>Place("Environment/NightWolf",parent,position,.95f,2.1f,0,"Night raid wolf");
         public static Transform Pillar(Transform parent,Vector3 position,float height,float yaw=0)
             =>Place("Environment/AncientPillar",parent,position,height,1.8f,yaw,"Local ancient pillar");
+        public static Transform Workshop(Transform parent,Vector3 position)
+            =>Place("Environment/Workshop",parent,position,3.1f,4.6f,0,"Local workshop");
+        public static Transform Camp(Transform parent,Vector3 position,float height=2.6f,float width=3.2f)
+        {
+            var visual=Place("Environment/Camp",parent,position,height,width,0,"Local camp");
+            if(visual)visual.rotation=parent.rotation;return visual;
+        }
         public static Transform ProductionBuilding(int kind,Transform parent,Vector3 position,float height,float width)
         {
             if(kind>1)return null;
             var visual=Place("Environment/"+(kind==0?"Lumberyard":"Quarry"),parent,position,height,width,0,kind==0?"Local lumberyard":"Local quarry");
             if(visual)visual.rotation=parent.rotation;return visual;
         }
-        public static bool HasProductionVisual(Transform root)
+        public static bool HasBuildingVisual(Transform root)
         {
-            foreach(var node in root.GetComponentsInChildren<Transform>(true))if(node.name=="Local lumberyard"||node.name=="Local quarry")return true;
+            foreach(var node in root.GetComponentsInChildren<Transform>(true))if(node.name=="Local lumberyard"||node.name=="Local quarry"||node.name=="Local workshop"||node.name=="Local camp")return true;
             return false;
         }
         public static Transform Fence(Transform parent,Vector3 a,Vector3 b,bool hideStart=false)

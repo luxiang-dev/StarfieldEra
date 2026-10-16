@@ -53,6 +53,7 @@ namespace StarfieldEra
         {
             previousRevision=game.Revision;previousDay=game.Game.State.day;
             for(int i=actions.childCount-1;i>=0;i--) {actions.GetChild(i).gameObject.SetActive(false);Destroy(actions.GetChild(i).gameObject);}
+            body.rectTransform.sizeDelta=new Vector2(400,210);
             var s=game.State;
             fishingTrack.gameObject.SetActive(mode=="fishing");
             if(mode=="fishing")
@@ -138,7 +139,9 @@ namespace StarfieldEra
             else if(mode=="build")
             {
                 title.text="六边形建造 · 自由选址";
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场和采石场需派驻村民；学舍每天知+1。\n林场、采石场7格；学舍4格，营地3格。\n\n绿色可建，红色不可建。\n全部占地须可建，点击建筑查看详情。";
+                body.rectTransform.sizeDelta=new Vector2(400,116);
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n林场和采石场需派驻村民；学舍每天知+1。\n绿色可建，红色不可建；R旋转。\n工坊在村内固定位置建设，需靠近议事牌。";
+                AddButton(actions,s.workshop?"工坊 · 已建造 / 查看":"建造工坊 · 木6 石4 金15",new Vector2(24,-202),new Vector2(400,36),game.Game.Management.OpenWorkshop);
                 for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" "+BuildingFootprints.Counts[i]+"格 · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
                 Page("下一页 · 房屋、仓库与守卫",()=>Show("campbuild"));
             }

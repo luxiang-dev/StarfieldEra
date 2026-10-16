@@ -273,6 +273,7 @@ namespace StarfieldEra
             else DetailAction(detail,block==""?"制作装备":block,0,()=>EquipmentCatalog.Craft(game,chosen),block=="");
             DetailAction(detail,blueprintView?"查看装备制作":"查看此装备图纸",1,()=>{blueprintView=!blueprintView;Rebuild();});
         }
+        public void OpenWorkshop(){buildingsView=false;selectedTech=0;Open("town");}
         void Town()
         {
             Chip("牧场与经营",360,()=>OpenHomestead(true),false);
@@ -284,7 +285,7 @@ namespace StarfieldEra
             string[] prerequisite={"无前置","工坊","书院","灌溉技术","工坊","农场扩建","工坊","书院、击败白岩守卫"};int tech=selectedTech;
             bool near=game.Adventure.Target?.kind==EncounterKind.Town;
             var detail=Details(TechNames[tech],TechOwned(tech)?"已完成":"城镇项目",effects[tech]+"\n\n费用："+TechCosts[tech]+"\n前置："+prerequisite[tech]+"\n\n木材 "+A.wood+" · 石料 "+A.stone+"\n金币 "+game.State.coins+" · 知识 "+A.science+"\n\n建设与研究需站在城镇议事牌旁。");
-            DetailAction(detail,TechOwned(tech)?"项目已完成":near?"建设或研究":"请走近城镇议事牌",0,()=>game.Adventure.BuildOrResearch(TechKeys[tech]),!TechOwned(tech)&&near);
+            DetailAction(detail,TechOwned(tech)?"项目已完成":near?(tech==0?"建造工坊 · 木6 石4 金15":"建设或研究"):"请走近城镇议事牌",0,()=>game.Adventure.BuildOrResearch(TechKeys[tech]),!TechOwned(tech)&&near);
             DetailAction(detail,"进入自由建造",1,game.Construction.Open);
         }
         bool TechOwned(int id)=>id==0?A.workshop:id==1?A.library:id==2?A.irrigation:id==3?A.lore:id==4?A.expandedFarm:id==5?A.mill:id==6?A.toolLevel>0:A.observatory;
