@@ -19,7 +19,7 @@ namespace StarfieldEra
     public sealed class WorldInspection:MonoBehaviour
     {
         FarmGame game;TMP_FontAsset font;RectTransform panel;TextMeshProUGUI title,description,selectionCount;UnityEngine.UI.Button primary,secondary,previous,next,clearButton;
-        LineRenderer ring;Material ringMaterial;WorldChoice selected;readonly List<WorldChoice> choices=new List<WorldChoice>();float refreshAt;
+        WorldChoice selected;readonly List<WorldChoice> choices=new List<WorldChoice>();float refreshAt;
         public bool HasSelection=>selected!=null;
         public Transform SelectedRoot=>HasSelection?selected.root:null;
         public string SelectedName=>HasSelection?selected.Name:"";
@@ -33,10 +33,10 @@ namespace StarfieldEra
             description=Label(panel,"",20,112,398,192,17);description.overflowMode=TextOverflowModes.Ellipsis;
             primary=Button(panel,"",20,316,400,42,InteractSelected);secondary=Button(panel,"",20,368,400,42,SecondaryAction);
             previous=Button(panel,"上一目标",20,426,124,38,()=>Cycle(-1));next=Button(panel,"下一目标",158,426,124,38,()=>Cycle(1));clearButton=Button(panel,"取消选择",296,426,124,38,Clear);
-            ringMaterial=game.World.Mat("Selected world object gold","F4CF77");var circle=new GameObject("Selected object ring",typeof(LineRenderer));circle.transform.SetParent(transform,false);ring=circle.GetComponent<LineRenderer>();ring.sharedMaterial=ringMaterial;ring.positionCount=40;ring.loop=true;ring.widthMultiplier=.065f;ring.useWorldSpace=true;ring.gameObject.SetActive(false);
+            gameObject.AddComponent<WorldSelectionVisual>().Initialize(game,this,font);
             RefreshPickVolumes();panel.gameObject.SetActive(false);
         }
-        public void Clear(){selected=null;choices.Clear();if(panel)panel.gameObject.SetActive(false);if(ring)ring.gameObject.SetActive(false);}
+        public void Clear(){selected=null;choices.Clear();if(panel)panel.gameObject.SetActive(false);}
         public void Select(GameObject target)
         {if(!target){Clear();return;}var choice=Resolve(target.transform)??new WorldChoice{root=target.transform};choices.Clear();choices.Add(choice);selected=choice;RefreshPanel();}
         public void RebindBuilding(PlacedBuilding record,BuildingInspectable info)
@@ -60,7 +60,6 @@ namespace StarfieldEra
             bool busy=game.Management.IsOpen||game.Construction.Menu.IsOpen||game.Construction.Active||game.Fences.Active||game.Land.Active||game.Night.TrapPlacing||game.Adventure.InBattle||game.Expedition.Fishing||game.Adventure.Hud.IsContextOpen;
             if(!busy&&WorldPointer.Available&&!WorldPointer.Blocked&&WorldPointer.Clicked)Pick(game.World.View.ScreenPointToRay(WorldPointer.Position));
             if(panel)panel.gameObject.SetActive(!busy&&HasSelection);
-            if(ring)ring.gameObject.SetActive(!busy&&HasSelection&&selected.Alive);
             if(!busy&&HasSelection)RefreshPanel();
         }
         void RefreshPickVolumes()
@@ -160,13 +159,7 @@ namespace StarfieldEra
             bool water=selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true||selected.tree&&selected.tree.planted;
             secondary.gameObject.SetActive(water);secondary.GetComponentInChildren<TextMeshProUGUI>().text="为选中目标浇水 · R";secondary.interactable=Ready;
             previous.interactable=next.interactable=choices.Count>1;FitActions(water);
-            var center=Position(selected);float radius=selected.building?1.5f:selected.tree?.7f:selected.plot>=0?.8f:.55f;
-            if(selected.tree||selected.rock||selected.rabbit||selected.animal||selected.building||selected.fence||selected.encounter!=null||selected.threat!=null)
-            {
-                var renderers=selected.root.GetComponentsInChildren<Renderer>().Where(r=>r.enabled&&!(r is LineRenderer)&&!r.GetComponent<TMP_Text>()&&!r.GetComponent<TMP_SubMesh>()).ToArray();
-                if(renderers.Length>0){var bounds=renderers[0].bounds;foreach(var renderer in renderers)bounds.Encapsulate(renderer.bounds);radius=Mathf.Clamp(Mathf.Max(bounds.size.x,bounds.size.z)*.5f+.18f,.55f,3);}
-            }
-            for(int i=0;i<ring.positionCount;i++){float a=i*Mathf.PI*2/ring.positionCount;ring.SetPosition(i,game.World.HexGrid.SurfacePoint(center+new Vector3(Mathf.Cos(a),0,Mathf.Sin(a))*radius,.08f));}
+
         }
         void FitActions(bool water)
         {
@@ -211,6 +204,5 @@ namespace StarfieldEra
         {var t=new GameObject("Label",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();t.rectTransform.SetParent(parent,false);t.rectTransform.anchorMin=t.rectTransform.anchorMax=t.rectTransform.pivot=new Vector2(0,1);t.rectTransform.anchoredPosition=new Vector2(x,-y);t.rectTransform.sizeDelta=new Vector2(w,h);t.font=font;t.fontSize=size;t.color=UITheme.Paper;t.text=text;t.raycastTarget=false;return t;}
         UnityEngine.UI.Button Button(Transform parent,string name,float x,float y,float w,float h,UnityEngine.Events.UnityAction callback)
         {var r=Box(parent,name,w,h);r.anchoredPosition=new Vector2(x,-y);r.GetComponent<UnityEngine.UI.Image>().color=UITheme.Card;var b=r.gameObject.AddComponent<UnityEngine.UI.Button>();b.targetGraphic=r.GetComponent<UnityEngine.UI.Image>();b.onClick.AddListener(callback);UITheme.Button(b);Label(r,name,4,3,w-8,h-6,17).alignment=TextAlignmentOptions.Center;return b;}
-        void OnDestroy(){if(ringMaterial)Destroy(ringMaterial);}
     }
 }
