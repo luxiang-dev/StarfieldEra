@@ -54,7 +54,7 @@ namespace StarfieldEra
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             string terrain=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
-            string signature=game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
             location.text=AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
@@ -71,6 +71,7 @@ namespace StarfieldEra
             }
             else if(game.NearHouse)context="房屋 · 可以休息 · 打开背包购买种子、制作料理"+(game.Night&&game.Night.State.Target(game.State)>=0?" · "+game.Night.Forecast:"");
             if(game.Forestry.HasNearby&&selected<0&&game.Adventure.Target==null){context=game.Forestry.Hint;canInteract=true;actionLabel.text="砍树";}
+            if(game.Mining.HasNearby){context=game.Mining.Hint;canInteract=true;actionLabel.text="开采";}
             if(game.Adventure.Target!=null){context=game.Adventure.TargetHint;canInteract=true;}
             if(game.Animals.HasNearby){context="附近动物 · 查看与照料";canInteract=true;}
             if(game.Land.NearNewPlot){context="新农田 · E 播种或收获 · R 浇水";canInteract=true;}

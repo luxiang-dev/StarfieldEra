@@ -106,7 +106,8 @@ namespace StarfieldEra
                 float x = -7 + (float)random.NextDouble() * 14;
                 float z = -11.7f + (float)random.NextDouble();
                 var boundary = Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
-                if(LocalEnvironment.Rock(transform,new Vector3(x,0,z),.65f,i*137.5f))boundary.GetComponent<Renderer>().enabled=false;
+                var rock=LocalEnvironment.Rock(transform,new Vector3(x,0,z),.65f,i*137.5f);
+                if(rock){boundary.GetComponent<Renderer>().enabled=false;boundary.SetParent(rock,true);}
                 else if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
             }
             if(Resources.Load<GameObject>("Environment/FantasyFence"))

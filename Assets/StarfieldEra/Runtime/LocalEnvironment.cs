@@ -9,7 +9,7 @@ namespace StarfieldEra
         public static Transform House(Transform parent,Vector3 position,float height,float width=5)
             {var house=Place("Environment/ResidentHouse",parent,position,height,width,0,"Local resident house");if(house)house.rotation=parent.rotation;return house;}
         public static Transform Rock(Transform parent,Vector3 position,float height,float yaw=0)
-            =>Place("Environment/FieldRock",parent,position,height,height*2.5f,yaw,"Local moss rock");
+            {var rock=Place("Environment/FieldRock",parent,position,height,height*2.5f,yaw,"Local moss rock");if(rock)HarvestableRock.Track(rock);return rock;}
         public static Transform Chest(Transform parent,Vector3 position)
             =>Place("Environment/SupplyChest",parent,position,.85f,1.4f,0,"Local supply chest");
         public static Transform Character(string resource,Transform parent,Vector3 position,float height)

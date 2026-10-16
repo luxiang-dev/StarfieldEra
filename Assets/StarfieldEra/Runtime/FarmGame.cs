@@ -21,6 +21,7 @@ namespace StarfieldEra
         public ExpeditionGame Expedition { get; private set; }
         public LandStewardship Land {get;private set;}
         public TreeChopping Forestry {get;private set;}
+        public RockMining Mining {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
         bool jumpRequested;
@@ -60,6 +61,7 @@ namespace StarfieldEra
             Land=gameObject.AddComponent<LandStewardship>();Land.Initialize(this);
             World.gameObject.AddComponent<ExpandedWilderness>().Build(this);
             Forestry=gameObject.AddComponent<TreeChopping>();Forestry.Initialize(this);
+            Mining=gameObject.AddComponent<RockMining>();Mining.Initialize(this);
             Homestead=gameObject.AddComponent<HomesteadGame>();Homestead.Initialize(this);
             hud = new GameObject("Farm HUD").AddComponent<FarmHud>();
             hud.transform.SetParent(transform);
@@ -194,6 +196,7 @@ namespace StarfieldEra
             World.Select(selected);
             Adventure?.UpdateTarget();
             Forestry?.UpdateTarget();
+            Mining?.UpdateTarget();
         }
 
         public void Interact()
@@ -206,6 +209,7 @@ namespace StarfieldEra
             if(Land.InteractNearby(false))return;
             if(Animals.InteractNearby())return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
+            if(Mining.HasNearby){Mining.Mine();return;}
             if(SelectedPlot<0&&Forestry.HasNearby){Forestry.Chop();return;}
             if (SelectedPlot < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
             if(SelectedPlot>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}

@@ -27,6 +27,7 @@ namespace StarfieldEra
             foreach(var item in Game.World.Adventure.Encounters)
             {
                 if(!item.root.gameObject.activeSelf)continue;
+                if(item.kind==EncounterKind.Stone&&Game.Mining&&!Game.Mining.Reachable(item.root.GetComponentInChildren<HarvestableRock>()))continue;
                 var delta=item.Position-Game.World.Player.position;delta.y=0;
                 float distance=delta.magnitude;
                 if(distance<best){best=distance;Target=item;}
@@ -45,6 +46,7 @@ namespace StarfieldEra
             {
                 if(InBattle)return "遗迹遭遇战 · 选择攻击、技能、防御或撤退";
                 if(Target==null)return "";
+                if(Target.kind==EncounterKind.Stone)return "石料 · E 开采 · 体力2 · 采完碎裂消失";
                 if(Target.kind==EncounterKind.Fiber||Target.kind==EncounterKind.Treasure||Target.kind==EncounterKind.Rune)return Game.Expedition.TargetHint(Target);
                 if((Target.kind<=EncounterKind.Fish || Target.kind==EncounterKind.Crystal) && State.gatheredDay[Target.id]==Game.State.day)return Target.name+" · 今天已采集，明天恢复";
                 if(Target.kind==EncounterKind.Companion)
@@ -59,6 +61,7 @@ namespace StarfieldEra
             switch(item.kind)
             {
                 case EncounterKind.Landmark:Game.ShowMessage("北岭狼窟：荒野狼群的栖息地。位置在东北山岭，营地守卫时留意狼群。此处暂用于探索与观察。");break;
+                case EncounterKind.Stone:Game.Mining.Mine(item.root.GetComponentInChildren<HarvestableRock>());break;
                 case EncounterKind.Fish:Game.Expedition.BeginFishing(item);break;
                 case EncounterKind.Fiber:case EncounterKind.Treasure:case EncounterKind.Rune:Game.Expedition.Interact(item);break;
                 case EncounterKind.Elder:Quest();break;
@@ -70,11 +73,10 @@ namespace StarfieldEra
                 default:
                     if(State.gatheredDay[item.id]==Game.State.day){Game.ShowMessage("今天这里已经采集过了，休息后再来。");return;}
                     if(item.kind==EncounterKind.Wood&&!EquipmentCatalog.Require(Game,"axe"))return;
-                    if((item.kind==EncounterKind.Stone||item.kind==EncounterKind.Crystal)&&!EquipmentCatalog.Require(Game,"pick"))return;
+                    if(item.kind==EncounterKind.Crystal&&!EquipmentCatalog.Require(Game,"pick"))return;
                     if(!Game.State.SpendEnergy(2)){Game.ShowMessage("体力不足，使用料理或回小屋休息。");return;}
                     State.gatheredDay[item.id]=Game.State.day;Game.State.weather.survivalExperience++;
                     if(item.kind==EncounterKind.Wood){int amount=3+State.toolLevel*2+WeatherCatalog.Get(Game.State.Weather).extraWood;State.wood+=amount;Commit("采集木材 +"+amount+"，体力 -2。");}
-                    if(item.kind==EncounterKind.Stone){int amount=3+State.toolLevel*2+WeatherCatalog.Get(Game.State.Weather).extraStone;State.stone+=amount;Commit("开采石料 +"+amount+"，体力 -2。");}
                     if(item.kind==EncounterKind.Berry){State.berries+=3;Commit("采摘浆果 +3。浆果可以招募森林伙伴。");}
                     if(item.kind==EncounterKind.Crystal){State.crystals++;Game.State.weather.starStones++;Commit("开采晶石与星石 +1，体力 -2。");}
                     break;

@@ -27,7 +27,7 @@ namespace StarfieldEra
                     float height=BoundsHeight(anchor,3);Hide(anchor);Add(anchor.position,treeIndex++%5==0?1:0,Mathf.Clamp(height,2.8f,4.8f),"Painted woodland tree");
                 }
                 else if(anchor.name.StartsWith("Store art - ")&&(anchor.name.Contains("Rock")||anchor.name.Contains("Stone_01")))
-                {float height=BoundsHeight(anchor,.7f);Hide(anchor);Add(anchor.position,2,Mathf.Clamp(height*1.3f,.65f,1.5f),"Painted moss rocks");}
+                {float height=BoundsHeight(anchor,.7f);Hide(anchor);var visual=Add(anchor.position,2,Mathf.Clamp(height*1.3f,.65f,1.5f),"Painted moss rocks");var rock=visual.GetComponent<HarvestableRock>();if(rock)rock.source=anchor;}
                 else if(anchor.name=="Distant hills")Hide(anchor);
             }
             var houseNames=new HashSet<string>{"Farmhouse","Roof west","Roof east","Door","Window","Window frame","Chimney","Clay roof tile","Farmhouse stonework","Door planks","Door latch","Porch crate","Crate strap"};

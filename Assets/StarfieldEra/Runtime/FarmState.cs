@@ -69,8 +69,10 @@ namespace StarfieldEra
             adventure.Upgrade();
             if(land==null)land=new LandState();land.Upgrade();
             if(forestry==null)forestry=new ForestryState();
+            if(mining==null)mining=new MiningState();
         }
         public ForestryState forestry=new ForestryState();
+        public MiningState mining=new MiningState();
         public LandState land = new LandState();
         public AdventureState adventure = new AdventureState();
         public float playerX = -1;
@@ -139,7 +141,7 @@ namespace StarfieldEra
 
         public bool IsValid()
         {
-            if(weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid())return false;
+            if(weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid()||mining==null||!mining.Valid())return false;
             if(float.IsNaN(energyRecoverySeconds)||float.IsInfinity(energyRecoverySeconds)||energyRecoverySeconds<0||energyRecoverySeconds>=EnergyRecoveryInterval)return false;
             if(land!=null&&!land.Valid())return false;
             if (adventure != null && !adventure.Valid()) return false;

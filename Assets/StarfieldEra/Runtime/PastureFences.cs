@@ -181,16 +181,25 @@ namespace StarfieldEra
         void Remove(FenceRecord f)
         {if(!EquipmentCatalog.Require(game,"hammer"))return;var key=RecordKey(f);game.State.adventure.fences.Remove(f);edges.Remove(key);models[key].SetActive(false);Destroy(models[key]);models.Remove(key);RefreshJunctions();game.State.adventure.wood+=f.gate?2:1;Inspected=null;game.Adventure.Hud.Hide();game.Animals.RefreshPens();game.Adventure.Commit("已拆除围栏，返还一半木材。");}
         bool GameManagementOpen()=>game.Management&&game.Management.IsOpen;
-        bool SnapEndpoint(Vector3 p,out Vector3 snapped)
+        // Starting inside a hex should attach to its nearest existing post. While drawing,
+        // exclude the starting post so it cannot mask a nearby closing/connecting endpoint.
+        public static bool TrySnapEndpoint(IEnumerable<FenceRecord> fences,Vector3 point,Vector3? exclude,float radius,out Vector3 snapped)
         {
-            snapped=p;float nearest=.42f;
-            foreach(var f in edges.Values)
+            snapped=point;float nearest=radius;bool found=false;
+            foreach(var f in fences)
             {
                 Endpoints(f,out var a,out var b);
-                foreach(var point in new[]{a,b}){float d=WorldRelief.PlanarDistance(p,point);if(d<nearest){nearest=d;snapped=point;}}
+                foreach(var endpoint in new[]{a,b})
+                {
+                    if(exclude.HasValue&&WorldRelief.PlanarDistance(exclude.Value,endpoint)<.2f)continue;
+                    float distance=WorldRelief.PlanarDistance(point,endpoint);
+                    if(distance<nearest){nearest=distance;snapped=endpoint;found=true;}
+                }
             }
-            return nearest<.42f;
+            return found;
         }
+        bool SnapEndpoint(Vector3 p,out Vector3 snapped)
+            =>TrySnapEndpoint(edges.Values,p,anchor,anchor.HasValue?.7f:HexWorldGrid.Radius,out snapped);
         FenceRecord Line(Vector3 a,Vector3 b)
         {
             game.World.HexGrid.TryCell((a+b)*.5f,out var cell);
@@ -250,7 +259,7 @@ namespace StarfieldEra
                 previewKey=key;previewValid=!valid;
             }
             preview.SetActive(true);if(previewValid!=valid){foreach(var r in preview.GetComponentsInChildren<Renderer>())r.sharedMaterial=valid?allowed:blocked;previewValid=valid;}
-            Hint=!anchor.HasValue?"选择围栏起点":(mode==1?"牧场门":"木围栏")+" 共"+plan.Count+" · 木材 "+(plan.Count*(mode==1?4:2))+" · "+(valid?"选择结束位置，连续建造":why);
+            Hint=!anchor.HasValue?"选择围栏起点 · 靠近已有立柱自动连接":(mode==1?"牧场门":"木围栏")+" 共"+plan.Count+" · 木材 "+(plan.Count*(mode==1?4:2))+" · "+(valid?"选择结束位置，连续建造":why);
             if(!WorldPointer.Pressed)return;
             if(!anchor.HasValue)
             {
@@ -310,6 +319,13 @@ namespace StarfieldEra
             if(fencePrefab)
             {
                 var art=Instantiate(fencePrefab,root.transform);art.name="Painted fence";art.transform.localScale=new Vector3(SegmentLength,SegmentLength,Vector3.Distance(a,b));
+                foreach(var part in art.GetComponentsInChildren<Transform>())
+                {
+                    if(part.name!="FencePostStart"&&part.name!="FencePostEnd")continue;
+                    var renderer=part.GetComponent<Renderer>();if(!renderer)continue;
+                    var endpoint=part.name=="FencePostStart"?a:b;
+                    var offset=endpoint-renderer.bounds.center;offset.y=0;part.position+=offset;
+                }
                 if(f.gate&&f.open)
                 {
                     var hinge=new GameObject("Open gate hinge").transform;hinge.SetParent(root.transform,false);hinge.localPosition=new Vector3(0,0,-Vector3.Distance(a,b)*.5f);
@@ -319,7 +335,7 @@ namespace StarfieldEra
             }
             else
             {
-                Piece(root,"Post",new Vector3(0,.5f,-span*.5f),new Vector3(.14f,1,.14f),false);Piece(root,"Post",new Vector3(0,.5f,span*.5f),new Vector3(.14f,1,.14f),false);
+                Piece(root,"FencePostStart",new Vector3(0,.5f,-span*.5f),new Vector3(.14f,1,.14f),false);Piece(root,"FencePostEnd",new Vector3(0,.5f,span*.5f),new Vector3(.14f,1,.14f),false);
                 for(int i=0;i<2;i++)Piece(root,"Rail",new Vector3(0,.35f+i*.35f,0),new Vector3(.1f,.12f,span),false);
             }
             if(!ghost)
