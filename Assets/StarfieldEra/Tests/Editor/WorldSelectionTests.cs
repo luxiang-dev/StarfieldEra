@@ -4,6 +4,11 @@ namespace StarfieldEra.Tests
 {
     public sealed class WorldSelectionTests
     {
+        [Test] public void LandAndEveryConstructionManagementPageUseIndependentWindows()
+        {
+            foreach(var page in new[]{"land","building","production","buildings","camp"})Assert.That(ManagementHud.IsOperationsPage(page),Is.True,page);
+            foreach(var page in new[]{"inventory","weather","town","homestead","tutorial"})Assert.That(ManagementHud.IsOperationsPage(page),Is.False,page);
+        }
         [Test] public void RangeUsesGroundDistanceAndNeverAllowsObservationOnlyActions()
         {
             Assert.That(WorldInspection.InRange(Vector3.zero,new Vector3(2,80,0),2.7f),Is.True);

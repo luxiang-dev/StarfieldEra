@@ -9,6 +9,9 @@ namespace StarfieldEra
         {
             switch(page)
             {
+                case "production":return "资源点经营 · 分配村民、管理库存与升级设施";
+                case "buildings":return "建筑管理 · 查看建筑，调整位置或拆除返还";
+                case "camp":return "营地建设 · 修建防御，准备夜间守卫";
                 case "building":return "建筑经营 · 管理村民、库存与升级，调整建筑位置与朝向";
                 case "inventory":return "随身行囊 · 整理材料、种子与装备，准备下一段旅途";
                 case "weather":return "观天识候 · 掌握今日变化，用经验预判未来";

@@ -16,7 +16,7 @@ namespace StarfieldEra
         int selectedLandTool,equipmentSelection,equipmentPage,inventoryPage;
         bool equipmentView=true,blueprintView;
         int tutorialSection,selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
-        bool expeditionTasks,buildingsView,confirmDemolition;
+        bool expeditionTasks,confirmDemolition;
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
         public string Page=>page;
         public bool IsOpen=>IsHandbookOpen||IsOperationsOpen;
@@ -59,7 +59,7 @@ namespace StarfieldEra
             if(game.Night&&game.Night.Active){game.ShowMessage("先完成夜间守卫，再打开旅人手册。");return;}
             game.Night?.CancelTrap();
             if(game.Expedition.Fishing)game.Expedition.CancelFishing();
-            if(target!="land"&&target!="building"&&target!="homestead"&&!PageKeys.Contains(target))target="inventory";
+            if(!IsOperationsPage(target)&&target!="homestead"&&!PageKeys.Contains(target))target="inventory";
             bool changed=page!=target;if(!IsOpen||changed)openingMessage=game.Message;
             game.Land?.Cancel();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
             SelectWindow(target);page=target;worldHud.SetWorldVisible(false);overlay.gameObject.SetActive(true);overlay.SetAsLastSibling();
@@ -72,7 +72,7 @@ namespace StarfieldEra
             else if(mode=="expedition"){expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Open("tasks");}
             else if(mode=="supplies")Open("inventory");
             else if(mode=="craft"||mode=="craft2"){equipmentView=true;if(mode=="craft2"){equipmentSelection=11;equipmentPage=1;}Open("craft");}
-            else if(mode=="town"||mode=="town2"){buildingsView=false;if(mode=="town2")selectedTech=4;Open("town");}
+            else if(mode=="town"||mode=="town2"){if(mode=="town2")selectedTech=4;Open("town");}
             else if(mode=="map"||mode=="map2")Open("map");
             else if(mode=="market")Open("market");
             else Open("companions");
@@ -91,12 +91,12 @@ namespace StarfieldEra
         {
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
-            int tab=Array.IndexOf(PageKeys,page);heading.text=(page=="homestead"?"牧场与经营":(page=="building"?"建筑管理":page=="land"?"土地建造":PageNames[tab]))+" · "+(page=="building"?"生产与建设":page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
-            pageEmblem.sprite=UITheme.GetIcon(UITheme.PageIcon(page));pageIntro.text=PageIntroduction();
+            int tab=Array.IndexOf(PageKeys,page);heading.text=IsOperationsPage(page)?OperationsTitle(page):(page=="homestead"?"牧场与经营":(page=="building"?"建筑管理":page=="land"?"土地建造":PageNames[tab]))+" · "+(page=="building"?"生产与建设":page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
+            pageEmblem.sprite=UITheme.GetIcon(IsOperationsPage(page)?page=="land"?8:17:UITheme.PageIcon(page));pageIntro.text=PageIntroduction();
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs){pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.24f,.34f,.24f,.98f):new Color(.06f,.17f,.14f,.72f);pair.Value.GetComponent<UnityEngine.UI.Outline>().effectColor=pair.Key==page?new Color(.85f,.72f,.42f,.80f):new Color(.50f,.58f,.39f,.20f);}
             feedback.text=(game.Message==openingMessage?"操作自动保存 · 返回游戏后继续探索":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="building")BuildingManagement();else if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
+            if(page=="production"||page=="buildings"||page=="camp")OperationsWorkspace();else if(page=="building")BuildingManagement();else if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
         }
         void CameraSettings()
         {
@@ -285,8 +285,7 @@ namespace StarfieldEra
         {
             Chip("牧场与经营",316,()=>OpenHomestead(true),false);
             Chip("营地与守卫",474,OpenCamp,false);
-            Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",158,()=>{buildingsView=true;Rebuild();},buildingsView);
-            if(buildingsView){Buildings();return;}
+            Chip("城镇项目",0,()=>Open("town"),true);Chip("自建建筑",158,()=>Open("buildings"),false);
             for(int i=0;i<TechKeys.Length;i++){int id=i;Row(TechNames[i],TechOwned(i)?"已完成":TechCosts[i],i,()=>{selectedTech=id;Rebuild();},selectedTech==i,58);}
             string[] effects={"每天木材+6，解锁书院、农场扩建和采集工具。","每天知识+6，解锁灌溉与观星台。","每天照料前6块农田，农场扩建后照料12块。","伙伴战斗伤害增加3。","解锁南侧12块农田，总共24块。","每天金币+18。","采集木材、石料每次额外获得2份。","每天知识+12，需书院和白岩守卫胜利。"};
             string[] prerequisite={"无前置","工坊","书院","灌溉技术","工坊","工坊","工坊","书院、击败白岩守卫"};int tech=selectedTech;

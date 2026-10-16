@@ -4,16 +4,16 @@ namespace StarfieldEra
 {
     public sealed partial class ManagementHud
     {
-        bool rabbitView=true,campView;int campChoice;int selectedSite,sitePage;
+        int campChoice;int selectedSite,sitePage;
         public void OpenHomestead(bool rabbits,int site=0)
-        {campView=false;rabbitView=rabbits;selectedSite=site;sitePage=site/5;Open("homestead");}
+        {selectedSite=site;sitePage=site/5;Open(rabbits?"homestead":"production");}
         void HomesteadPage()
         {
-            Chip("兔子与委托",0,()=>{campView=false;rabbitView=true;Rebuild();},rabbitView&&!campView);
-            Chip("资源点经营",158,()=>{campView=false;rabbitView=false;Rebuild();},!rabbitView&&!campView);
-            Chip("营地与守卫",316,OpenCamp,campView);
+            Chip("兔子与委托",0,()=>OpenHomestead(true),true);
+            Chip("资源点经营",158,()=>Open("production"),false);
+            Chip("营地与守卫",316,OpenCamp,false);
             Chip("返回城镇",474,()=>Open("town"),false);
-            if(campView)CampPage();else if(rabbitView)RabbitPage();else ResourcePage();
+            RabbitPage();
         }
         void RabbitPage()
         {
@@ -47,7 +47,7 @@ namespace StarfieldEra
                 DetailAction(detail,"放回这只兔子",1,h.Release,r.status!=3);
             }
         }
-        public void OpenCamp(){campView=true;Open("homestead");}
+        public void OpenCamp(){Open("camp");}
         void CampPage()
         {
             string[] names={"居民房屋","仓库","木围栏","牧场门","捕兽陷阱"};
