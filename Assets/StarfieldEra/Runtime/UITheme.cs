@@ -43,7 +43,8 @@ namespace StarfieldEra
         public static void Button(UnityEngine.UI.Button button)
         {var colors=button.colors;colors.normalColor=Color.white;colors.highlightedColor=new Color(1,1,.86f);colors.pressedColor=new Color(.73f,.85f,.73f);colors.selectedColor=Color.white;colors.disabledColor=new Color(.68f,.72f,.67f,.50f);colors.fadeDuration=.12f;button.colors=colors;}
         public static int PageIcon(string page)
-        {switch(page){case "inventory":return 0;case "weather":return 1;case "tasks":return 2;case "craft":return 3;case "town":return 4;case "companions":return 5;case "map":return 6;case "market":return 7;case "land":return 8;case "tutorial":return 9;case "camera":return 10;default:return 11;}}
+        {
+            if(page=="building")return 17;switch(page){case "inventory":return 0;case "weather":return 1;case "tasks":return 2;case "craft":return 3;case "town":return 4;case "companions":return 5;case "map":return 6;case "market":return 7;case "land":return 8;case "tutorial":return 9;case "camera":return 10;default:return 11;}}
         public static int ItemIcon(string key)
         {switch(key){case "wood":return 0;case "stone":return 1;case "carrots":return 2;case "planks":return 3;case "bricks":return 4;case "berries":return 5;case "fish":return 6;case "fiber":return 7;case "crystals":return 8;case "shards":return 9;case "truffles":return 10;case "starStones":return 11;case "seed0":return 12;case "seed1":return 13;case "seed2":return 14;case "meal":return 15;case "bait":return 16;case "camp":return 17;case "hoe":return 18;case "can":return 19;case "axe":return 20;case "pick":return 21;case "hammer":return 22;case "sickle":return 23;case "shovel":return 24;case "basicRod":case "rod":return 25;case "forester":return 26;case "boots":return 27;case "amulet":return 28;default:return 29;}}
         void OnDestroy(){if(Current==this)Current=null;foreach(var asset in owned)if(asset)Destroy(asset);}

@@ -46,6 +46,7 @@ namespace StarfieldEra
     {
         public PlacedBuilding record;
         public string displayName;
+        public int kind=-1;
         [TextArea] public string description;
     }
 }

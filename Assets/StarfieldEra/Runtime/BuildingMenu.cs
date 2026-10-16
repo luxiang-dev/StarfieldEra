@@ -38,7 +38,7 @@ namespace StarfieldEra
                 var card=Button(cards,"",new Vector2(slot%4*174,-(slot/4)*112),new Vector2(164,102),()=>Choose(choice));card.name=name;
                 UITheme.Icon(card.transform,kind<14?kind:22,6,8,58,58,false,kind<14);
                 Label(card.transform,name,new Vector2(70,-12),new Vector2(88,30),18,UITheme.Paper);
-                Label(card.transform,kind<12?BuildingFootprints.Counts[kind]+"格建筑":kind==14?"资源点守卫":"沿地块边缘",new Vector2(70,-45),new Vector2(88,24),12,new Color(.72f,.82f,.73f));
+                Label(card.transform,kind<12?BuildingFootprints.Counts[kind]+"格建筑":kind==14?"资源点守卫":"拖动连续建造",new Vector2(70,-45),new Vector2(88,24),12,new Color(.72f,.82f,.73f));
                 Label(card.transform,cost,new Vector2(12,-76),new Vector2(145,23),14,UITheme.Gold);slot++;
             }
             int rows=Mathf.Max(1,Mathf.CeilToInt(slot/4f));float body=rows*112;

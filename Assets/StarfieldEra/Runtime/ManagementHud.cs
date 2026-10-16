@@ -59,7 +59,7 @@ namespace StarfieldEra
             if(game.Night&&game.Night.Active){game.ShowMessage("先完成夜间守卫，再打开旅人手册。");return;}
             game.Night?.CancelTrap();
             if(game.Expedition.Fishing)game.Expedition.CancelFishing();
-            if(target!="homestead"&&!PageKeys.Contains(target))target="inventory";
+            if(target!="building"&&target!="homestead"&&!PageKeys.Contains(target))target="inventory";
             bool changed=page!=target;if(!IsOpen||changed)openingMessage=game.Message;
             game.Land?.Cancel();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
             page=target;worldHud.SetWorldVisible(false);overlay.gameObject.SetActive(true);overlay.SetAsLastSibling();
@@ -91,12 +91,12 @@ namespace StarfieldEra
         {
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
-            int tab=Array.IndexOf(PageKeys,page);heading.text=(page=="homestead"?"牧场与经营":PageNames[tab])+" · "+(page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
+            int tab=Array.IndexOf(PageKeys,page);heading.text=(page=="homestead"?"牧场与经营":(page=="building"?"建筑管理":PageNames[tab]))+" · "+(page=="building"?"生产与建设":page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
             pageEmblem.sprite=UITheme.GetIcon(UITheme.PageIcon(page));pageIntro.text=PageIntroduction();
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs){pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.24f,.34f,.24f,.98f):new Color(.06f,.17f,.14f,.72f);pair.Value.GetComponent<UnityEngine.UI.Outline>().effectColor=pair.Key==page?new Color(.85f,.72f,.42f,.80f):new Color(.50f,.58f,.39f,.20f);}
             feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
+            if(page=="building")BuildingManagement();else if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
         }
         void CameraSettings()
         {
@@ -307,7 +307,7 @@ namespace StarfieldEra
             var chosen=selected;string output=BuildingEconomy.Description(chosen.kind);
             var detail=Details(HexConstruction.Names[chosen.kind],"占地 "+BuildingFootprints.Cells(chosen).Count+" 格",output+"\n\n坐标 ["+chosen.column+","+chosen.row+"]\n朝向 "+chosen.rotation*60+"度\n建造："+(chosen.builtDay>0?"第"+chosen.builtDay+"天":"旧存档建筑")+"\n\n拆除返还一半木材、石料和金币。"+(confirmDemolition?"\n\n确认拆除这座建筑？":""));
             DetailAction(detail,confirmDemolition?"确认拆除并返还资源":"拆除这座建筑",0,()=>{if(confirmDemolition){game.Construction.Demolish(new Vector2Int(chosen.column,chosen.row));confirmDemolition=false;buildingKey="";}else{confirmDemolition=true;Rebuild();}});
-            DetailAction(detail,chosen.kind<2&&!confirmDemolition?"管理生产":confirmDemolition?"取消拆除":"继续建造",1,()=>{if(chosen.kind<2&&!confirmDemolition){OpenHomestead(false,game.Homestead.SiteIndex(chosen));return;}if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});
+            DetailAction(detail,!confirmDemolition?"管理这座建筑":"取消拆除",1,()=>{if(!confirmDemolition){OpenBuilding(chosen);return;}if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});
         }
         void Companions()
         {

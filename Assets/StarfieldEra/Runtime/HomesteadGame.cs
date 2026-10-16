@@ -61,7 +61,7 @@ namespace StarfieldEra
             if(Game.Construction.Active||Game.Fences.Active)return false;
             var rabbit=Rabbits.Where(r=>r&&r.Record?.status!=3&&Near(r.transform.position,2.3f)).OrderBy(r=>WorldRelief.PlanarDistance(r.transform.position,Game.World.Player.position)).FirstOrDefault();
             if(rabbit){Inspect(rabbit);return true;}
-            for(int i=0;i<fixedSites.Count;i++)if(Near(fixedSites[i].position,3)){Game.Management.OpenHomestead(false,i);return true;}
+            for(int i=0;i<fixedSites.Count;i++)if(Near(fixedSites[i].position,3)){Game.Management.OpenResourceBuilding(i);return true;}
             return false;
         }
         public void BuyCarrots()
@@ -119,7 +119,7 @@ namespace StarfieldEra
         public void Improve(int index){var site=Sites()[index];if(!Near(SitePosition(index),6)){Game.ShowMessage("请走近资源点六步以内修复或升级。");return;}if(!State.Improve(Game.State,site)){Game.ShowMessage("材料不足，或建筑已经满级。");return;}Commit("资源点已升至"+site.level+"级。安排村民后，每次休息结算生产。");RefreshSiteSigns();}
         public void Assign(int index,int delta){if(!State.Assign(Game.State.adventure,Sites()[index],delta)){Game.ShowMessage("需先修复；每处最多2人，可建房屋增加村民容量。");return;}Commit(delta>0?"村民已派驻，下次休息开始生产。":"村民已召回。");}
         public void Collect(int index){if(!Near(SitePosition(index),6)){Game.ShowMessage("请走近资源点六步以内领取库存。");return;}State.Collect(Game.State.adventure,Sites()[index],SiteKind(index));Commit("已领取原料与加工品，库存已清空。");}
-        public void ToggleProcessing(int index){var site=Sites()[index];if(site.level<2)return;site.processing=!site.processing;Commit(site.processing?"加工已开启：每名工人每天用2份原料加工1份成品。":"加工已关闭，保存原料。");}
+        public void ToggleProcessing(int index){var site=Sites()[index];if(site.level<2)return;site.processing=!site.processing;Commit(site.processing?"加工已开启：每名工人每天用4份原料加工2份成品。":"加工已关闭，保存原料。");}
         public void RefreshSiteSigns(){for(int i=0;i<2;i++){var label=fixedSites[i].GetComponentInChildren<TMPro.TMP_Text>();if(label)label.text=SiteName(i)+(Sites()[i].level==0?" · 待修复":" · "+Sites()[i].level+"级");}}
         void Start()=>RefreshSiteSigns();
     }

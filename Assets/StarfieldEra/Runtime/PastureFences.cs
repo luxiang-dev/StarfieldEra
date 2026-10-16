@@ -17,6 +17,7 @@ namespace StarfieldEra
         readonly Dictionary<string,GameObject> models=new Dictionary<string,GameObject>();
         string previewKey="";bool previewValid;int mode=-1;
         public const float SegmentLength=1.15f;
+        bool dragging,gestureHadAnchor;Vector3 gestureStart;
         Vector3? anchor;Vector3 chainStart;Vector3 chainDirection=Vector3.forward;
         GameObject fencePrefab;
         readonly List<FenceRecord> plan=new List<FenceRecord>(); public bool Active=>mode>=0; public string Hint {get;private set;}="";
@@ -61,7 +62,7 @@ namespace StarfieldEra
             RefreshJunctions();
         }
         public void Choose(int next)
-        {if(game.Night&&game.Night.Active)return;game.Night?.CancelTrap();game.Land?.Cancel();game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：选择围栏，返还一半木材。":"围栏建造：选择起点与结束位置，连续直线摆放；连接点自动连接。围栏木2，牧场门木4。");}
+        {if(game.Night&&game.Night.Active)return;game.Night?.CancelTrap();game.Land?.Cancel();game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：选择围栏，返还一半木材。":"围栏建造：选择起点与结束位置，按住左键拖动，松开连续建造；也可点选起终点，连接点自动连接。围栏木2，牧场门木4。");}
         public void RepairInspected()
         {
             if(Inspected==null||Inspected.damage==0||game.State.adventure.wood<1)return;
@@ -77,7 +78,7 @@ namespace StarfieldEra
             if(models.TryGetValue(key,out var root)){root.SetActive(false);Destroy(root);models.Remove(key);}f.damage=0;
             RefreshJunctions();game.Animals.RefreshPens();game.Persist();
         }
-        public void Cancel(){mode=-1;anchor=null;plan.Clear();Hint="";ClearPreview();}
+        public void Cancel(){dragging=false;mode=-1;anchor=null;plan.Clear();Hint="";ClearPreview();}
         void ClearPreview(){if(preview){preview.SetActive(false);Destroy(preview);}preview=null;previewKey="";}
         static float Cross(Vector3 a,Vector3 b)=>a.x*b.z-a.z*b.x;
         static bool Crosses(Vector3 a,Vector3 b,Vector3 c,Vector3 d)
@@ -237,7 +238,7 @@ namespace StarfieldEra
             if(!Active||GameManagementOpen())return;if(game.Adventure.InBattle){Cancel();return;}if(!WorldPointer.Available)return;
             if(WorldPointer.Cancel){if(anchor.HasValue){anchor=null;ClearPreview();}else Cancel();return;}
             var p=WorldPointer.Position;
-            if((WorldPointer.Blocked)||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(preview)preview.SetActive(false);return;}
+            if((WorldPointer.Blocked)||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(WorldPointer.Released||!WorldPointer.Held)dragging=false;if(preview)preview.SetActive(false);return;}
             var ray=game.World.View.ScreenPointToRay(p);
             if(mode==2)
             {
@@ -245,7 +246,7 @@ namespace StarfieldEra
                 foreach(var hit in Physics.RaycastAll(ray,200)){var f=hit.collider.GetComponentInParent<FenceTarget>();if(f!=null&&hit.distance<nearestHit){target=f.record;nearestHit=hit.distance;}}
                 Hint="围栏拆除模式";if(WorldPointer.Pressed){if(target!=null)Remove(target);else game.ShowMessage("选择要拆除的围栏。");}return;
             }
-            if(!game.World.HexGrid.RaycastGround(ray,out var cursor)){if(preview)preview.SetActive(false);return;}
+            if(!game.World.HexGrid.RaycastGround(ray,out var cursor)){if(WorldPointer.Released||!WorldPointer.Held)dragging=false;if(preview)preview.SetActive(false);return;}
             MakePlan(cursor);bool valid=PlanAllowed(out var why);
             string key=(anchor.HasValue?"end:":"start:")+string.Join("|",plan.ConvertAll(RecordKey));
             if(!preview||previewKey!=key)
@@ -259,19 +260,33 @@ namespace StarfieldEra
                 previewKey=key;previewValid=!valid;
             }
             preview.SetActive(true);if(previewValid!=valid){foreach(var r in preview.GetComponentsInChildren<Renderer>())r.sharedMaterial=valid?allowed:blocked;previewValid=valid;}
-            Hint=!anchor.HasValue?"选择围栏起点 · 靠近已有立柱自动连接":(mode==1?"牧场门":"木围栏")+" 共"+plan.Count+" · 木材 "+(plan.Count*(mode==1?4:2))+" · "+(valid?"选择结束位置，连续建造":why);
-            if(!WorldPointer.Pressed)return;
-            if(!anchor.HasValue)
+            Hint=!anchor.HasValue?"选择围栏起点 · 靠近已有立柱自动连接":(mode==1?"牧场门":"木围栏")+" 共"+plan.Count+" · 木材 "+(plan.Count*(mode==1?4:2))+" · "+(valid?"拖动后松开建造 · 可继续延长":why);
+            if(WorldPointer.Pressed)
             {
                 if(!EquipmentCatalog.Require(game,"hammer"))return;
-                SnapEndpoint(cursor,out var start);anchor=start;chainStart=start;ClearPreview();return;
+                dragging=true;gestureHadAnchor=anchor.HasValue;gestureStart=cursor;
+                if(!anchor.HasValue)
+                {SnapEndpoint(cursor,out var start);anchor=start;chainStart=start;ClearPreview();}
+                return;
             }
-            if(!valid){game.ShowMessage(why);return;}
+            if(dragging&&WorldPointer.Released)
+            {
+                dragging=false;
+                if(!gestureHadAnchor&&WorldRelief.PlanarDistance(gestureStart,cursor)<.25f)return;
+                CommitPlan();
+            }
+            else if(dragging&&!WorldPointer.Held)dragging=false;
+        }
+        public bool CommitPlan()
+        {
+            if(!Active||mode==2||plan.Count==0||!anchor.HasValue||game.Management.IsOpen||game.Adventure.InBattle||game.Night.Active)return false;
+            if(!PlanAllowed(out var why)){game.ShowMessage(why);return false;}
             foreach(var record in plan){game.State.adventure.fences.Add(record);edges[RecordKey(record)]=record;models[RecordKey(record)]=Model(record,false);}
             game.State.adventure.wood-=plan.Count*(mode==1?4:2);
             Endpoints(plan[plan.Count-1],out var lastStart,out var lastEnd);chainDirection=(lastEnd-lastStart).normalized;anchor=lastEnd;
-            RefreshJunctions();ClearPreview();game.Animals.RefreshPens();game.Adventure.Commit("围栏建造完成，可从连接处继续摆放。");
+            RefreshJunctions();ClearPreview();game.Animals.RefreshPens();game.Adventure.Commit("围栏建造完成，可从连接处继续拖动摆放。");plan.Clear();return true;
         }
+        void OnApplicationFocus(bool focused){if(!focused)dragging=false;}
         bool Allowed(FenceRecord f,out string why)
         {
             why="";if(!EquipmentCatalog.Has(game,"hammer")){why="需要持有建造锤";return false;}

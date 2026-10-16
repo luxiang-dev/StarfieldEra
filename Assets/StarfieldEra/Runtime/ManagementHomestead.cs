@@ -84,7 +84,7 @@ namespace StarfieldEra
             Button(panel,"召回村民 -1",260,354,224,42,()=>h.Assign(chosen,-1),s.workers>0);
             Button(panel,s.level<2?"二级解锁加工":s.processing?"关闭加工":"开启加工",22,406,462,42,()=>h.ToggleProcessing(chosen),s.level>=2);
             Button(panel,"领取全部原料与成品",22,458,462,42,()=>h.Collect(chosen),near&&(s.stock>0||s.goods>0));
-            Button(panel,s.damage>0?"修补设施 · 木2石1":"返回世界前往资源点",22,510,462,42,()=>{if(s.damage>0)game.Night.Repair(chosen);else Close();});
+            Button(panel,s.damage>0?"修补设施 · 木2石1":"打开这座建筑的管理面板",22,510,462,42,()=>{if(s.damage>0)game.Night.Repair(chosen);else OpenResourceBuilding(chosen);});
         }
     }
 }

@@ -50,7 +50,7 @@ namespace StarfieldEra
             float dt=Mathf.Min(Time.unscaledDeltaTime,.1f);
             targetYaw=Safe(targetYaw,-35);targetPitch=Mathf.Clamp(Safe(targetPitch,43),IsFirstPerson?-75:12,IsFirstPerson?75:78);targetZoom=Mathf.Clamp(Safe(targetZoom,10),5,26);
             yaw=Safe(yaw,targetYaw);pitch=Safe(pitch,targetPitch);zoom=Safe(zoom,targetZoom);
-            bool inputAllowed=!(game.Management&&game.Management.IsOpen)&&!(game.Construction.Menu&&game.Construction.Menu.IsOpen)&&!game.Construction.Active&&!game.Land.Active&&!game.Fences.Active&&!(game.Night&&(game.Night.Active||game.Night.TrapPlacing))&&!game.Adventure.Hud.IsContextOpen&&!game.Adventure.InBattle&&!game.Expedition.Fishing;
+            bool inputAllowed=game.Construction.LastPlacementFrame!=Time.frameCount&&!(game.Management&&game.Management.IsOpen)&&!(game.Construction.Menu&&game.Construction.Menu.IsOpen)&&!game.Construction.Active&&!game.Land.Active&&!game.Fences.Active&&!(game.Night&&(game.Night.Active||game.Night.TrapPlacing))&&!game.Adventure.Hud.IsContextOpen&&!game.Adventure.InBattle&&!game.Expedition.Fishing;
             var keyboard=Keyboard.current;var mouse=Mouse.current;
             if(keyboard!=null&&keyboard.escapeKey.wasPressedThisFrame)lookCaptured=false;
             if(mouse!=null&&mouse.leftButton.wasPressedThisFrame)lookCaptured=inputAllowed&&!WorldPointer.Blocked;

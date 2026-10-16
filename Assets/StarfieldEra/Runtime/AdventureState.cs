@@ -41,7 +41,7 @@ namespace StarfieldEra
             if(fences==null)fences=new List<FenceRecord>();
             if(animals==null)animals=new List<AnimalRecord>();
             if(buildings==null)buildings=new List<PlacedBuilding>();
-            foreach(var b in buildings)if(b!=null&&b.kind<2&&(b.operation==null||b.operation.level==0))b.operation=new ResourceSiteState{level=1};
+            foreach(var b in buildings)if(b!=null&&(b.kind<2||b.kind==6)&&(b.operation==null||b.operation.level==0))b.operation=new ResourceSiteState{level=1};
             if(gatheredDay!=null && (gatheredDay.Length==12||gatheredDay.Length==32))
             {var expanded=new int[64];for(int i=0;i<64;i++)expanded[i]=-1;Array.Copy(gatheredDay,expanded,gatheredDay.Length);gatheredDay=expanded;}
             if(discovered!=null && discovered.Length==4)
@@ -69,7 +69,7 @@ namespace StarfieldEra
             homestead.NewDay(farm);
             foreach(var b in buildings)if(b.kind==2)science+=3;
             foreach(var b in buildings)if(b.kind==10)farm.coins+=10;else if(b.kind==3)meals+=2;else if(b.kind==11)homestead.carrots+=3;
-            wood+=TownCount(6)*6;
+            BuildingOperations.ProduceWorkshops(farm);
             science+=TownCount(7)*6+TownCount(9)*12;
             farm.coins+=TownCount(8)*18;
             int watered=irrigation?(expandedFarm?12:6):0;

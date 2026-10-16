@@ -27,9 +27,11 @@ namespace StarfieldEra
     {
         public int carrots, planks, bricks, rabbitQuest;
         public List<RabbitRecord> rabbits=new List<RabbitRecord>();
+        public ResourceSiteState workshop=new ResourceSiteState{level=1};
         public ResourceSiteState lumber=new ResourceSiteState(), quarry=new ResourceSiteState();
         public void Upgrade()
         {
+            if(workshop==null)workshop=new ResourceSiteState{level=1};
             if(rabbits==null)rabbits=new List<RabbitRecord>();
             if(lumber==null)lumber=new ResourceSiteState();if(quarry==null)quarry=new ResourceSiteState();
         }
@@ -39,10 +41,15 @@ namespace StarfieldEra
             if(adventure.buildings==null)yield break;
             foreach(var b in adventure.buildings)if(b!=null&&b.kind<2&&b.operation!=null)yield return b.operation;
         }
+        public IEnumerable<ResourceSiteState> Workshops(AdventureState a)
+        {
+            if(a.FixedTown(6))yield return workshop;
+            if(a.buildings!=null)foreach(var b in a.buildings)if(b!=null&&b.kind==6)yield return b.operation??new ResourceSiteState{level=1};
+        }
         public int WorkerCapacity(AdventureState adventure)=>Math.Min(9,3+2*(adventure.buildings?.Count(b=>b!=null&&b.kind==4)??0));
         public int StorageCapacity(AdventureState adventure)=>Math.Min(120,30+30*(adventure.buildings?.Count(b=>b!=null&&b.kind==5)??0));
-        public int UsedWorkers(AdventureState adventure)=>Sites(adventure).Sum(s=>s.workers);
-        public bool Valid(AdventureState adventure)=>carrots>=0&&planks>=0&&bricks>=0&&rabbitQuest>=0&&rabbitQuest<=2&&rabbits!=null&&rabbits.Count<=5&&rabbits.All(r=>r!=null&&r.id>=0&&r.id<5&&r.status>=1&&r.status<=3&&r.fedDay>=-1&&r.care>=0)&&rabbits.Select(r=>r.id).Distinct().Count()==rabbits.Count&&rabbits.Count(r=>r.status==1)<=1&&rabbits.Count(r=>r.status==2)<=3&&lumber!=null&&quarry!=null&&Sites(adventure).All(s=>s.Valid())&&UsedWorkers(adventure)<=WorkerCapacity(adventure);
+        public int UsedWorkers(AdventureState adventure)=>Sites(adventure).Sum(s=>s.workers)+Workshops(adventure).Sum(s=>s.workers);
+        public bool Valid(AdventureState adventure)=>carrots>=0&&planks>=0&&bricks>=0&&rabbitQuest>=0&&rabbitQuest<=2&&rabbits!=null&&rabbits.Count<=5&&rabbits.All(r=>r!=null&&r.id>=0&&r.id<5&&r.status>=1&&r.status<=3&&r.fedDay>=-1&&r.care>=0)&&rabbits.Select(r=>r.id).Distinct().Count()==rabbits.Count&&rabbits.Count(r=>r.status==1)<=1&&rabbits.Count(r=>r.status==2)<=3&&lumber!=null&&quarry!=null&&workshop!=null&&workshop.Valid()&&Workshops(adventure).All(s=>s.Valid())&&Sites(adventure).All(s=>s.Valid())&&UsedWorkers(adventure)<=WorkerCapacity(adventure);
         public void NewDay(FarmState farm)
         {
             foreach(var rabbit in rabbits)if(rabbit.status==2&&rabbit.fedDay==farm.day-1){rabbit.care++;farm.coins+=4;}
