@@ -70,6 +70,7 @@ namespace StarfieldEra
         }
         readonly Dictionary<int,Vector3> destinations=new Dictionary<int,Vector3>(),destinationInputs=new Dictionary<int,Vector3>();
         List<VillageWorkplace> residentWorkplaces;float workplacesAt;
+        static readonly float[] AvoidanceAngles={0f,60f,-60f};
         void UpdateResidents()
         {
             if(residentWorkplaces==null||Time.time>=workplacesAt){residentWorkplaces=VillageState.Workplaces(Game.State.adventure);workplacesAt=Time.time+1;}
@@ -77,13 +78,17 @@ namespace StarfieldEra
             foreach(var r in Village.residents)if(people.TryGetValue(r.id,out var root)&&root)
             {
                 Vector3 target=new Vector3(-3+r.id*.65f,0,8.5f);
-                var place=places.Find(p=>p.site.workplaceId==r.workplace);if(phase<55&&place!=null)target=place.position+new Vector3(2.8f,0,-2.5f);
-                else if(phase>75){var houses=Game.State.adventure.buildings.Where(b=>b.kind==4).ToList();if(r.id>=3&&(r.id-3)/2<houses.Count){var b=houses[(r.id-3)/2];target=HexWorldGrid.Center(b.column,b.row)+Vector3.back*3;}else target=new Vector3(-4+r.id*.6f,0,2.6f);}
+                VillageWorkplace place=null;foreach(var candidate in places)if(candidate.site.workplaceId==r.workplace){place=candidate;break;}if(phase<55&&place!=null)target=place.position+new Vector3(2.8f,0,-2.5f);
+                else if(phase>75)
+                {
+                    target=new Vector3(-4+r.id*.6f,0,2.6f);
+                    if(r.id>=3){int houseIndex=(r.id-3)/2;foreach(var b in Game.State.adventure.buildings)if(b.kind==4&&houseIndex--==0){target=HexWorldGrid.Center(b.column,b.row)+Vector3.back*3;break;}}
+                }
                 var grid=Game.World.HexGrid;
                 if(!destinationInputs.TryGetValue(r.id,out var old)||(old-target).sqrMagnitude>.01f){destinationInputs[r.id]=target;destinations[r.id]=grid.SafeLand(target,.25f);}
                 target=destinations[r.id];var delta=target-root.position;delta.y=0;
                 if(delta.magnitude>.4f){var step=Vector3.ClampMagnitude(delta,1.15f*Mathf.Min(Time.deltaTime,.1f));
-                    foreach(float angle in new[]{0f,60f,-60f}){var next=root.position+grid.ConstrainMovement(root.position,Quaternion.Euler(0,angle,0)*step,.2f);next.y=grid.GroundHeight(next);if(!Physics.CheckCapsule(next+Vector3.up*.35f,next+Vector3.up*1.35f,.22f,~0,QueryTriggerInteraction.Ignore)){root.position=next;break;}}root.rotation=Quaternion.LookRotation(delta.normalized);}
+                    foreach(float angle in AvoidanceAngles){var next=root.position+grid.ConstrainMovement(root.position,Quaternion.Euler(0,angle,0)*step,.2f);next.y=grid.GroundHeight(next);if(!Physics.CheckCapsule(next+Vector3.up*.35f,next+Vector3.up*1.35f,.22f,~0,QueryTriggerInteraction.Ignore)){root.position=next;break;}}root.rotation=Quaternion.LookRotation(delta.normalized);}
             }
         }
         public void AdvanceWeather()
@@ -107,7 +112,7 @@ namespace StarfieldEra
             {
                 var center=grid.SurfacePoint(HexWorldGrid.Center(puddle.column,puddle.row));float level=center.y+puddle.depth+.015f;int start=vertices.Count;vertices.Add(new Vector3(center.x,level,center.z));colors.Add(new Color(puddle.depth,1,0,1));
                 for(int i=0;i<6;i++){var p=center+HexWorldGrid.Corner(i,HexWorldGrid.Radius*.87f);p.y=level;vertices.Add(p);colors.Add(new Color(0,0,0,1));}
-                for(int i=0;i<6;i++)indices.AddRange(new[]{start,start+(i+1)%6+1,start+i+1});
+                for(int i=0;i<6;i++){indices.Add(start);indices.Add(start+(i+1)%6+1);indices.Add(start+i+1);}
             }
             if(vertices.Count>0){var mesh=new Mesh{name="Saved storm puddle surfaces"};mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetTriangles(indices,0);mesh.RecalculateNormals();weatherAssets.Add(mesh);var go=new GameObject("Visible storm accumulation",typeof(MeshFilter),typeof(MeshRenderer));go.transform.SetParent(weatherRoot,false);go.GetComponent<MeshFilter>().sharedMesh=mesh;go.GetComponent<MeshRenderer>().sharedMaterial=water;go.GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;}
             if(!drainageSoil)drainageSoil=Game.World.Mat("Drainage cut dark soil","4D4832");var mat=drainageSoil;

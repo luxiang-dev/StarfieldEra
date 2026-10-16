@@ -14,15 +14,24 @@ namespace StarfieldEra
         public static Vector3 Center(int column, int row) =>
             new Vector3(.5f + ColumnSpacing * (column + .5f * (row & 1)), 0, .15f + RowSpacing * row);
 
+        FarmGame cachedOwner;ContinuousTerrain cachedSurface;Collider cachedSupport;
+        FarmGame Owner=>cachedOwner?cachedOwner:(cachedOwner=GetComponentInParent<FarmGame>());
+        ContinuousTerrain Surface=>cachedSurface?cachedSurface:(cachedSurface=GetComponent<ContinuousTerrain>());
+        Collider Support=>cachedSupport?cachedSupport:(cachedSupport=GetComponent<Collider>());
+        static readonly Vector3[] StandOffsets=CreateStandOffsets();
+        static Vector3[] CreateStandOffsets()
+        {
+            var offsets=new Vector3[12];for(int i=0;i<offsets.Length;i++){float angle=i*Mathf.PI/6;offsets[i]=new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle));}return offsets;
+        }
         readonly Dictionary<Vector2Int,TerrainKind> terrain=new Dictionary<Vector2Int,TerrainKind>();
         readonly HashSet<Vector2Int> excavated=new HashSet<Vector2Int>();
         public void SetExcavated(IEnumerable<LandCell> edits)
         {excavated.Clear();if(edits!=null)foreach(var edit in edits)if(edit.channel)excavated.Add(edit.Cell);}
         bool WalkableAt(Vector3 p)
         {
-            var owner=GetComponentInParent<FarmGame>();if(owner&&(owner.State.storm.DepthAt(p)>=.32f||owner.Settlement&&!owner.Settlement.CanEnter(p)))return false;
+            var owner=Owner;if(owner&&(owner.State.storm.DepthAt(p)>=.32f||owner.Settlement&&!owner.Settlement.CanEnter(p)))return false;
             if(!TryCell(p,out var cell)||excavated.Contains(cell)||!TerrainTraits.Walkable(TerrainAt(cell)))return false;
-            var surface=GetComponent<ContinuousTerrain>();
+            var surface=Surface;
             return !surface||surface.SupportsWalking(p);
         }
         readonly HashSet<Vector2Int> cells=new HashSet<Vector2Int>();
@@ -41,28 +50,32 @@ namespace StarfieldEra
             support.center = new Vector3(0, -.4f, 0); support.size = new Vector3(HalfWidth*2, .8f, HalfDepth*2);
         }
 
-        public float GroundHeight(Vector3 p){var surface=GetComponent<ContinuousTerrain>();return surface?surface.HeightAt(p):0;}
+        public float GroundHeight(Vector3 p){var surface=Surface;return surface?surface.HeightAt(p):0;}
         public Vector3 SurfacePoint(Vector3 p,float offset=0){p.y=GroundHeight(p)+offset;return p;}
-        public bool IsGroundCollider(Collider col)=>col==GetComponent<Collider>()||(GetComponent<ContinuousTerrain>()&&GetComponent<ContinuousTerrain>().IsGround(col));
+        public bool IsGroundCollider(Collider col)=>col==Support||(Surface&&Surface.IsGround(col));
         public bool RaycastGround(Ray ray,out Vector3 point)
-        {var surface=GetComponent<ContinuousTerrain>();if(surface&&surface.Raycast(ray,out var hit)){point=hit.point;return true;}point=default;return false;}
+        {var surface=Surface;if(surface&&surface.Raycast(ray,out var hit)){point=hit.point;return true;}point=default;return false;}
         public IEnumerable<Vector2Int> Cells=>cells;
         public void SetTerrain(Vector2Int cell,TerrainKind kind){if(cells.Contains(cell))terrain[cell]=kind;}
         public bool Contains(Vector2Int cell)=>cells.Contains(cell);
         public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
         public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;
         public bool IsDry(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
-        public bool CanBuildOn(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Buildable(TerrainAt(cell))&&(!GetComponentInParent<FarmGame>()||GetComponentInParent<FarmGame>().State.storm.Depth(cell)<.08f&&(!GetComponentInParent<FarmGame>().Settlement||GetComponentInParent<FarmGame>().Settlement.CanEnter(Center(cell.x,cell.y))));
+        public bool CanBuildOn(Vector2Int cell)
+        {
+            if(!Contains(cell)||!TerrainTraits.Buildable(TerrainAt(cell)))return false;
+            var owner=Owner;return !owner||owner.State.storm.Depth(cell)<.08f&&(!owner.Settlement||owner.Settlement.CanEnter(Center(cell.x,cell.y)));
+        }
         public bool CanStand(Vector3 position,float radius=.3f)
         {
             if(!WalkableAt(position))return false;
-            for(int i=0;i<12;i++)
-            {float angle=i*Mathf.PI/6;if(!WalkableAt(position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius)))return false;}
+            for(int i=0;i<StandOffsets.Length;i++)
+                if(!WalkableAt(position+StandOffsets[i]*radius))return false;
             return true;
         }
         public Vector3 ConstrainMovement(Vector3 start,Vector3 displacement,float radius=.3f)
         {
-            displacement.y=0;int steps=Mathf.Max(1,Mathf.CeilToInt(displacement.magnitude/.12f));var step=displacement/steps;var position=start;
+            displacement.y=0;if(displacement.sqrMagnitude==0)return Vector3.zero;int steps=Mathf.Max(1,Mathf.CeilToInt(displacement.magnitude/.12f));var step=displacement/steps;var position=start;
             for(int i=0;i<steps;i++)
             {
                 if(CanStand(position+step,radius))position+=step;
@@ -81,7 +94,7 @@ namespace StarfieldEra
             if(CanStand(desired,radius)&&(!obstacles||Clear(desired,radius)))return desired;
             Vector3 best=Center(0,0)+Vector3.up*desired.y;float nearest=float.MaxValue;
             foreach(var cell in cells)
-            {var p=SurfacePoint(Center(cell.x,cell.y),.08f);float d=Mathf.Pow(WorldRelief.PlanarDistance(p,desired),2);if(d>=nearest||!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
+            {var p=Center(cell.x,cell.y);float d=Mathf.Pow(WorldRelief.PlanarDistance(p,desired),2);if(d>=nearest)continue;p=SurfacePoint(p,.08f);if(!CanStand(p,radius)||(obstacles&&!Clear(p,radius)))continue;nearest=d;best=p;}
             return best;
         }
         bool Clear(Vector3 p,float radius)

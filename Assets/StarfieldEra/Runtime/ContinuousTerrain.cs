@@ -20,6 +20,10 @@ namespace StarfieldEra
         public float HeightAt(Vector3 p)
         {
             p.y=0;Sample(p,out _,out float water,out _);
+            return HeightAt(p,water);
+        }
+        float HeightAt(Vector3 p,float water)
+        {
             float h=LandElevation.Height(p,owner?.State?.land)-(owner?owner.State.storm.GroundDrop(p):0);
             if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell))
             {
@@ -34,6 +38,7 @@ namespace StarfieldEra
                 }
                 else if(edit!=null&&edit.drainage){var center=HexWorldGrid.Center(cell.x,cell.y);float cut=1-Mathf.SmoothStep(.06f,.24f,Mathf.Abs(p.x-center.x));h-=.12f*cut;}
             }
+            if(water<=0)return h;
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }
         // The blended shoreline depresses neighbouring dry hexes too. Terrain enums alone
@@ -75,22 +80,26 @@ namespace StarfieldEra
             foreach(Transform child in transform)if(child.name=="Continuous land and lakebed"||child.name=="Animated translucent water")
             {child.gameObject.SetActive(false);Destroy(child.gameObject);}
             foreach(var asset in owned)if(asset)Destroy(asset);owned.Clear();
-            var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var varieties=new List<Vector4>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(HexWorldGrid.HalfWidth*2/Step),nz=Mathf.CeilToInt(HexWorldGrid.HalfDepth*2/Step);
+            int count=(nx+1)*(nz+1);
+            var vertices=new List<Vector3>(count);var colors=new List<Color>(count);var uv=new List<Vector2>(count);var varieties=new List<Vector4>(count);var triangles=new List<int>(nx*nz*6);
+            var waterDistances=new float[count];
             for(int z=0;z<=nz;z++)for(int x=0;x<=nx;x++)
             {
                 var p=new Vector3(-HexWorldGrid.HalfWidth+x*Step,0,-HexWorldGrid.HalfDepth+z*Step);
                 Sample(p,out var weights,out float water,out float tint);
-                p.y=HeightAt(p);
+                p.y=HeightAt(p,water);
+                waterDistances[vertices.Count]=WaterDistance(p);
                 vertices.Add(p);colors.Add(weights);uv.Add(new Vector2(tint,water));varieties.Add(GrassEcology.Weights(p,grid));
             }
             var waterVertices=new List<Vector3>();var waterColors=new List<Color>();var waterTriangles=new List<int>();
+            var polygon=new List<Vector3>(4);
             for(int z=0;z<nz;z++)for(int x=0;x<nx;x++)
             {
                 int a=z*(nx+1)+x,b=a+1,c=a+nx+1,d=c+1;
-                triangles.AddRange(new[]{a,c,b,b,c,d});
-                WaterTriangle(vertices[a],vertices[c],vertices[b],waterVertices,waterColors,waterTriangles);
-                WaterTriangle(vertices[b],vertices[c],vertices[d],waterVertices,waterColors,waterTriangles);
+                triangles.Add(a);triangles.Add(c);triangles.Add(b);triangles.Add(b);triangles.Add(c);triangles.Add(d);
+                WaterTriangle(vertices[a],vertices[c],vertices[b],waterDistances[a],waterDistances[c],waterDistances[b],polygon,waterVertices,waterColors,waterTriangles);
+                WaterTriangle(vertices[b],vertices[c],vertices[d],waterDistances[b],waterDistances[c],waterDistances[d],polygon,waterVertices,waterColors,waterTriangles);
             }
             var mesh=new Mesh{name="Continuous painted island",indexFormat=IndexFormat.UInt32};
             mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetUVs(1,uv);mesh.SetUVs(2,varieties);mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();mesh.RecalculateBounds();owned.Add(mesh);
@@ -162,19 +171,20 @@ namespace StarfieldEra
             {var a=shoreEdges[n];var ab=shoreEdges[n+1]-a;var q=a+ab*Mathf.Clamp01(Vector3.Dot(p-a,ab)/ab.sqrMagnitude);best=Mathf.Min(best,(p-q).sqrMagnitude);}
             return Mathf.Sqrt(best);
         }
-        void WaterTriangle(Vector3 a,Vector3 b,Vector3 c,List<Vector3> vertices,List<Color> colors,List<int> triangles)
+        void WaterTriangle(Vector3 a,Vector3 b,Vector3 c,float da,float db,float dc,List<Vector3> polygon,List<Vector3> vertices,List<Color> colors,List<int> triangles)
         {
-            var input=new[]{a,b,c};var polygon=new List<Vector3>(4);
-            for(int i=0;i<3;i++)
-            {
-                var start=input[i];var end=input[(i+1)%3];float ds=WaterDistance(start),de=WaterDistance(end);
-                if(ds>=0)polygon.Add(start);
-                if((ds>=0)!=(de>=0))polygon.Add(Vector3.Lerp(start,end,ds/(ds-de)));
-            }
+            if(da<0&&db<0&&dc<0)return;
+            polygon.Clear();
+            ClipWaterEdge(a,b,da,db,polygon);ClipWaterEdge(b,c,db,dc,polygon);ClipWaterEdge(c,a,dc,da,polygon);
             if(polygon.Count<3)return;int offset=vertices.Count;
             foreach(var p0 in polygon)
             {var p=p0;p.y=WaterLevelAt(p)+.015f;vertices.Add(p);Sample(p,out _,out float depth,out _);colors.Add(new Color(depth,ShoreDistance(p),0,1));}
-            for(int i=1;i<polygon.Count-1;i++)triangles.AddRange(new[]{offset,offset+i,offset+i+1});
+            for(int i=1;i<polygon.Count-1;i++){triangles.Add(offset);triangles.Add(offset+i);triangles.Add(offset+i+1);}
+        }
+        static void ClipWaterEdge(Vector3 start,Vector3 end,float ds,float de,List<Vector3> polygon)
+        {
+            if(ds>=0)polygon.Add(start);
+            if((ds>=0)!=(de>=0))polygon.Add(Vector3.Lerp(start,end,ds/(ds-de)));
         }
         void DecorateBanks(FarmWorld world)
         {
