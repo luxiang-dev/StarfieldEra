@@ -7,15 +7,17 @@ namespace StarfieldEra
     /// <summary>Saved hex edits, source-connected waterways and local soil stewardship.</summary>
     public sealed class LandStewardship:MonoBehaviour
     {
-        public static readonly string[] Names={"开垦土地","植树造林","开挖河道","填埋土地","覆草复绿","查看土地"};
-        public static readonly string[] Costs={"体力2","体力2 · 木材2 · 浆果1","体力3 · 获得土方3","体力3 · 土方2 · 石料2","体力2 · 纤维2","免费"};
+        public static readonly string[] Names={"开垦土地","植树造林","开挖河道","填埋土地","覆草复绿","查看土地","削低山丘","填土造丘"};
+        public static readonly string[] Costs={"体力2","体力2 · 木材2 · 浆果1","体力3 · 获得土方3","体力3 · 土方2 · 石料2","体力2 · 纤维2","免费","体力3 · 获得土方2","体力3 · 土方2"};
         public static readonly string[] Descriptions={
-            "将草地或沙地开垦为新的农田。\n回到地块旁按 E 播种或收获、R 浇水。\n使用背包中当前选择的种子。",
-            "种下树苗，滋养三天后长成林木。\n成树为两格以内的土地保湿固土。\n沙地上的树苗需要水源或雨水滋养，也可按 R 浇水。",
+            "将草地或沙地开垦为新的农田。\n回到地块旁播种、收获或浇水。\n使用背包中当前选择的种子。",
+            "种下树苗，滋养三天后长成林木。\n成树为两格以内的土地保湿固土。\n沙地上的树苗需要水源或雨水滋养，也可手动浇水。",
             "挖出低洼河床并获得土方。\n河道连通水源后才会出现水流。\n从湖岸向外逐格开挖，自动按水面降低河床。\n水面不可行走，可灌溉邻接农田。",
             "用土方和石料填平水面或干河道。\n填后变为沙地，可再覆草或植树。\n填断水路会让下游人工河道干涸。",
             "将裸露沙土覆草恢复成草地。\n水源和树木能帮助保持土地湿润。\n无水无树的裸露地与新开农田，\n持续干旱后会沙化；有作物时减缓。",
-            "查看地形、土壤湿度、干旱天数、\n河道水源与树木生长状态。\n新农田也可直接按 E 播种或收获。"};
+            "查看地形、土壤湿度、干旱天数、\n河道水源与树木生长状态。\n新农田也可直接播种或收获。",
+            "每次将地面削低半米并获得土方2。\n可连续施工，将山丘逐步挖平。\n最低高度为0.2米，边缘自动过渡成缓坡。\n需要铁锹，避开建筑、农田、水岸和动物。",
+            "每次消耗土方2，将地面抬高半米。\n可连续填土，将平地堆成山丘，最高12米。\n挖山取得的土方可以搬到这里使用。\n需要铁锹，施工结果自动保存。"};
         FarmGame game;HexWorldGrid grid;LandState S=>game.State.land;
         readonly Dictionary<Vector2Int,TerrainKind> baseline=new Dictionary<Vector2Int,TerrainKind>();
         readonly List<GameObject> visuals=new List<GameObject>();readonly List<Object> owned=new List<Object>();
@@ -34,6 +36,7 @@ namespace StarfieldEra
         }
         public void Choose(int kind)
         {
+            if(game.Night&&game.Night.Active)return;game.Night?.CancelTrap();
             if(kind<0||kind>=Names.Length||game.Adventure.InBattle||game.Expedition.Fishing)return;
             string missing=EquipmentCatalog.LandMissing(game,kind);if(missing!=""){game.ShowMessage(missing+"，请先学习图纸并制作。");return;}
             game.Management.Close();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.Hide();Cancel();tool=kind;
@@ -45,13 +48,13 @@ namespace StarfieldEra
         {
             if(!Active)return;
             if(game.Management.IsOpen||game.Adventure.InBattle||game.Expedition.Fishing||game.Construction.Active||game.Fences.Active){Cancel();return;}
-            var mouse=Mouse.current;if(mouse==null)return;
-            if(mouse.rightButton.wasPressedThisFrame){Cancel();return;}
-            if(EventSystem.current&&EventSystem.current.IsPointerOverGameObject()){preview.SetActive(false);return;}
-            if(!grid.RaycastGround(game.World.View.ScreenPointToRay(mouse.position.ReadValue()),out var p)||!grid.TryCell(p,out var cell)){preview.SetActive(false);return;}
+            if(!WorldPointer.Available)return;
+            if(WorldPointer.Cancel){Cancel();return;}
+            if(WorldPointer.Blocked){preview.SetActive(false);return;}
+            if(!grid.RaycastGround(game.World.View.ScreenPointToRay(WorldPointer.Position),out var p)||!grid.TryCell(p,out var cell)){preview.SetActive(false);return;}
             bool valid=Allowed(cell,tool,out var reason);preview.SetActive(true);preview.transform.position=grid.SurfacePoint(HexWorldGrid.Center(cell.x,cell.y),.15f);if(grid.TerrainAt(cell)==TerrainKind.Water){var raised=preview.transform.position;raised.y=grid.GetComponent<ContinuousTerrain>().WaterLevelAt(raised)+.08f;preview.transform.position=raised;}preview.GetComponent<MeshRenderer>().sharedMaterial=valid?good:bad;
-            Hint=Names[tool]+" · "+(valid?(tool==2?CanalStatus(cell,true):Describe(cell)):reason)+" · 左键施工 / 右键取消";
-            if(mouse.leftButton.wasPressedThisFrame)Execute(cell,tool);
+            Hint=Names[tool]+" · "+(valid?(tool==2?CanalStatus(cell,true):Describe(cell)):reason)+"";
+            if(WorldPointer.Pressed)Execute(cell,tool);
         }
         LandCell Record(Vector2Int cell)
         {
@@ -85,7 +88,7 @@ namespace StarfieldEra
             if(action==5)return true;
             reason=EquipmentCatalog.LandMissing(game,action);if(reason!="")return false;
             if(Reserved(cell)){reason="请避开农场、建筑、围栏、资源点与牧场";return false;}
-            if(S.cells.Count>=512&&S.Find(cell)==null){reason="已达到土地改造上限";return false;}
+            if(S.cells.Count>=2048&&S.Find(cell)==null){reason="已达到土地改造上限";return false;}
             var kind=grid.TerrainAt(cell);var c=S.Find(cell);var a=game.State.adventure;
             if(c!=null&&(c.tree||c.crop.planted)){reason="先收获作物，保留已栽种的树木";return false;}
             if(action==0&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand||c?.tilled==true)){reason="只能开垦空草地或沙地";return false;}
@@ -102,7 +105,24 @@ namespace StarfieldEra
             if(action==3&&(S.soil<2||a.stone<2)){reason="需要土方2、石料2；开挖可获得土方";return false;}
             if(action==4&&(kind!=TerrainKind.Sand&&c?.tilled!=true)){reason="选择沙地或空耕地进行复绿";return false;}
             if(action==4&&a.expedition.fiber<2){reason="需要纤维2";return false;}
-            if(game.State.energy<(action==2||action==3?3:2)){reason="体力不足";return false;}
+            if(action>=6)
+            {
+                if(!grid.IsDry(cell)||c?.channel==true){reason="只能改造干燥陆地";return false;}
+                for(int e=0;e<6;e++)if(grid.TerrainAt(PastureFences.Neighbor(cell,e))==TerrainKind.Water){reason="请保留水岸，避免改变水源";return false;}
+                if(ActorHere(cell)){reason="请让角色和动物离开施工地块";return false;}
+                for(int r=cell.y-3;r<=cell.y+3;r++)for(int col=cell.x-3;col<=cell.x+3;col++)
+                {
+                    var neighbor=new Vector2Int(col,r);if(!grid.Contains(neighbor))continue;
+                    float distance=WorldRelief.PlanarDistance(HexWorldGrid.Center(col,r),HexWorldGrid.Center(cell.x,cell.y));
+                    if(distance<4.7f&&grid.TerrainAt(neighbor)==TerrainKind.Water){reason="请保留水岸缓坡，选择更远的陆地";return false;}
+                    var managed=S.Find(neighbor);
+                    if(distance<3.4f&&(Reserved(neighbor)||managed!=null&&(managed.tilled||managed.tree||managed.channel))){reason="缓坡范围内有建筑、农田、树木或设施";return false;}
+                }
+                float height=c?.elevationEdited==true?c.elevation:grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y));
+                if(action==6&&height<=.201f){reason="地面已经挖平";return false;}
+                if(action==7&&(height>=11.999f||S.soil<2)){reason=height>=11.999f?"已达到最高地势":"需要土方2；削低山丘可以获得土方";return false;}
+            }
+            if(game.State.energy<(action==2||action==3||action>=6?3:2)){reason="体力不足";return false;}
             return true;
         }
         public void Execute(Vector2Int cell,int action)
@@ -115,13 +135,19 @@ namespace StarfieldEra
             {
                 var wet=WetChannels(cell);foreach(var flood in wet)if(grid.TerrainAt(flood)!=TerrainKind.Water&&ActorHere(flood)){game.ShowMessage("接通水源会淹到角色或动物，请先离开河道。");return;}
             }
-            var c=Record(cell);var a=game.State.adventure;game.State.SpendEnergy(action==2||action==3?3:2);c.dryDays=0;
+            var c=Record(cell);var a=game.State.adventure;game.State.SpendEnergy(action==2||action==3||action>=6?3:2);c.dryDays=0;
             if(action==0){c.tilled=true;c.channel=false;c.kind=(int)TerrainKind.Meadow;}
             else if(action==1){a.wood-=2;a.berries--;c.tree=true;c.treeDay=game.State.day;c.tilled=false;}
             else if(action==2){c.channel=true;c.tilled=false;c.kind=(int)TerrainKind.Rock;S.soil+=3;}
             else if(action==3){S.soil-=2;a.stone-=2;c.channel=false;c.tilled=false;c.kind=(int)TerrainKind.Sand;}
+            else if(action>=6)
+            {
+                float height=c.elevationEdited?c.elevation:grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y));
+                c.elevationEdited=true;c.elevation=Mathf.Clamp(height+(action==6?-.5f:.5f),.2f,12);
+                S.soil+=action==6?2:-2;
+            }
             else {a.expedition.fiber-=2;c.tilled=false;c.channel=false;c.kind=(int)TerrainKind.Meadow;}
-            UpdateWater();RefreshTerrain();game.Adventure.Commit(Names[action]+"完成。"+(action==2?CanalStatus(cell):Describe(cell)));
+            UpdateWater();if(action>=6){var center=HexWorldGrid.Center(cell.x,cell.y);grid.GetComponent<ContinuousTerrain>().RefreshHeights(center);game.World.GetComponent<GrassPatches>().RefreshHeights(game.World,center);game.World.GetComponent<ExpandedWilderness>()?.RefreshGround();}else RefreshTerrain();game.Adventure.Commit(Names[action]+"完成。"+(action==2?CanalStatus(cell):Describe(cell)));
         }
         HashSet<Vector2Int> WetChannels(Vector2Int? extra=null)
         {
@@ -148,7 +174,7 @@ namespace StarfieldEra
         bool Irrigated(Vector2Int cell){if(!game.State.adventure.irrigation)return false;for(int i=0;i<6;i++)if(grid.TerrainAt(PastureFences.Neighbor(cell,i))==TerrainKind.Water)return true;return false;}
         public string Describe(Vector2Int cell)
         {
-            var c=S.Find(cell);return (c?.tilled==true?"新农田":TerrainTraits.Names[(int)grid.TerrainAt(cell)])+" · "+(Moist(cell)?"湿润":"偏干")+(c==null?"":" · 干旱 "+c.dryDays+" 天")+(c?.channel==true?" · "+CanalStatus(cell):"")+(c?.tree==true?" · 树苗成长 "+c.treeGrowth+" / 3":"");
+            var c=S.Find(cell);return (c?.tilled==true?"新农田":TerrainTraits.Names[(int)grid.TerrainAt(cell)])+" · "+(Moist(cell)?"湿润":"偏干")+(c==null?"":" · 干旱 "+c.dryDays+" 天")+(c?.channel==true?" · "+CanalStatus(cell):"")+(c?.tree==true?" · 树苗成长 "+c.treeGrowth+" / 3":"")+" · 海拔 "+grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y)).ToString("0.0")+" 米";
         }
         public bool NearNewPlot
         {get {foreach(var c in S.cells)if(c.tilled&&WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position)<1.7f)return true;return false;}}
@@ -164,7 +190,7 @@ namespace StarfieldEra
             if(water)
             {if(!crop.planted||crop.Ready||crop.watered){game.ShowMessage("这块农田无需浇水。");return true;}if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}crop.watered=true;}
             else if(crop.Ready)
-            {if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}int kind=crop.kind;s.coins+=kind==0?12:kind==1?24:18;s.harvests++;if(kind==2){crop.growth=0;crop.watered=s.Rainy;s.adventure.berries+=2;}else chosen.crop=new CropState();}
+            {if(!s.SpendEnergy(1)){game.ShowMessage("体力不足。");return true;}int kind=crop.kind;s.coins+=kind==0?12:kind==1?24:18;s.harvests++;s.weather.survivalExperience+=2;if(kind==0)s.adventure.homestead.carrots+=2;if(kind==2){crop.growth=0;crop.growthBonus=0;crop.watered=s.Rainy;s.adventure.berries+=2;}else chosen.crop=new CropState();}
             else if(!crop.planted)
             {if(s.SelectedSeeds<1||s.energy<1){game.ShowMessage("需要当前作物种子和体力1。");return true;}s.SpendEnergy(1);crop.kind=s.selectedCrop;crop.planted=true;crop.watered=s.Rainy||Irrigated(chosen.Cell);if(s.selectedCrop==0)s.seeds--;else if(s.selectedCrop==1)s.wheatSeeds--;else s.berrySeeds--;}
             else {game.ShowMessage(crop.watered?"新农田今天已浇水，等待成长。":"新农田需要浇水，按 R。" );return true;}
@@ -172,7 +198,7 @@ namespace StarfieldEra
         }
         public void BeforeSleep()
         {foreach(var c in S.cells)if(c.tree&&Moist(c.Cell))c.treeWatered=true;
-            foreach(var c in S.cells)if(c.tilled&&c.crop.planted){if(Irrigated(c.Cell))c.crop.watered=true;if(c.crop.watered)c.crop.growth=Mathf.Min(c.crop.RequiredDays,c.crop.growth+1);}}
+            foreach(var c in S.cells)if(c.tilled&&c.crop.planted){if(Irrigated(c.Cell))c.crop.watered=true;c.crop.Advance(WeatherCatalog.Get(game.State.Weather).cropGrowthMultiplier);}}
         public void NewDay()
         {
             foreach(var c in S.cells)
@@ -191,6 +217,10 @@ namespace StarfieldEra
             }
             UpdateWater();RefreshTerrain();
         }
+        public void FinishLogging(Vector2Int cell)
+        {
+            var c=Record(cell);c.tree=false;c.treeGrowth=0;c.treeWatered=false;c.kind=(int)TerrainKind.Meadow;RefreshTerrain();
+        }
         void RefreshTerrain()
         {
             ApplySaved(grid,S);grid.GetComponent<ContinuousTerrain>().RebuildSurface();
@@ -203,7 +233,7 @@ namespace StarfieldEra
             {
                 var p=grid.SurfacePoint(HexWorldGrid.Center(c.column,c.row),.018f);
                 if(c.tree)
-                {var tree=game.World.GetComponent<FantasyPresentation>().PlantTree(p,Mathf.Lerp(.65f,3.5f,Mathf.Clamp01(c.treeGrowth/3f)));if(tree)visuals.Add(tree.gameObject);}
+                {var tree=game.World.GetComponent<FantasyPresentation>().PlantTree(p,Mathf.Lerp(.65f,3.5f,Mathf.Clamp01(c.treeGrowth/3f)));if(tree){var marker=tree.GetComponent<HarvestableTree>();if(marker){marker.planted=true;marker.cell=c.Cell;marker.Felled=false;tree.gameObject.SetActive(true);}visuals.Add(tree.gameObject);}}
                 if(!c.tilled)continue;
                 var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var tris=new List<int>();
                 const int count=22;

@@ -8,7 +8,7 @@ namespace StarfieldEra
         protected override void OnPopulateMesh(UnityEngine.UI.VertexHelper helper)
         {
             helper.Clear();if(!grid)return;var rect=rectTransform.rect;
-            for(int row=-20;row<=20;row++)for(int column=-23;column<=22;column++)
+            for(int row=HexWorldGrid.MinRow;row<=HexWorldGrid.MaxRow;row++)for(int column=HexWorldGrid.MinColumn;column<=HexWorldGrid.MaxColumn;column++)
             {
                 var cell=new Vector2Int(column,row);if(!grid.Contains(cell))continue;
                 var p=HexWorldGrid.Center(column,row);ColorUtility.TryParseHtmlString("#"+TerrainTraits.Colors[(int)grid.TerrainAt(cell)],out var shade);
@@ -17,6 +17,6 @@ namespace StarfieldEra
                 for(int i=0;i<6;i++)helper.AddTriangle(start,start+1+i,start+1+(i+1)%6);
             }
         }
-        static Vector2 Map(Vector3 p,Rect rect)=>rect.center+new Vector2(p.x/84*rect.width,p.z/72*rect.height);
+        static Vector2 Map(Vector3 p,Rect rect)=>rect.center+new Vector2(p.x/(HexWorldGrid.HalfWidth*2)*rect.width,p.z/(HexWorldGrid.HalfDepth*2)*rect.height);
     }
 }

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace StarfieldEra
 {
-    public sealed class ManagementHud : MonoBehaviour
+    public sealed partial class ManagementHud : MonoBehaviour
     {
         FarmGame game;FarmHud worldHud;TMP_FontAsset font;RectTransform overlay,window,content;
         TextMeshProUGUI heading,wallet,feedback;
@@ -14,13 +14,13 @@ namespace StarfieldEra
         string page="inventory",filter="全部",itemKey="wood",buildingKey="",signature="",openingMessage="";
         int selectedLandTool,equipmentSelection,equipmentPage,inventoryPage;
         bool equipmentView=true,blueprintView;
-        int selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
+        int tutorialSection,selectedTask,selectedRecipe,selectedTech,selectedRegion,selectedCompanion,selectedTrade,buildingPage;
         bool expeditionTasks,buildingsView,confirmDemolition;
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
         public string Page=>page;
         public bool IsOpen=>overlay&&overlay.gameObject.activeSelf;
-        static readonly string[] PageKeys={"inventory","tasks","craft","town","companions","map","market","land","camera"};
-        static readonly string[] PageNames={"背包","任务","制作","城镇","伙伴","地图","交易","土地工具","视角"};
+        static readonly string[] PageKeys={"inventory","weather","tasks","craft","town","companions","map","market","land","tutorial","camera"};
+        static readonly string[] PageNames={"背包","天气","任务","制作","城镇","伙伴","地图","交易","土地工具","操作教程","视角"};
         static readonly string[] RecipeKeys={"bait","rod","boots","amulet","camp","meal"};
         static readonly string[] RecipeNames={"草编鱼饵","精制鱼竿","湿地长靴","星辉护符","野营补给","暖心料理"};
         static readonly string[] RecipeCosts={"纤维2 · 浆果1","木材8 · 纤维4 · 知识2","纤维8 · 木材4 · 金币20","碎片3 · 晶石2 · 知识6","纤维4 · 浆果4 · 鲜鱼1","浆果3 · 鲜鱼1"};
@@ -40,8 +40,8 @@ namespace StarfieldEra
             wallet=Text(header,"",1000,20,370,60,16,ink);wallet.alignment=TextAlignmentOptions.Right;
             Box(window,"Navigation rail",0,86,202,674,new Color(.04f,.12f,.11f));
             for(int i=0;i<PageKeys.Length;i++)
-            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,110+i*57,154,49,()=>Open(key));}
-            Button(window,"返回世界 · Esc",24,680,154,46,Close);
+            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,108+i*51,154,45,()=>Open(key));}
+            Button(window,"返回世界",24,680,154,46,Close);
             content=Box(window,"Management page",208,96,1168,598,new Color(0,0,0,0));
             feedback=Text(window,"",232,708,1140,32,17,new Color(.93f,.84f,.64f));
             overlay.gameObject.SetActive(false);
@@ -50,8 +50,10 @@ namespace StarfieldEra
         public void Open(string target)
         {
             if(game.Adventure.InBattle)return;
+            if(game.Night&&game.Night.Active){game.ShowMessage("先完成夜间守卫，再打开旅人手册。");return;}
+            game.Night?.CancelTrap();
             if(game.Expedition.Fishing)game.Expedition.CancelFishing();
-            if(!PageKeys.Contains(target))target="inventory";
+            if(target!="homestead"&&!PageKeys.Contains(target))target="inventory";
             bool changed=page!=target;if(!IsOpen||changed)openingMessage=game.Message;
             game.Land?.Cancel();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.HideContextOnly();
             page=target;worldHud.SetWorldVisible(false);overlay.gameObject.SetActive(true);overlay.SetAsLastSibling();
@@ -83,24 +85,24 @@ namespace StarfieldEra
         {
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
-            int tab=Array.IndexOf(PageKeys,page);heading.text=PageNames[tab]+" · "+(page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="camera"?"观察与跟随":"大陆与旅途");
+            int tab=Array.IndexOf(PageKeys,page);heading.text=(page=="homestead"?"牧场与经营":PageNames[tab])+" · "+(page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs)pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
-            feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存 · Tab / Esc 返回世界":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="camera")CameraSettings();else Map();
+            feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存":game.Message)+(game.SaveHealthy?"":" · 保存失败");
+            if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
         }
         void CameraSettings()
         {
             var rig=game.World.Adventure.CameraRig;
             Text(content,"当前视角："+PlayerCameraRig.ModeNames[rig.Mode],0,4,1100,42,26,cream);
-            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。"};
-            for(int i=0;i<3;i++)
+            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n中键拖动转身与抬头低头。\nWASD 前后移动和左右平移。"};
+            for(int i=0;i<PlayerCameraRig.ModeNames.Length;i++)
             {
-                int mode=i;float x=i*388;var card=Box(content,"View card",x,66,370,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
-                Text(card,PlayerCameraRig.ModeNames[i],22,20,326,40,24,gold);Text(card,descriptions[i],22,78,326,144,18,cream);
-                Button(card,rig.Mode==i?"已启用":"使用此视角",22,238,326,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
+                int mode=i;float x=i*291;var card=Box(content,"View card",x,66,275,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
+                Text(card,PlayerCameraRig.ModeNames[i],18,20,239,40,24,gold);Text(card,descriptions[i],18,78,239,144,18,cream);
+                Button(card,rig.Mode==i?"已启用":"使用此视角",18,238,239,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
             }
-            Text(content,"V 切换视角 · 鼠标中键转动视角 · 滚轮调整远近 · Home 恢复视野",0,390,1120,38,19,cream);
+            Text(content,"V 切换四种视角 · 中键转向 · Shift 奔跑 · 空格跳跃 · X 砍树",0,390,1120,38,19,cream);
             Button(content,"向左转动",0,452,270,48,()=>{rig.Turn(-45);Rebuild();});
             Button(content,"向右转动",292,452,270,48,()=>{rig.Turn(45);Rebuild();});
             Button(content,"拉近视野",584,452,270,48,()=>rig.AdjustZoom(-2));
@@ -112,7 +114,7 @@ namespace StarfieldEra
         {
             Text(content,"改造与生态 · H 打开",0,4,620,40,24,cream);
             for(int i=0;i<LandStewardship.Names.Length;i++)
-            {int id=i;Row(LandStewardship.Names[i],LandStewardship.Costs[i],i,()=>{selectedLandTool=id;Rebuild();},selectedLandTool==i,60);}
+            {int id=i;var button=Button(content,LandStewardship.Names[i]+"   "+LandStewardship.Costs[i],0,60+i*49,620,43,()=>{selectedLandTool=id;Rebuild();});button.GetComponent<UnityEngine.UI.Image>().color=selectedLandTool==i?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);}
             Text(content,"土方 "+game.State.land.soil+" · 木材 "+A.wood+" · 石料 "+A.stone+" · 纤维 "+X.fiber,0,475,620,36,18,cream);
             Text(content,"灌溉技术："+(A.irrigation?"已掌握，临水农田自动浇水":"未研究，临水可保湿；自动浇水需研究"),0,519,630,54,17,cream);
             var detail=Details(LandStewardship.Names[selectedLandTool],LandStewardship.Costs[selectedLandTool],LandStewardship.Descriptions[selectedLandTool]+"\n\n选择工具后点击六步内的地块。\n绿色可施工，红色不可施工。\n右键 / Esc 取消；施工自动保存。");
@@ -121,15 +123,59 @@ namespace StarfieldEra
             if(missing!="")DetailAction(detail,"查看所需工具与图纸",1,()=>{equipmentView=true;blueprintView=true;equipmentSelection=EquipmentCatalog.Index(!EquipmentCatalog.Has(game,"shovel")?"shovel":"forester");equipmentPage=equipmentSelection/6;Open("craft");});
             else DetailAction(detail,"查看当前位置的土壤",1,()=>game.ShowMessage(game.Land.Describe(CurrentCell())));
         }
+        void Tutorial()
+        {
+            if(MobileControls.IsTouchMode)
+            {
+                TutorialCard(0,"手机操作 · 探索与农耕","左下摇杆 · 移动角色\n点击交互 · 采集、对话、种植或收获\n点击浇水 · 浇灌附近作物\n种子 · 切换当前种子\n购买 · 在小屋或商人旁购买种子\n休息 · 在小屋门前结束一天\n\n视野按钮调整地图远近。\n顶部旅人手册查看背包、任务、伙伴与地图。\n钓鱼时等待咬钩，点击交互收线。\n战斗时点击面板上的行动按钮。");
+                TutorialCard(590,"手机操作 · 建造与土地","点击建造，选择建筑后点击地图放置。\n旋转 · 调整建筑方向\n取消 · 退出建造、围栏、土地工具或钓鱼\n\n点击土地，选择工具后点击目标地块。\n围栏模式点击起点，再点击终点铺设。\n绿色位置可用，红色位置不可用。\n\n点击世界中的建筑或动物查看详情。\n返回按钮关闭手册或普通面板。\n所有操作无需外接键盘或鼠标。");
+                return;
+            }
+            string[] sections={"探索与手册","农耕与交互","建造与牧场","钓鱼与战斗"};
+            for(int i=0;i<sections.Length;i++)
+            {
+                int section=i;
+                var button=Button(content,sections[i],i*292,4,280,44,()=>{tutorialSection=section;Rebuild();});
+                button.GetComponent<UnityEngine.UI.Image>().color=tutorialSection==i?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
+            }
+            if(tutorialSection==0)
+            {
+                TutorialCard(0,"探索与视野","W / A / S / D 或方向键\n按画面方向移动，角色自动转向。\nShift 奔跑 · 空格跳跃 · X 砍树\nV 切换第一人称，中键拖动转身。\n\n鼠标滚轮\n拉近或拉远地图视野。\n\nC · 切换随行伙伴\n需要先招募伙伴。\n\n鼠标左键\n查看建筑、牧场门或动物详情。");
+                TutorialCard(590,"旅人手册","Tab · 打开手册；已打开时关闭\nI · 背包    Q · 任务\nL · 制作    M · 地图\n\n手册打开时，以上按键可切换页面；\n再次按当前页面的快捷键会关闭手册。\n\nEsc · 关闭手册或普通面板\n取消建造、围栏或钓鱼；战斗中不撤退。\n\n阅览手册时暂停角色移动。\n战斗中无法打开手册。");
+            }
+            else if(tutorialSection==1)
+            {
+                TutorialCard(0,"农田操作","E · 种植或收获\n走近空农田种下当前种子，成熟后收获。\n\nR · 浇水\n走近未浇水的作物；建造时改为旋转。\n\nT · 切换当前种子\n依次选择金萝卜、小麦、浆果。\n\nB · 购买当前种子\n需要在小屋或商人旁，且金币足够。");
+                TutorialCard(590,"交互与休息","E · 与附近目标交互\n采集资源、对话、钓鱼、查看动物、\n开启补给箱或解读石碑。\n\nF · 在小屋休息\n走到小屋门前，结束一天并推进生长。\n\n也可点击画面上的交互按钮。\n\n钓鱼中 E 改为收线；\n手册打开时先返回世界再进行操作。");
+            }
+            else if(tutorialSection==2)
+            {
+                TutorialCard(0,"G · 打开建造菜单","先关闭旅人手册，再按 G 进入建造。\n\n1. 选择林场、采石场、学舍或营地。\n2. 移动鼠标选择地图上的位置。\n3. 按 R 旋转建筑，每次转动六十度。\n4. 鼠标左键确认放置。\n\n绿色表示可建，红色表示不可建。\n全部占地都须有效，且资源足够。\n角色需在地块十步以内。\n\n鼠标右键或 Esc · 取消建造");
+                TutorialCard(590,"围栏、牧场与拆除","在建造菜单中进入围栏与牧场。\n\n鼠标左键 · 放置围栏或牧场门\n每次点击放置一段，可连续点击铺设。\n鼠标右键或 Esc · 取消放置\n\n围住至少三格、关好门后，\n查看野猪详情并进行驯养。\n\n拆除模式：左键选择自建建筑或围栏。\n拆除建筑返还一半木材、石料和金币。\n点击建筑可查看占地、产出与拆除选项。");
+            }
+            else
+            {
+                TutorialCard(0,"钓鱼","走近湖岸钓点，按 E 开始钓鱼。\n\n等待鱼咬钩，观察收线光标。\nE 或点击收线 · 在绿色区域内收线\nEsc · 取消钓鱼\n\n三次成功即可捕获；三次失误会逃走。\n鱼饵会自动消耗并扩大收线窗口。\n\n钓鱼时不能移动或使用其他世界快捷键。");
+                TutorialCard(590,"战斗","仅在遭遇战中使用数字行按键：\n\n1 · 普通攻击\n2 · 伙伴技能\n3 · 防御与回复\n4 · 撤退\n\n也可点击战斗面板中的对应按钮。\n\n战斗时无法移动或打开旅人手册。\nEsc 不会退出战斗，撤退请使用 4。");
+            }
+        }
+        void TutorialCard(float x,string title,string description)
+        {
+            var panel=Box(content,"Tutorial card",x,66,570,496,cream);HudOrnament.Border(panel);
+            Text(panel,title,22,18,526,42,25,ink);
+            Text(panel,description,22,78,526,396,19,ink);
+        }
         sealed class Item
         {public string key,name,category,description;public int count,symbol;public Item(string k,string n,string cat,int value,int icon,string desc){key=k;name=n;category=cat;count=value;symbol=icon;description=desc;}}
         List<Item> Items(){var items=new List<Item>{
+            new Item("starStones","星石","材料",game.State.weather.starStones,5,"开采晶石、开启远方宝箱或击败守卫获得，用于提升预知未来技能。"),
+            new Item("carrots","胡萝卜","材料",A.homestead.carrots,3,"收获金萝卜时保留2份；小屋或商人处可6金币买3份。用于引诱、饲养兔子。"),new Item("planks","木板","材料",A.homestead.planks,1,"二级林场安排村民并开启加工后生产，用于三级资源点升级。"),new Item("bricks","石砖","材料",A.homestead.bricks,2,"二级采石场安排村民并开启加工后生产，用于三级资源点升级。"),
             new Item("wood","木材","材料",A.wood,1,"采集倒木获得，用于建造、围栏和制作。"),new Item("stone","石料","材料",A.stone,2,"开采矿石获得，用于建筑与城镇发展。"),
             new Item("berries","浆果","材料",A.berries,3,"采摘或种植获得，可招募伙伴、喂食野猪、制作鱼饵和料理。"),new Item("fish","鲜鱼","材料",A.fish,4,"在湖岸钓鱼获得，可交易、招募伙伴或制作补给。"),
             new Item("crystals","晶石","材料",A.crystals,5,"矿脉、宝箱与守卫奖励，用于研究和制作护符。"),new Item("fiber","纤维","材料",X.fiber,3,"采集野生草束或开启补给箱获得，用于远行装备。"),
             new Item("shards","遗迹碎片","材料",X.shards,5,"解读石碑或完美收线获得，星辉护符需要三份。"),new Item("truffles","松露","材料",A.truffles,3,"喂食牧场野猪后次日获得，可在动物详情中出售。"),
             new Item("seed0","金萝卜种子","种子",game.State.seeds,3,"两天成熟，收获后售出。选为当前种子，再回农田种植。"),new Item("seed1","小麦种子","种子",game.State.wheatSeeds,3,"三天成熟，每次收获售24金币。"),new Item("seed2","浆果种子","种子",game.State.berrySeeds,3,"四天成熟，可重复收获，产出金币和浆果。"),
-            new Item("meal","暖心料理","补给",A.meals,0,"随时使用，体力回复12，最高30。小屋或营地可制作。"),new Item("bait","草编鱼饵","补给",X.bait,4,"抛竿时自动使用一份，扩大绿色收线窗口。"),new Item("camp","野营补给","补给",X.campSupplies,0,"在稳定陆地休整，体力回复15，不推进天数或刷新每日采集。"),
+            new Item("meal","暖心料理","补给",A.meals,0,"随时使用，体力回复12，最高300。小屋或营地可制作。"),new Item("bait","草编鱼饵","补给",X.bait,4,"抛竿时自动使用一份，扩大绿色收线窗口。"),new Item("camp","野营补给","补给",X.campSupplies,0,"在稳定陆地休整，体力回复15，不推进天数或刷新每日采集。"),
             };
             for(int i=0;i<EquipmentCatalog.Recipes.Length;i++){var r=EquipmentCatalog.Recipes[i];items.Add(new Item(r.key,r.name,"装备",EquipmentCatalog.Has(game,r.key)?1:0,0,r.effect+"\n\n图纸："+(EquipmentCatalog.State(game).blueprints[i]?"已学习":"未学习")+"\n持有工具即可自动用于操作，无需重复切换装备。"));}
             return items;
@@ -150,9 +196,9 @@ namespace StarfieldEra
                 Text(button.transform,item.name,10,57,125,30,17,cream);
             }
             Button(content,"上一页",0,514,116,38,()=>{inventoryPage--;Rebuild();},inventoryPage>0);Text(content,(inventoryPage+1)+" / "+pages,132,520,120,28,18,cream);Button(content,"下一页",280,514,116,38,()=>{inventoryPage++;Rebuild();},inventoryPage<pages-1);
-            var selected=all.First(x=>x.key==itemKey);var detail=Details(selected.name,selected.category+" · "+(selected.category=="装备"?(selected.count>0?"已持有":"尚未制作"):"持有 "+selected.count),selected.description+"\n\n体力 "+game.State.energy+" / 30\n当前种子："+FarmState.CropNames[game.State.selectedCrop]);
-            if(selected.key=="meal")DetailAction(detail,"使用料理 · 回复体力12",0,()=>game.Adventure.Supply("eat"),selected.count>0&&game.State.energy<30);
-            else if(selected.key=="camp")DetailAction(detail,"野营休整 · 回复体力15",0,game.Expedition.UseCamp,selected.count>0&&game.State.energy<30&&game.World.HexGrid.CanBuildOn(CurrentCell()));
+            var selected=all.First(x=>x.key==itemKey);var detail=Details(selected.name,selected.category+" · "+(selected.category=="装备"?(selected.count>0?"已持有":"尚未制作"):"持有 "+selected.count),selected.description+"\n\n体力 "+game.State.energy+" / 300\n每5秒自动恢复1点体力\n当前种子："+FarmState.CropNames[game.State.selectedCrop]);
+            if(selected.key=="meal")DetailAction(detail,"使用料理 · 回复体力12",0,()=>game.Adventure.Supply("eat"),selected.count>0&&game.State.energy<FarmState.MaxEnergy);
+            else if(selected.key=="camp")DetailAction(detail,"野营休整 · 回复体力15",0,game.Expedition.UseCamp,selected.count>0&&game.State.energy<FarmState.MaxEnergy&&game.World.HexGrid.CanBuildOn(CurrentCell()));
             else if(selected.category=="种子")
             {
                 int kind=int.Parse(selected.key.Substring(4));DetailAction(detail,kind==game.State.selectedCrop?"已选为当前种子":"选为当前种子",0,()=>game.SelectCrop(kind),kind!=game.State.selectedCrop);
@@ -171,6 +217,7 @@ namespace StarfieldEra
         Vector2Int CurrentCell(){game.World.HexGrid.TryCell(game.World.Player.position,out var c);return c;}
         void Tasks()
         {
+            Chip("寻兔委托",360,()=>OpenHomestead(true),false);
             Chip("村庄主线",0,()=>{expeditionTasks=false;selectedTask=Mathf.Min(A.quest,5);Rebuild();},!expeditionTasks);
             Chip("星图远征",180,()=>{expeditionTasks=true;selectedTask=Mathf.Min(X.quest,2);Rebuild();},expeditionTasks);
             string[] names=expeditionTasks?new[]{"远征入门","湿地行者","星图重现"}:new[]{"村长的委托","聚落的伙伴","失落的星辉","金穗拓荒","越过白岩","星野纪元"};
@@ -203,7 +250,7 @@ namespace StarfieldEra
             
             int row=0;foreach(int id in new[]{0,4,5})Row(RecipeNames[id],RecipeCosts[id],row++,()=>{selectedRecipe=id;Rebuild();},selectedRecipe==id);
             if(selectedRecipe!=0&&selectedRecipe!=4&&selectedRecipe!=5)selectedRecipe=0;int recipe=selectedRecipe;
-            string[] effects={"每次制作鱼饵3。钓鱼抛竿时自动使用一份，扩大绿色收线窗口。","永久扩大钓鱼收线窗口，制作后自动生效。","沼泽移动速度提升至80%，雪地85%。不能进入水面。","伙伴战斗最大体力+10，攻击与技能伤害+3。","制作一份野营补给，在稳定陆地使用，体力回复15，不推进天数。","制作一份料理，体力回复12，最高30。需在小屋或营地制作。"};
+            string[] effects={"每次制作鱼饵3。钓鱼抛竿时自动使用一份，扩大绿色收线窗口。","永久扩大钓鱼收线窗口，制作后自动生效。","沼泽移动速度提升至80%，雪地85%。不能进入水面。","伙伴战斗最大体力+10，攻击与技能伤害+3。","制作一份野营补给，在稳定陆地使用，体力回复15，不推进天数。","制作一份料理，体力回复12，最高300。需在小屋或营地制作。"};
             string condition=recipe==1||recipe==2?"前置：工坊 "+(A.workshop?"已建造":"未建造"):recipe==3?"前置：书院 "+(A.library?"已建造":"未建造"):"无需科技前置";
             bool location=recipe==5?game.NearHouse||game.Adventure.Target?.kind==EncounterKind.Camp:game.Expedition.CanCraftHere;
             var detail=Details(RecipeNames[recipe],RecipeOwned(recipe)?"已装备 · 永久生效":"制作配方",effects[recipe]+"\n\n材料："+RecipeCosts[recipe]+"\n"+condition+"\n\n地点："+(location?"当前可制作":"请走近制作地点")+"\n纤维 "+X.fiber+" · 碎片 "+X.shards+"\n浆果 "+A.berries+" · 鲜鱼 "+A.fish);
@@ -228,6 +275,8 @@ namespace StarfieldEra
         }
         void Town()
         {
+            Chip("牧场与经营",360,()=>OpenHomestead(true),false);
+            Chip("营地与守卫",540,OpenCamp,false);
             Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",180,()=>{buildingsView=true;Rebuild();},buildingsView);
             if(buildingsView){Buildings();return;}
             for(int i=0;i<TechKeys.Length;i++){int id=i;Row(TechNames[i],TechOwned(i)?"已完成":TechCosts[i],i,()=>{selectedTech=id;Rebuild();},selectedTech==i,58);}
@@ -247,10 +296,10 @@ namespace StarfieldEra
             for(int i=start;i<Mathf.Min(start+8,A.buildings.Count);i++){var b=A.buildings[i];string key=b.column+":"+b.row;Row(HexConstruction.Names[b.kind],"坐标 "+key+" · "+BuildingFootprints.Cells(b).Count+"格",i-start,()=>{buildingKey=key;confirmDemolition=false;Rebuild();},key==buildingKey,56);}
             Button(content,"上一页",0,528,116,38,()=>{buildingPage--;Rebuild();},buildingPage>0);Text(content,(buildingPage+1)+" / "+pages,128,536,140,28,17,cream);Button(content,"下一页",286,528,116,38,()=>{buildingPage++;Rebuild();},buildingPage<pages-1);
             if(selected==null){var empty=Details("尚无自建建筑","聚落档案","在地图上自由建造林场、采石场、学舍或营地。围栏沿六边形边缘布置。");DetailAction(empty,"开始建造",0,game.Construction.Open);return;}
-            var chosen=selected;string output=chosen.kind==0?"每日木材+2":chosen.kind==1?"每日石料+2":chosen.kind==2?"每日知识+1":"可在营地制作料理与装备";
+            var chosen=selected;string output=chosen.kind<2?"经营页分配村民后，每日生产；升级解锁加工":chosen.kind==2?"每日知识+1":chosen.kind==4?"村民容量+2（总上限9），可在房屋旁休息":chosen.kind==5?"各资源点库存容量+30（总上限120）":"可在营地制作料理与装备";
             var detail=Details(HexConstruction.Names[chosen.kind],"占地 "+BuildingFootprints.Cells(chosen).Count+" 格",output+"\n\n坐标 ["+chosen.column+","+chosen.row+"]\n朝向 "+chosen.rotation*60+"度\n建造："+(chosen.builtDay>0?"第"+chosen.builtDay+"天":"旧存档建筑")+"\n\n拆除返还一半木材、石料和金币。"+(confirmDemolition?"\n\n确认拆除这座建筑？":""));
             DetailAction(detail,confirmDemolition?"确认拆除并返还资源":"拆除这座建筑",0,()=>{if(confirmDemolition){game.Construction.Demolish(new Vector2Int(chosen.column,chosen.row));confirmDemolition=false;buildingKey="";}else{confirmDemolition=true;Rebuild();}});
-            DetailAction(detail,confirmDemolition?"取消拆除":"继续建造",1,()=>{if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});
+            DetailAction(detail,chosen.kind<2&&!confirmDemolition?"管理生产":confirmDemolition?"取消拆除":"继续建造",1,()=>{if(chosen.kind<2&&!confirmDemolition){OpenHomestead(false,game.Homestead.SiteIndex(chosen));return;}if(confirmDemolition){confirmDemolition=false;Rebuild();}else game.Construction.Open();});
         }
         void Companions()
         {
@@ -268,11 +317,12 @@ namespace StarfieldEra
             var graphic=new GameObject("Hex terrain chart",typeof(RectTransform),typeof(CanvasRenderer),typeof(TerrainMapGraphic)).GetComponent<TerrainMapGraphic>();graphic.transform.SetParent(map,false);graphic.rectTransform.anchorMin=Vector2.zero;graphic.rectTransform.anchorMax=Vector2.one;graphic.rectTransform.offsetMin=graphic.rectTransform.offsetMax=Vector2.zero;graphic.grid=game.World.HexGrid;graphic.raycastTarget=false;
             for(int i=0;i<8;i++)
             {
-                int region=i;var p=game.World.Adventure.RegionCenters[i];var button=Button(map,AdventureContent.Regions[i]+"\n"+(A.discovered[i]?"已发现":"尚未发现"),0,0,104,60,()=>{selectedRegion=region;Rebuild();});
-                var rect=button.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.anchoredPosition=new Vector2(p.x/84*620,p.z/72*510);button.GetComponent<UnityEngine.UI.Image>().color=selectedRegion==i?new Color(.38f,.32f,.18f):A.discovered[i]?green:new Color(.23f,.28f,.25f);
-                button.GetComponentInChildren<TextMeshProUGUI>().fontSize=13;
+                int region=i;var p=game.World.Adventure.RegionCenters[i];var button=Button(map,AdventureContent.Regions[i]+"\n"+(A.discovered[i]?"已发现":"尚未发现"),0,0,78,42,()=>{selectedRegion=region;Rebuild();});
+                var rect=button.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.anchoredPosition=new Vector2(p.x/(HexWorldGrid.HalfWidth*2)*620,p.z/(HexWorldGrid.HalfDepth*2)*510);button.GetComponent<UnityEngine.UI.Image>().color=selectedRegion==i?new Color(.38f,.32f,.18f):A.discovered[i]?green:new Color(.23f,.28f,.25f);
+                button.GetComponentInChildren<TextMeshProUGUI>().fontSize=10;
             }
-            var player=game.World.Player.position;var marker=Box(map,"Player map marker",0,0,12,12,gold);marker.anchorMin=marker.anchorMax=marker.pivot=new Vector2(.5f,.5f);marker.anchoredPosition=new Vector2(player.x/84*620,player.z/72*510);
+            var den=ExpandedWilderness.DenPosition;var denButton=Button(map,"北岭狼窟",0,0,90,32,()=>game.ShowMessage("狼窟在东北山岭，坐标 58，39。向东北方向探索可抵达。"));var denRect=denButton.GetComponent<RectTransform>();denRect.anchorMin=denRect.anchorMax=denRect.pivot=new Vector2(.5f,.5f);denRect.anchoredPosition=new Vector2(den.x/(HexWorldGrid.HalfWidth*2)*620,den.z/(HexWorldGrid.HalfDepth*2)*510);denButton.GetComponentInChildren<TextMeshProUGUI>().fontSize=13;
+            var player=game.World.Player.position;var marker=Box(map,"Player map marker",0,0,12,12,gold);marker.anchorMin=marker.anchorMax=marker.pivot=new Vector2(.5f,.5f);marker.anchoredPosition=new Vector2(player.x/(HexWorldGrid.HalfWidth*2)*620,player.z/(HexWorldGrid.HalfDepth*2)*510);
             Text(content,"草地 · 森林 · 沼泽 · 沙地 · 岩地 · 雪地 · 道路 · 水面",0,538,630,30,16,cream);
             string[] descriptions={"农场、小屋、村长与城镇议事牌。","倒木、浆果与森林伙伴。森林移动80%。","湖岸钓点与潮汐伙伴。水面禁止通行。","石碑、遗迹守卫与焰晶狐。","商人、营地和荒野补给。","矿石、晶石和白岩守卫。岩地70%，雪地65%。","湿地采集、水洼钓点与幽光守卫。沼泽移动45%。","远行商人、营地与旅人石碑。"};selectedRegion=Mathf.Clamp(selectedRegion,0,7);int regionId=selectedRegion;
             var detail=Details(AdventureContent.Regions[regionId],A.discovered[regionId]?"已发现 · 可快速旅行":"尚未发现",descriptions[regionId]+"\n\n补给箱："+(X.caches[regionId]?"已开启":"未开启")+"\n石碑："+(X.runes[regionId]?"已解读":"未解读")+"\n\n先步行发现区域，再解锁旅行。\n"+game.Expedition.NextLandmark);

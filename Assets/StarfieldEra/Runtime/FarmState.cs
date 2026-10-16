@@ -11,6 +11,8 @@ namespace StarfieldEra
         public bool watered;
         public int growth;
         public int kind;
+        public float growthBonus;
+        public void Advance(float multiplier){if(!planted||!watered||Ready)return;float progress=growth+growthBonus+multiplier;growth=Math.Min(RequiredDays,(int)Math.Floor(progress+0.00001f));growthBonus=growth>=RequiredDays?0:Math.Max(0,progress-growth);}
         public int RequiredDays => kind==1?3:kind==2?4:FarmState.GrowthDays;
         public bool Ready => planted && growth >= RequiredDays;
     }
@@ -28,24 +30,47 @@ namespace StarfieldEra
         public int seeds = 12;
         public int harvests;
         public int schema = 2;
-        public int energy = 30;
+        public const int MaxEnergy=300;
+        public const float EnergyRecoveryInterval=5;
+        public int energy = MaxEnergy;
+        public float energyRecoverySeconds;
         public int selectedCrop;
         public int wheatSeeds, berrySeeds;
-        public bool Rainy => day % 4 == 0;
+        public WeatherState weather=new WeatherState();
+        public WeatherType Weather {get{weather.Ensure(day);return weather.trueWeatherQueue[0];}}
+        public WeatherType TomorrowWeather {get{weather.Ensure(day);return weather.trueWeatherQueue[1];}}
+        public bool Rainy => WeatherCatalog.Get(Weather).watersSoil;
         public string Season => new[]{"春季","夏季","秋季","冬季"}[((day-1)/14)%4];
         public int SeedCost => selectedCrop==0?5:selectedCrop==1?8:10;
         public int SelectedSeeds => selectedCrop==0?seeds:selectedCrop==1?wheatSeeds:berrySeeds;
         public static readonly string[] CropNames = {"金萝卜","小麦","浆果"};
         public bool SpendEnergy(int cost) { if(energy<cost)return false;energy-=cost;return true; }
+        public int RestoreEnergy(int amount)
+        {
+            int restored=Math.Min(MaxEnergy-energy,Math.Max(0,amount));energy+=restored;
+            if(energy>=MaxEnergy)energyRecoverySeconds=0;return restored;
+        }
+        public bool RecoverEnergy(float seconds)
+        {
+            if(energy>=MaxEnergy){energyRecoverySeconds=0;return false;}
+            if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return false;
+            energyRecoverySeconds+=Math.Min(seconds,MaxEnergy*EnergyRecoveryInterval);
+            int points=(int)(energyRecoverySeconds/EnergyRecoveryInterval);
+            if(points==0)return false;
+            energyRecoverySeconds-=points*EnergyRecoveryInterval;RestoreEnergy(points);return true;
+        }
         public void Upgrade()
         {
-            if(schema<2){schema=2;energy=30;}
+            if(weather==null)weather=new WeatherState();weather.Ensure(day,true);
+            if(schema<2){schema=2;energy=MaxEnergy;}
             if(plots!=null && plots.Length==12)
             {var expanded=new CropState[PlotCount];Array.Copy(plots,expanded,12);for(int i=12;i<PlotCount;i++)expanded[i]=new CropState();plots=expanded;}
             if(adventure==null)adventure=new AdventureState();
             adventure.Upgrade();
             if(land==null)land=new LandState();land.Upgrade();
+            if(forestry==null)forestry=new ForestryState();
         }
+        public ForestryState forestry=new ForestryState();
         public LandState land = new LandState();
         public AdventureState adventure = new AdventureState();
         public float playerX = -1;
@@ -55,6 +80,7 @@ namespace StarfieldEra
         public FarmState()
         {
             for (int i = 0; i < plots.Length; i++) plots[i] = new CropState();
+            weather.Ensure(day);
         }
 
         public bool Plant(int index)
@@ -81,10 +107,11 @@ namespace StarfieldEra
             if (!ValidIndex(index) || !plots[index].Ready) return false;
             int kind=plots[index].kind;
             if(!SpendEnergy(1))return false;
-            if(kind==2){plots[index].growth=0;plots[index].watered=Rainy;adventure.berries+=2;}
+            if(kind==2){plots[index].growth=0;plots[index].growthBonus=0;plots[index].watered=Rainy;adventure.berries+=2;}
             else plots[index] = new CropState();
             coins += kind==0?HarvestPrice:kind==1?24:18;
-            harvests++;
+            if(kind==0)adventure.homestead.carrots+=2;
+            harvests++;weather.survivalExperience+=2;
             return true;
         }
 
@@ -100,10 +127,10 @@ namespace StarfieldEra
         {
             foreach (var crop in plots)
             {
-                if (crop.planted && crop.watered) crop.growth = Math.Min(crop.RequiredDays, crop.growth + 1);
+                crop.Advance(WeatherCatalog.Get(Weather).cropGrowthMultiplier);
                 crop.watered = false;
             }
-            day++; energy=30;
+            day++; energy=MaxEnergy;energyRecoverySeconds=0;weather.Ensure(day);weather.survivalExperience++;
             adventure?.NewDay(this);
             if(Rainy)foreach(var crop in plots)if(crop.planted&&!crop.Ready)crop.watered=true;
         }
@@ -112,14 +139,16 @@ namespace StarfieldEra
 
         public bool IsValid()
         {
+            if(weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid())return false;
+            if(float.IsNaN(energyRecoverySeconds)||float.IsInfinity(energyRecoverySeconds)||energyRecoverySeconds<0||energyRecoverySeconds>=EnergyRecoveryInterval)return false;
             if(land!=null&&!land.Valid())return false;
             if (adventure != null && !adventure.Valid()) return false;
-            if (schema!=2 || energy<0 || energy>30 || selectedCrop<0 || selectedCrop>2 || wheatSeeds<0 || berrySeeds<0 || version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
+            if (schema!=2 || energy<0 || energy>MaxEnergy || selectedCrop<0 || selectedCrop>2 || wheatSeeds<0 || berrySeeds<0 || version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
                 plots == null || plots.Length != PlotCount || float.IsNaN(playerX) || float.IsNaN(playerZ) ||
                 float.IsInfinity(playerX) || float.IsInfinity(playerZ)) return false;
             foreach (var crop in plots)
-                if (crop == null || crop.growth < 0 || crop.growth > crop.RequiredDays || crop.kind<0 || crop.kind>2 ||
-                    (!crop.planted && (crop.watered || crop.growth != 0))) return false;
+                if (crop == null || crop.growth < 0 || crop.growth > crop.RequiredDays || crop.kind<0 || crop.kind>2 || float.IsNaN(crop.growthBonus)||float.IsInfinity(crop.growthBonus)||crop.growthBonus<0||crop.growthBonus>=1 ||
+                    (!crop.planted && (crop.watered || crop.growth != 0 || crop.growthBonus!=0))) return false;
             return true;
         }
     }
@@ -137,7 +166,9 @@ namespace StarfieldEra
             try
             {
                 if (!File.Exists(path)) return false;
-                var candidate = JsonUtility.FromJson<FarmState>(File.ReadAllText(path));
+                var json=File.ReadAllText(path);
+                var candidate = JsonUtility.FromJson<FarmState>(json);
+                if(candidate!=null&&!System.Text.RegularExpressions.Regex.IsMatch(json,@"""weather""\s*:"))candidate.weather=null;
                 if (candidate == null) return false;
                 candidate.Upgrade();
                 if (!candidate.IsValid()) return false;

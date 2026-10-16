@@ -49,7 +49,7 @@ namespace StarfieldEra
         Vector3 Position(Vector3 desired)
         {
             var grid=game.Game.World.HexGrid;Vector3 best=grid.SafeLand(desired,.4f);float distance=float.MaxValue;
-            for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
+            for(int r=HexWorldGrid.MinRow;r<=HexWorldGrid.MaxRow;r++)for(int c=HexWorldGrid.MinColumn;c<=HexWorldGrid.MaxColumn;c++)
             {
                 var cell=new Vector2Int(c,r);if(!grid.Contains(cell))continue;var p=grid.SurfacePoint(HexWorldGrid.Center(c,r));float d=Mathf.Pow(WorldRelief.PlanarDistance(p,desired),2);if(d>=distance||!grid.CanStand(p,.45f))continue;
                 bool blocked=false;foreach(var col in Physics.OverlapSphere(p+Vector3.up*.75f,.65f,~0,QueryTriggerInteraction.Ignore))if(!grid.IsGroundCollider(col)&&!(col is CharacterController)){blocked=true;break;}if(blocked)continue;

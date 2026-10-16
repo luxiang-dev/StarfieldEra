@@ -30,6 +30,7 @@ Shader "StarfieldEra/Painted Water"
    #define _SURFACE_TYPE_TRANSPARENT 1
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+   #include "WeatherAtmosphere.hlsl"
    CBUFFER_START(UnityPerMaterial)
    half4 _ShallowColor, _DeepColor, _FoamColor;
    float _DepthMaxDistance, _EdgeFade, _FoamWidth, _FoamDistortion, _FoamSpeed;
@@ -86,6 +87,7 @@ Shader "StarfieldEra/Painted Water"
     Light sun=GetMainLight(TransformWorldToShadowCoord(i.world),i.world,half4(1,1,1,1));
     water.rgb*=lerp(.72,1,sun.shadowAttenuation);
     water.a=lerp(water.a,max(water.a,_FoamColor.a),foam)*edgeAlpha;
+    water.rgb=WeatherAtmosphere(water.rgb,i.world);
     return water;
    }
    ENDHLSL

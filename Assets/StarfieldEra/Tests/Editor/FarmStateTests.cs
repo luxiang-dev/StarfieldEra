@@ -10,6 +10,7 @@ namespace StarfieldEra.Tests
         public void HarvestRequiresTwoWateredNightsAndPaysOnlyOnce()
         {
             var farm = new FarmState();
+            for(int i=0;i<7;i++)farm.weather.trueWeatherQueue[i]=WeatherType.Cloudy;
             Assert.That(farm.Plant(0), Is.True);
             Assert.That(farm.Plant(0), Is.False);
             Assert.That(farm.seeds, Is.EqualTo(11));

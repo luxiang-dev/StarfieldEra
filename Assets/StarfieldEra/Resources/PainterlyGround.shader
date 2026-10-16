@@ -18,6 +18,7 @@ Shader "StarfieldEra/Painterly Ground"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "WeatherAtmosphere.hlsl"
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
                 half _Smoothness;
@@ -47,7 +48,7 @@ Shader "StarfieldEra/Painterly Ground"
                 Light light=GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half diffuse=saturate(dot(normal,light.direction));
                 half3 illumination=SampleSH(normal)+light.color*(.15+diffuse*.85)*light.distanceAttenuation*light.shadowAttenuation;
-                return half4(paint*illumination,1);
+                return half4(WeatherAtmosphere(paint*illumination,input.positionWS),1);
             }
             ENDHLSL
         }

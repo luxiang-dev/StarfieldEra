@@ -8,6 +8,7 @@ namespace StarfieldEra
         AdventureGame game;
         TMP_FontAsset font;
         RectTransform panel;
+        public bool IsContextOpen => panel && panel.gameObject.activeSelf;
         TextMeshProUGUI title,body;
         Transform actions;
         RectTransform fishingTrack,fishingZone,fishingCursor;
@@ -57,7 +58,7 @@ namespace StarfieldEra
             if(mode=="fishing")
             {
                 title.text="湖岸垂钓 · 收线时机";body.text=game.Game.Expedition.FishingText;
-                Action("E 收线 · 光标进入绿色区域",0,game.Game.Expedition.Reel);
+                Action("收线",0,game.Game.Expedition.Reel);
                 Action("收起鱼竿",1,game.Game.Expedition.CancelFishing);
             }
             else if(mode=="expedition")
@@ -65,7 +66,7 @@ namespace StarfieldEra
                 var e=s.expedition;title.text="远征日志 · 星图重现";
                 body.text=ExpeditionContent.Quests[e.quest]+"\n\n补给箱 "+e.CacheCount+" / 8   石碑 "+e.RuneCount+" / 8\n累计钓获 "+e.fishCaught+" 条   遗迹碎片 "+e.shards+"\n纤维 "+e.fiber+"   鱼饵 "+e.bait+"   野营补给 "+e.campSupplies+"\n\n"+game.Game.Expedition.NextLandmark;
                 Action("制作装备、鱼饵与补给",0,()=>Show("craft"));
-                Action("使用野营补给 · 回复体力15",1,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<30);
+                Action("使用野营补给 · 回复体力15",1,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<FarmState.MaxEnergy);
                 Action("向村长领取远征奖励",2,game.Game.Expedition.ClaimQuest,e.quest<3);
                 Action("打开旅途地图",3,()=>Show("map"));
             }
@@ -84,7 +85,7 @@ namespace StarfieldEra
                 {
                     Action(e.starAmulet?"星辉护符 · 已装备":"星辉护符 · 碎片3 晶2 知6",0,()=>game.Game.Expedition.Craft("amulet"),!e.starAmulet);
                     Action("野营补给 · 纤维4 浆果4 鲜鱼1",1,()=>game.Game.Expedition.Craft("camp"));
-                    Action("使用野营补给 · 回复体力15",2,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<30);
+                    Action("使用野营补给 · 回复体力15",2,game.Game.Expedition.UseCamp,e.campSupplies>0&&game.Game.State.energy<FarmState.MaxEnergy);
                     Action("返回远征日志",3,()=>Show("expedition"));
                 }
                 Page(mode=="craft"?"下一页 · 护符与野营":"上一页 · 鱼竿与长靴",()=>Show(mode=="craft"?"craft2":"craft"));
@@ -101,10 +102,10 @@ namespace StarfieldEra
             {
                 title.text=game.EnemyName+" · 回合 "+game.Turn;
                 body.text=AdventureContent.Names[s.activeCompanion]+" 体力 "+game.AllyHP+" / "+game.AllyMaxHP+"\n\n"+game.EnemyName+" 体力 "+game.EnemyHP+" / "+game.EnemyMaxHP+"\n\n"+game.BattleLog+"\n\n技能冷却："+game.Cooldown+" 回合\n守卫每三回合会发动重击，适时防御。";
-                Action("1  普通攻击",0,()=>game.BattleAction(0));
-                Action("2  伙伴技能",1,()=>game.BattleAction(1));
-                Action("3  防御与回复",2,()=>game.BattleAction(2));
-                Action("4  撤退",3,()=>game.BattleAction(3));
+                Action("普通攻击",0,()=>game.BattleAction(0));
+                Action("伙伴技能",1,()=>game.BattleAction(1));
+                Action("防御与回复",2,()=>game.BattleAction(2));
+                Action("撤退",3,()=>game.BattleAction(3));
             }
             else if(mode=="town" || mode=="town2")
             {
@@ -129,7 +130,7 @@ namespace StarfieldEra
             else if(mode=="map" || mode=="map2")
             {
                 title.text="星野大陆 · 旅途地图";
-                body.text=mode=="map"?"中央：晨风村、24块农田与议事牌。\n东侧：青苔森林，木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，晶石与守卫。\n\n先步行发现，再解锁快速旅行。":"东南：金穗平原，营地与商人。\n东北远方：白岩山地，矿石与新守卫。\n西北：幽光湿地，浆果、钓鱼与守卫。\n西南远方：远行驿站，贸易与营地。\n\n鼠标滚轮可缩放到大陆视野。\n沼泽移动45%，道路120%；水面不可通行。";
+                body.text=mode=="map"?"中央：晨风村、24块农田与议事牌。\n东侧：青苔森林，木材与浆果。\n西南：镜湖岸，钓鱼与水系伙伴。\n东北：星辉遗迹，晶石与守卫。\n\n先步行发现，再解锁快速旅行。":"东南：金穗平原，营地与商人。\n东北远方：白岩山地，矿石与新守卫。\n西北：幽光湿地，浆果、钓鱼与守卫。\n西南远方：远行驿站，贸易与营地。\n\n沼泽移动45%，道路120%；水面不可通行。";
                 int start=mode=="map"?0:4;
                 for(int i=0;i<4;i++){int region=start+i;Action(AdventureContent.Regions[region]+(s.discovered[region]?" · 旅行":" · 尚未发现"),i,()=>game.Travel(region),s.discovered[region]);}
                 Page(mode=="map"?"下一页 · 四个远方区域":"上一页 · 村庄周边",()=>Show(mode=="map"?"map2":"map"));
@@ -137,27 +138,38 @@ namespace StarfieldEra
             else if(mode=="build")
             {
                 title.text="六边形建造 · 自由选址";
-                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场木+2，采石场石+2，学舍知+1。\n林场、采石场7格；学舍4格，营地3格。\n\n左键建造，R旋转；右键或Esc取消。\n绿色可建，红色不可建。\n全部占地须可建，点击建筑查看详情。";
+                body.text="木材 "+s.wood+"   石料 "+s.stone+"   金币 "+game.Game.State.coins+"\n\n林场和采石场需派驻村民；学舍每天知+1。\n林场、采石场7格；学舍4格，营地3格。\n\n绿色可建，红色不可建。\n全部占地须可建，点击建筑查看详情。";
                 for(int i=0;i<4;i++){int kind=i;Action(HexConstruction.Names[i]+" "+BuildingFootprints.Counts[i]+"格 · 木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],i,()=>game.Game.Construction.Choose(kind));}
+                Page("下一页 · 房屋、仓库与守卫",()=>Show("campbuild"));
+            }
+            else if(mode=="campbuild")
+            {
+                title.text="营地建设 · 房屋与仓库";
+                body.text="房屋木10石6金15：村民容量+2，上限9。\n仓库木8石8金12：各资源点库存+30，上限120。\n两类建筑均占4格，可旋转、拆除。\n\n夜袭日为第3、6、9…天。\n先修围栏、布置陷阱，再回房屋休息守卫。";
+                Action("建造居民房屋",0,()=>game.Game.Construction.Choose(4));
+                Action("建造仓库",1,()=>game.Game.Construction.Choose(5));
+                Action("布置陷阱 · 木2石1",2,game.Game.Night.ChooseTrap);
+                Action("查看营地与守卫",3,()=>game.Game.Management.OpenCamp());
                 Page("下一页 · 围栏、牧场与拆除",()=>Show("pasture"));
             }
             else if(mode=="pasture")
             {
                 title.text="牧场 · 围栏与动物";
-                body.text="木材 "+s.wood+"   浆果 "+s.berries+"   松露 "+s.truffles+"\n\n围栏沿六边形边缘放置，格内可养动物。\n至少围住三格，关好门，再点击野猪驯养。\n左键连续放置，右键或Esc取消。\n点击牧场门可开关，点击动物查看状态。\n每只每天喂浆果1，次日松露1，可售18金币。";
+                body.text="木材 "+s.wood+"   浆果 "+s.berries+"   松露 "+s.truffles+"\n\n围栏沿六边形边缘放置，格内可养动物。\n至少围住三格，关好门，再点击野猪驯养。\n点击牧场门可开关，点击动物查看状态。\n每只每天喂浆果1，次日松露1，可售18金币。";
                 Action("木围栏 · 每段木2",0,()=>game.Game.Fences.Choose(0));
                 Action("牧场门 · 每扇木4",1,()=>game.Game.Fences.Choose(1));
                 Action("拆除围栏 · 返还一半木材",2,()=>game.Game.Fences.Choose(2));
-                Action("拆除自建建筑",3,()=>game.Game.Construction.Choose(4));
-                Page("上一页 · 建筑",()=>Show("build"));
+                Action("拆除自建建筑",3,()=>game.Game.Construction.Choose(HexConstruction.DemolitionKind));
+                Page("上一页 · 营地建设",()=>Show("campbuild"));
             }
             else if(mode=="fence")
             {
                 var f=game.Game.Fences.Inspected;if(f==null){Hide();return;}
                 title.text=f.gate?"牧场门":"木围栏";
-                body.text=(f.free?"连续围栏 · 长度 "+UnityEngine.Vector2.Distance(new UnityEngine.Vector2(f.ax,f.az),new UnityEngine.Vector2(f.bx,f.bz)).ToString("0.00")+" 米":"坐标 ["+f.column+","+f.row+"]   边缘 "+(f.edge+1))+"\n\n"+(f.gate?(f.open?"状态：已打开。牧场未封闭。":"状态：已关闭，可围住牧场。") :"阻挡角色与动物，不占用整格。")+"\n\n费用：木材 "+(f.gate?4:2)+"\n拆除返还一半木材。";
+                body.text=(f.free?"连续围栏 · 长度 "+UnityEngine.Vector2.Distance(new UnityEngine.Vector2(f.ax,f.az),new UnityEngine.Vector2(f.bx,f.bz)).ToString("0.00")+" 米":"坐标 ["+f.column+","+f.row+"]   边缘 "+(f.edge+1))+"\n\n"+(f.gate?(f.open?"状态：已打开。牧场未封闭。":"状态：已关闭，可围住牧场。") :"阻挡角色与动物，不占用整格。")+"\n围栏耐久："+(3-f.damage)+" / 3\n\n费用：木材 "+(f.gate?4:2)+"\n拆除返还一半木材。";
                 if(f.gate)Action(f.open?"关闭牧场门":"打开牧场门",0,game.Game.Fences.ToggleGate);
                 Action("拆除这段围栏",1,game.Game.Fences.RemoveInspected);
+                if(f.damage>0)Action("修补受损围栏 · 木1",2,game.Game.Fences.RepairInspected);
                 Action("继续建造围栏",2,()=>game.Game.Fences.Choose(0));
             }
             else if(mode=="animal")
@@ -185,7 +197,7 @@ namespace StarfieldEra
                 }
                 else
                 {
-                    string output=b.kind==0?"每天木材 +2":b.kind==1?"每天石料 +2":b.kind==2?"每天知识 +1":"可制作料理，需走近营地";
+                    string output=b.kind==0?"每天木材 +2":b.kind==1?"每天石料 +2":b.kind==2?"每天知识 +1":b.kind==4?"村民容量+2，可在房屋旁休息":b.kind==5?"各资源点库存容量+30":"可制作料理，需走近营地";
                     int count=BuildingFootprints.Cells(b).Count;
                     if(mode=="confirm-demolition")
                     {
@@ -206,18 +218,18 @@ namespace StarfieldEra
             {
                 title.text="行囊 · 料理与种子";
                 var farm=game.Game.State;
-                body.text="体力 "+farm.energy+" / 30   料理 "+s.meals+"\n\n金萝卜种子 "+farm.seeds+" · 两天成熟\n小麦种子 "+farm.wheatSeeds+" · 三天成熟，售24金币\n浆果种子 "+farm.berrySeeds+" · 四天成熟，可重复收获\n\n每四天有雨，自动浇水。种田耗体力1，采集2。\n营地与小屋可料理，使用料理回复12体力。";
+                body.text="体力 "+farm.energy+" / 300   料理 "+s.meals+"\n\n金萝卜种子 "+farm.seeds+" · 两天成熟\n小麦种子 "+farm.wheatSeeds+" · 三天成熟，售24金币\n浆果种子 "+farm.berrySeeds+" · 四天成熟，可重复收获\n\n每四天有雨，自动浇水。种田耗体力1，采集2。\n营地与小屋可料理，使用料理回复12体力。";
                 Action("制作料理 · 浆果3 鲜鱼1",0,()=>game.Supply("cook"));
-                Action("使用料理 · 回复体力12",1,()=>game.Supply("eat"),s.meals>0&&farm.energy<30);
-                Action("T 切换种子 · 当前 "+FarmState.CropNames[farm.selectedCrop],2,game.Game.CycleCrop);
+                Action("使用料理 · 回复体力12",1,()=>game.Supply("eat"),s.meals>0&&farm.energy<FarmState.MaxEnergy);
+                Action("切换种子 · 当前 "+FarmState.CropNames[farm.selectedCrop],2,game.Game.CycleCrop);
                 Action("查看贸易订单",3,()=>Show("market"));
-                Page("L 远征日志 · 装备与制作",()=>Show("expedition"));
+                Page("远征日志 · 装备与制作",()=>Show("expedition"));
             }
             else if(mode=="market")
             {
                 title.text="远行贸易 · 每日订单";
                 var farm=game.Game.State;
-                body.text="金币 "+farm.coins+"   贸易完成 "+s.deliveries+" 次\n\n种子："+FarmState.CropNames[farm.selectedCrop]+" · "+farm.SeedCost+"金币\n按 T 切换种子。\n\n订单：木6 石4 鲜鱼2，奖励金35、知2。\n每天限一次，必须站在平原或驿站商人身边。";
+                body.text="金币 "+farm.coins+"   贸易完成 "+s.deliveries+" 次\n\n种子："+FarmState.CropNames[farm.selectedCrop]+" · "+farm.SeedCost+"金币\n\n订单：木6 石4 鲜鱼2，奖励金35、知2。\n每天限一次，必须站在平原或驿站商人身边。";
                 Action("购买当前种子",0,()=>game.Supply("seeds"));
                 Action("出售木材5 · 金币12",1,()=>game.Supply("wood"));
                 Action("出售鲜鱼2 · 金币10",2,()=>game.Supply("fish"));
@@ -229,10 +241,10 @@ namespace StarfieldEra
                 string friends="";
                 for(int i=0;i<3;i++)if(s.companions[i])friends+=AdventureContent.Names[i]+" · "+AdventureContent.Roles[i]+"\n";
                 body.text=AdventureContent.Quests[s.quest]+"\n\n收获 "+game.Game.State.harvests+" / 3   伙伴 "+s.CompanionCount+" / 3\n\n"+(friends==""?"森林的苗芽喜欢浆果，去东侧找它吧！\n":friends)+"\n每日采集点会在休息后恢复。\n完成委托要回村长身边领取奖励。";
-                Action("C  切换随行伙伴",0,game.CycleCompanion);
-                Action("M  打开旅途地图",1,()=>Show("map"));
+                Action("切换随行伙伴",0,game.CycleCompanion);
+                Action("打开旅途地图",1,()=>Show("map"));
                 Action("查看建设与研究",2,()=>Show("town"));
-                Action("L 远征与制作",3,()=>Show("expedition"));
+                Action("远征与制作",3,()=>Show("expedition"));
             }
         }
         void CreateFishingTrack()

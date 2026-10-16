@@ -5,9 +5,9 @@ namespace StarfieldEra
     public static class LocalEnvironment
     {
         public static Transform Tree(Transform parent,Vector3 position,float height,float yaw=0)
-            =>Place("Environment/PineTree",parent,position,height,0,yaw,"Local pine tree");
+            {var tree=Place("Environment/PineTree",parent,position,height,0,yaw,"Local pine tree");if(tree)HarvestableTree.Track(tree);return tree;}
         public static Transform House(Transform parent,Vector3 position,float height,float width=5)
-            =>Place("Environment/ResidentHouse",parent,position,height,width,0,"Local resident house");
+            {var house=Place("Environment/ResidentHouse",parent,position,height,width,0,"Local resident house");if(house)house.rotation=parent.rotation;return house;}
         public static Transform Rock(Transform parent,Vector3 position,float height,float yaw=0)
             =>Place("Environment/FieldRock",parent,position,height,height*2.5f,yaw,"Local moss rock");
         public static Transform Chest(Transform parent,Vector3 position)
@@ -26,6 +26,8 @@ namespace StarfieldEra
         }
         public static Transform Rabbit(Transform parent,Vector3 position)
             =>Place("Environment/MeadowRabbit",parent,position,.92f,1.15f,0,"Local meadow rabbit");
+        public static Transform Wolf(Transform parent,Vector3 position)
+            =>Place("Environment/NightWolf",parent,position,.95f,2.1f,0,"Night raid wolf");
         public static Transform Pillar(Transform parent,Vector3 position,float height,float yaw=0)
             =>Place("Environment/AncientPillar",parent,position,height,1.8f,yaw,"Local ancient pillar");
         public static Transform ProductionBuilding(int kind,Transform parent,Vector3 position,float height,float width)

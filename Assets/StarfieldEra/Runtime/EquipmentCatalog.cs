@@ -44,7 +44,7 @@ namespace StarfieldEra
         public static bool Has(FarmGame g,string key){int i=Index(key);return i<0||State(g).owned[i]||(key=="basicRod"&&g.Expedition.State.fishingRod);}
         public static bool Require(FarmGame g,string key)
         {if(Has(g,key))return true;g.ShowMessage("需要持有"+Recipes[Index(key)].name+"。打开制作 → 装备图纸，学习图纸后制作。");return false;}
-        public static string LandKey(int action)=>action==0||action==4?"hoe":action>=1&&action<=3?"shovel":"";
+        public static string LandKey(int action)=>action==0||action==4?"hoe":(action>=1&&action<=3)||action>=6?"shovel":"";
         public static string LandMissing(FarmGame g,int action)
         {string k=LandKey(action);if(k!=""&&!Has(g,k))return "需要持有"+Recipes[Index(k)].name;if(action==1&&!Has(g,"forester"))return "需要持有育林手套";return "";}
         public static string Block(FarmGame g,int i)

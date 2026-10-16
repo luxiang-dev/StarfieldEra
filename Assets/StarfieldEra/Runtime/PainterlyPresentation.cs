@@ -34,7 +34,7 @@ namespace StarfieldEra
             var darkStone = world.Mat("Ruins joints", "7D8D79");
             var ivy = world.Mat("Ruins ivy", "64833F");
             var ocean = world.Mat("Surrounding sea", "389DAB");
-            world.Shape("Island sea", PrimitiveType.Cube, new Vector3(0,-.85f,0),new Vector3(170,.12f,150),ocean);
+            world.Shape("Island sea", PrimitiveType.Cube, new Vector3(0,-.85f,0),new Vector3(HexWorldGrid.HalfWidth*4,.12f,HexWorldGrid.HalfDepth*4),ocean);
 
             // Break up the flat field with grass and flowers, leaving interaction paths clear.
             if (art)

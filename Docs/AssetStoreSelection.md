@@ -15,7 +15,7 @@
 
 ## 当前接入
 
-- 玩家与村长：Creative Characters 模块化角色，重新组合服装、发型与帽子；Human Basic Motions 提供 Humanoid 待机、行走混合动画，禁用根运动。
+- 玩家与村长：Creative Characters 模块化角色，重新组合服装、发型与帽子；Human Basic Motions 提供 Humanoid 待机、行走混合动画，禁用根运动。sss
 - 森林、岩石、矿石、倒木、草丛、花朵：Polytope 模型；导入发行者随包附带的 `PT_Nature_Free_URP_17.unitypackage`，保留植被专用材质。
 - 集市：Medieval Markets 完整鱼市棚与摊位道具。
 - 工坊与图书馆：Lumber Mill 与 Stone Tower；原有建造条件与存档兼容。

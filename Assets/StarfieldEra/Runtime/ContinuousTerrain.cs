@@ -10,6 +10,7 @@ namespace StarfieldEra
     {
         readonly List<Object> owned=new List<Object>();
         HexWorldGrid grid;
+        FarmGame owner;
         Texture2D atlas;
         readonly List<Vector3> shoreEdges=new List<Vector3>();
         readonly Dictionary<Vector2Int,float> waterLevels=new Dictionary<Vector2Int,float>();
@@ -19,8 +20,7 @@ namespace StarfieldEra
         public float HeightAt(Vector3 p)
         {
             p.y=0;Sample(p,out _,out float water,out _);
-            float h=WorldRelief.LandHeight(p);
-            var owner=GetComponentInParent<FarmGame>();
+            float h=LandElevation.Height(p,owner?.State?.land);
             if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell))
             {
                 var edit=owner.State.land.Find(cell);
@@ -57,10 +57,10 @@ namespace StarfieldEra
             waterLevels.Clear();var owner=GetComponentInParent<FarmGame>();
             foreach(var pair in CanalHydrology.Resolve(grid,owner?owner.State.land:null))waterLevels[pair.Key]=pair.Value;
         }
-        const float Step=.4f;
+        const float Step=.6f;
         public void Build(HexWorldGrid source,FarmWorld world)
         {
-            grid=source;atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
+            grid=source;owner=GetComponentInParent<FarmGame>();atlas=Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas");
             RebuildSurface();
             var cameraData=world.View.GetComponent<UniversalAdditionalCameraData>();if(cameraData)cameraData.requiresDepthTexture=true;
             DecorateBanks(world);GroundWorld(world);
@@ -178,7 +178,7 @@ namespace StarfieldEra
         void DecorateBanks(FarmWorld world)
         {
             var stone=world.Mat("Riverbed pebbles","8E9B88");var leaf=world.Mat("Lily pads","65934C");var random=new System.Random(491);
-            for(int r=-20;r<=20;r++)for(int c=-23;c<=22;c++)
+            for(int r=HexWorldGrid.MinRow;r<=HexWorldGrid.MaxRow;r++)for(int c=HexWorldGrid.MinColumn;c<=HexWorldGrid.MaxColumn;c++)
             {
                 var cell=new Vector2Int(c,r);if(!grid.Contains(cell)||grid.TerrainAt(cell)!=TerrainKind.Water)continue;
                 var p=HexWorldGrid.Center(c,r);p.y=WaterLevelAt(p);
@@ -203,6 +203,14 @@ namespace StarfieldEra
             if(root.GetComponent<Light>())return;
             if(root.name=="Jetty plank"){var jetty=root.position;jetty.y=WaterLevelAt(jetty)+.24f;root.position=jetty;return;}
             var position=root.position;position.y+=HeightAt(position);root.position=position;
+        }
+        public void RefreshHeights(Vector3 center,float radius=2.6f)
+        {
+            // Dry-land sculpting leaves shoreline topology intact; update existing geometry/collider.
+            var mesh=groundCollider.sharedMesh;var points=mesh.vertices;
+            for(int i=0;i<points.Length;i++)if(WorldRelief.PlanarDistance(points[i],center)<=radius)points[i].y=HeightAt(points[i]);
+            mesh.vertices=points;mesh.RecalculateNormals();mesh.RecalculateBounds();
+            groundCollider.sharedMesh=null;groundCollider.sharedMesh=mesh;Physics.SyncTransforms();
         }
         void OnDestroy(){foreach(var asset in owned)if(asset)Destroy(asset);}
     }

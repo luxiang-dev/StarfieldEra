@@ -24,14 +24,16 @@ namespace StarfieldEra
             var emblem=new GameObject("World compass",typeof(RectTransform),typeof(CanvasRenderer),typeof(HudOrnament));var e=emblem.GetComponent<RectTransform>();e.SetParent(header,false);e.anchorMin=e.anchorMax=e.pivot=new Vector2(0,1);e.anchoredPosition=new Vector2(22,-12);e.sizeDelta=Vector2.one*52;emblem.GetComponent<HudOrnament>().color=new Color(.65f,.45f,.22f);emblem.GetComponent<HudOrnament>().raycastTarget=false;
             Label(header,"星野纪元",new Vector2(88,-10),new Vector2(330,40),26,ink);
             Label(header,"STARFIELD ERA · 经营与远行",new Vector2(90,-50),new Vector2(340,20),13,ink);
-            counters=Label(header,"",new Vector2(460,-24),new Vector2(840,34),18,ink);
-            Button(header,"Tab 旅人手册",new Vector2(1330,-18),new Vector2(240,42),()=>game.Management.Toggle("inventory"));
+            counters=Label(header,"",new Vector2(460,-24),new Vector2(750,34),18,ink);
+            Button(header,"天气",new Vector2(1228,-18),new Vector2(92,42),()=>game.Management.Toggle("weather"));
+            Button(header,"旅人手册",new Vector2(1330,-18),new Vector2(240,42),()=>game.Management.Toggle("inventory"));
             bottom=Panel("World interaction",Vector2.zero,new Vector2(1,0),Vector2.zero,Vector2.zero,new Vector2(0,94),new Color(.06f,.16f,.15f,.94f));
-            actionButton=Button(bottom,"E 交互",new Vector2(24,-24),new Vector2(170,46),game.Interact);actionLabel=actionButton.GetComponentInChildren<TextMeshProUGUI>();
+            actionButton=Button(bottom,"交互",new Vector2(24,-24),new Vector2(170,46),game.Interact);actionLabel=actionButton.GetComponentInChildren<TextMeshProUGUI>();
             target=Label(bottom,"",new Vector2(218,-14),new Vector2(1340,32),21,cream);
             message=Label(bottom,"",new Vector2(218,-53),new Vector2(1340,26),16,new Color(.86f,.87f,.76f));
             var adventure=gameObject.AddComponent<AdventureHud>();adventure.Create(game.Adventure,font);
             var management=gameObject.AddComponent<ManagementHud>();management.Create(game,font);
+            if(Application.isMobilePlatform)gameObject.AddComponent<MobileControls>().Create(game,font);
         }
         void Update()
         {
@@ -43,27 +45,30 @@ namespace StarfieldEra
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             string terrain=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
-            string signature=managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
-            counters.text=AdventureContent.Regions[game.World.Adventure.Region]+" · 第"+state.day+"天 "+state.Season+" · "+(state.Rainy?"雨天":"晴天")+"    体力 "+state.energy+"/30    金币 "+state.coins;
+            counters.text=AdventureContent.Regions[game.World.Adventure.Region]+" · 第"+state.day+"天 "+state.Season+" · "+WeatherCatalog.Get(state.Weather).displayName+" 明日"+WeatherCatalog.Get(state.TomorrowWeather).displayName+"    体力 "+state.energy+"/"+FarmState.MaxEnergy+"    金币 "+state.coins;
             message.text=game.Message+(game.SaveHealthy?"":" · 保存失败，请检查磁盘权限。");
-            string context="WASD 移动 · I 背包 · Q 任务 · Tab 手册";
-            bool canInteract=false;actionLabel.text="E 交互";
+            string context="探索世界";
+            bool canInteract=false;actionLabel.text="交互";
             if(crop!=null)
             {
-                context="农田 "+(selected+1)+" · "+(!crop.planted?"E 种植 "+FarmState.CropNames[state.selectedCrop]:crop.Ready?"E 收获 "+FarmState.CropNames[crop.kind]:crop.watered?"今天已浇水":"R 浇水");
+                context="农田 "+(selected+1)+" · "+(!crop.planted?"种植 "+FarmState.CropNames[state.selectedCrop]:crop.Ready?"收获 "+FarmState.CropNames[crop.kind]:crop.watered?"今天已浇水":"需要浇水");
                 canInteract=crop.Ready||(!crop.planted&&state.SelectedSeeds>0);
                 if(selected>=12&&!state.adventure.expandedFarm){context="南侧农田 · 需要扩建农场";canInteract=false;}
             }
-            else if(game.NearHouse)context="小屋 · F 休息 · 打开背包购买种子、制作料理";
+            else if(game.NearHouse)context="房屋 · 可以休息 · 打开背包购买种子、制作料理"+(game.Night&&game.Night.State.Target(game.State)>=0?" · "+game.Night.Forecast:"");
+            if(game.Forestry.HasNearby&&selected<0&&game.Adventure.Target==null){context=game.Forestry.Hint;canInteract=true;actionLabel.text="砍树";}
             if(game.Adventure.Target!=null){context=game.Adventure.TargetHint;canInteract=true;}
-            if(game.Animals.HasNearby){context="附近动物 · E 查看与照料";canInteract=true;}
+            if(game.Animals.HasNearby){context="附近动物 · 查看与照料";canInteract=true;}
             if(game.Land.NearNewPlot){context="新农田 · E 播种或收获 · R 浇水";canInteract=true;}
-            if(game.Expedition.Fishing){context="钓鱼 · E 收线 · 光标进入绿色区域";actionLabel.text="E 收线";canInteract=true;}
+            if(game.Expedition.Fishing){context="钓鱼 · 收线 · 光标进入绿色区域";actionLabel.text="收线";canInteract=true;}
             if(game.Adventure.InBattle){context="遭遇战 · 在战斗面板选择行动";canInteract=false;}
             if(game.Land.Active){context=game.Land.Hint;canInteract=false;}
             if(game.Construction.Active){context=game.Construction.Hint;canInteract=false;}if(game.Fences.Active){context=game.Fences.Hint;canInteract=false;}
+            if(game.Night&&game.Night.Active){context="夜间守卫 · E驱赶身旁野兽 · R修补设施";canInteract=true;actionLabel.text="驱赶";}
+            if(game.Night&&game.Night.TrapPlacing){context="陷阱布置 · 点击六步内空地 · 木2石1 · 右键取消";canInteract=false;}
             target.text=context+" · "+terrain;actionButton.interactable=canInteract&&!managed;
             game.Adventure.Hud.Refresh();
         }

@@ -36,7 +36,7 @@ namespace StarfieldEra
                 for(int edge=0;edge<6;edge++)
                 {
                     var n=PastureFences.Neighbor(cell,edge);if(!channels.Contains(n)||!grid.Contains(n))continue;
-                    float required=WorldRelief.LandHeight(HexWorldGrid.Center(n.x,n.y))-(level-BedDepth);
+                    float required=LandElevation.Height(HexWorldGrid.Center(n.x,n.y),state)-(level-BedDepth);
                     if(required>MaxExcavation+.001f)continue;
                     if(levels.TryGetValue(n,out var existing)&&existing>=level-.001f)continue;
                     levels[n]=level;flow.Enqueue(n);

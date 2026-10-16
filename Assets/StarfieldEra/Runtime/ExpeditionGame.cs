@@ -24,9 +24,9 @@ namespace StarfieldEra
         {float speed=TerrainTraits.Speed[(int)kind];if(State.marshBoots){if(kind==TerrainKind.Marsh)speed=.8f;if(kind==TerrainKind.Snow)speed=.85f;}return speed;}
         public string TargetHint(WorldEncounter item)
         {
-            if(item.kind==EncounterKind.Treasure)return item.name+(State.caches[item.id]?" · 已开启":" · E 查看补给箱");
-            if(item.kind==EncounterKind.Rune)return item.name+(State.runes[item.id]?" · E 重读记录":" · E 解读石碑");
-            return item.name+(State.forageDay[item.id]==Game.State.day?" · 今天已采集":" · E 采集纤维，体力1");
+            if(item.kind==EncounterKind.Treasure)return item.name+(State.caches[item.id]?" · 已开启":" · 查看补给箱");
+            if(item.kind==EncounterKind.Rune)return item.name+(State.runes[item.id]?" · 重读记录":" · 解读石碑");
+            return item.name+(State.forageDay[item.id]==Game.State.day?" · 今天已采集":" · 采集纤维，体力1");
         }
         public void Inspect(WorldEncounter item)
         {if(Game.Adventure.InBattle||Fishing)return;Inspected=item;Game.Construction.Cancel();Game.Fences.Cancel();Game.Adventure.Hud.Hide();Game.Adventure.Hud.Show("landmark");}
@@ -49,15 +49,15 @@ namespace StarfieldEra
             {
                 if(State.caches[item.id])return;if(!Game.State.SpendEnergy(1)){Game.ShowMessage("开启补给箱需要体力1。");return;}
                 State.caches[item.id]=true;State.fiber+=3;Game.State.coins+=12;Game.State.adventure.wood+=4;Game.State.adventure.stone+=3;
-                if(item.id<4)Game.State.wheatSeeds+=2;else{Game.State.adventure.crystals++;Game.State.berrySeeds++;}
-                Game.Adventure.Commit("打开补给箱！获得金币、材料和种子。按 L 查看远征与制作。");
+                if(item.id<4)Game.State.wheatSeeds+=2;else{Game.State.adventure.crystals++;Game.State.weather.starStones++;Game.State.berrySeeds++;}
+                Game.Adventure.Commit("打开补给箱！获得金币、材料和种子。");
             }
             else if(item.kind==EncounterKind.Rune)
             {
                 if(State.runes[item.id])return;var a=Game.State.adventure;
                 if((item.id==3&&!a.ruinsWon)||(item.id==5&&!a.mountainWon)||(item.id==6&&!a.marshWon)){Game.ShowMessage("石碑被守卫的力量封锁，先击败这个区域的守卫。");return;}
                 if(!Game.State.SpendEnergy(3)){Game.ShowMessage("解读石碑需要体力3。");return;}
-                State.runes[item.id]=true;State.shards++;a.science+=2;Game.Adventure.Commit("解读"+item.name+"：遗迹碎片+1，知识+2。");
+                Game.State.weather.survivalExperience+=2;State.runes[item.id]=true;State.shards++;a.science+=2;Game.Adventure.Commit("解读"+item.name+"：遗迹碎片+1，知识+2。");
             }
         }
         void CollectFiber(WorldEncounter item)
@@ -88,9 +88,9 @@ namespace StarfieldEra
         public void UseCamp()
         {
             if(Game.Adventure.InBattle||Fishing)return;
-            if(State.campSupplies==0||Game.State.energy>=30){Game.ShowMessage("没有野营补给，或体力已充足。");return;}
+            if(State.campSupplies==0||Game.State.energy>=FarmState.MaxEnergy){Game.ShowMessage("没有野营补给，或体力已充足。");return;}
             if(!Game.World.HexGrid.TryCell(Game.World.Player.position,out var cell)||!Game.World.HexGrid.CanBuildOn(cell)){Game.ShowMessage("选择稳定陆地休整，水面和沼泽不适合野营。");return;}
-            State.campSupplies--;Game.State.energy=Mathf.Min(30,Game.State.energy+15);Game.Adventure.Commit("野营休整：体力回复15。时间与每日采集次数保持不变。");
+            State.campSupplies--;Game.State.RestoreEnergy(15);Game.Adventure.Commit("野营休整：体力回复15。时间与每日采集次数保持不变。");
         }
         public void ClaimQuest()
         {
@@ -114,7 +114,7 @@ namespace StarfieldEra
             FishHits=FishMisses=0;ZoneWidth=.24f+(State.fishingRod?.1f:0)+(usingBait?.1f:0);ZoneCenter=UnityEngine.Random.Range(.3f,.7f);
             fishingStarted=Time.unscaledTime;readyAt=fishingStarted+1.2f;deadline=fishingStarted+18;Fishing=true;
             CreateBobber(point);
-            Game.Adventure.Commit("抛竿！等待咬钩，在光标进入绿色区域时按 E 收线。"+(usingBait?"已使用鱼饵1。":""));Game.Adventure.Hud.Show("fishing");
+            Game.Adventure.Commit("抛竿！等待鱼咬钩。"+(usingBait?"已使用鱼饵1。":""));Game.Adventure.Hud.Show("fishing");
         }
         public void Reel()
         {
@@ -122,7 +122,7 @@ namespace StarfieldEra
             if(Mathf.Abs(Cursor-ZoneCenter)<=ZoneWidth*.5f)FishHits++;else FishMisses++;
             if(FishHits>=3)
             {
-                int amount=(Game.State.adventure.companions[1]?3:2)+(FishMisses==0?1:0);Game.State.adventure.fish+=amount;State.fishCaught+=amount;
+                int amount=(Game.State.adventure.companions[1]?3:2)+(FishMisses==0?1:0);Game.State.adventure.fish+=amount;State.fishCaught+=amount;Game.State.weather.survivalExperience+=2;
                 if(FishMisses==0)State.shards++;Game.State.adventure.gatheredDay[fishingId]=Game.State.day;Fishing=false;ClearBobber();Game.Adventure.Hud.Hide();
                 Game.Adventure.Commit("钓鱼成功！鲜鱼+"+amount+(FishMisses==0?"，完美收线发现遗迹碎片+1。":"。"));return;
             }
@@ -147,7 +147,7 @@ namespace StarfieldEra
 
         void FinishFailed(string text){Fishing=false;ClearBobber();Game.Adventure.Hud.Hide();Game.Adventure.Commit(text);}
         public void CancelFishing(){if(!Fishing)return;Fishing=false;ClearBobber();Game.Adventure.Hud.Hide();Game.Adventure.Commit("收起鱼竿。已消耗的体力和鱼饵不返还。");}
-        public string FishingText=>"成功收线 "+FishHits+" / 3   失误 "+FishMisses+" / 3\n剩余 "+Mathf.CeilToInt(FishingSeconds)+" 秒\n\n"+(ReelReady?"光标进入绿色区域时按 E 或点击收线。":"等待鱼咬钩……")+"\n\n三次成功捕获；三次失误鱼会逃走。\n完美收线额外获得鲜鱼和遗迹碎片。";
+        public string FishingText=>"成功收线 "+FishHits+" / 3   失误 "+FishMisses+" / 3\n剩余 "+Mathf.CeilToInt(FishingSeconds)+" 秒\n\n"+(ReelReady?"鱼已咬钩，观察收线时机。":"等待鱼咬钩……")+"\n\n三次成功捕获；三次失误鱼会逃走。\n完美收线额外获得鲜鱼和遗迹碎片。";
         public string NextLandmark=>expeditionWorld?expeditionWorld.NextLandmark():"";
         public void RefreshVisuals(){if(expeditionWorld)expeditionWorld.Refresh();}
     }

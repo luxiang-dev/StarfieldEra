@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 
 namespace StarfieldEra
 {
-    [Serializable] public sealed class FenceRecord { public int column,row,edge; public bool gate,open;
+    [Serializable] public sealed class FenceRecord { public int column,row,edge,damage; public bool gate,open;
         // Old records retain their original hex edge. New fences use world-space post centres.
         public bool free;public float ax,az,bx,bz; }
     public sealed class FenceTarget : MonoBehaviour { public FenceRecord record; }
@@ -44,7 +44,7 @@ namespace StarfieldEra
             if(list==null||list.Count>600)return false;var keys=new HashSet<string>();
             foreach(var f in list)
             {
-                if(f==null||f.edge<0||f.edge>5||f.column< -23||f.column>22||f.row< -20||f.row>20||(!f.gate&&f.open))return false;
+                if(f==null||f.damage<0||f.damage>2||f.edge<0||f.edge>5||f.column<HexWorldGrid.MinColumn||f.column>HexWorldGrid.MaxColumn||f.row<HexWorldGrid.MinRow||f.row>HexWorldGrid.MaxRow||(!f.gate&&f.open))return false;
                 if(f.free)
                 {
                     Endpoints(f,out var a,out var b);float length=WorldRelief.PlanarDistance(a,b);
@@ -61,7 +61,22 @@ namespace StarfieldEra
             RefreshJunctions();
         }
         public void Choose(int next)
-        {game.Land?.Cancel();game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：选择围栏，返还一半木材。":"围栏建造：选择起点与结束位置，连续直线摆放；连接点自动连接。围栏木2，牧场门木4。");}
+        {if(game.Night&&game.Night.Active)return;game.Night?.CancelTrap();game.Land?.Cancel();game.Construction.Cancel();Cancel();mode=next;game.Adventure.Hud.Hide();game.ShowMessage(next==2?"围栏拆除：选择围栏，返还一半木材。":"围栏建造：选择起点与结束位置，连续直线摆放；连接点自动连接。围栏木2，牧场门木4。");}
+        public void RepairInspected()
+        {
+            if(Inspected==null||Inspected.damage==0||game.State.adventure.wood<1)return;
+            Endpoints(Inspected,out var a,out var b);if(WorldRelief.PlanarDistance(game.World.Player.position,(a+b)*.5f)>6){game.ShowMessage("走近围栏六步内修补。");return;}
+            game.State.adventure.wood--;Inspected.damage=0;game.Adventure.Commit("围栏已修补。");
+        }
+        public void Damage(FenceRecord f)
+        {
+            if(f==null||!game.State.adventure.fences.Contains(f))return;
+            f.damage++;
+            if(f.damage<3)return;
+            string key=RecordKey(f);game.State.adventure.fences.Remove(f);edges.Remove(key);
+            if(models.TryGetValue(key,out var root)){root.SetActive(false);Destroy(root);models.Remove(key);}f.damage=0;
+            RefreshJunctions();game.Animals.RefreshPens();game.Persist();
+        }
         public void Cancel(){mode=-1;anchor=null;plan.Clear();Hint="";ClearPreview();}
         void ClearPreview(){if(preview){preview.SetActive(false);Destroy(preview);}preview=null;previewKey="";}
         static float Cross(Vector3 a,Vector3 b)=>a.x*b.z-a.z*b.x;
@@ -210,16 +225,16 @@ namespace StarfieldEra
         }
         void Update()
         {
-            if(!Active||GameManagementOpen())return;if(game.Adventure.InBattle){Cancel();return;}var mouse=Mouse.current;if(mouse==null)return;
-            if(mouse.rightButton.wasPressedThisFrame){if(anchor.HasValue){anchor=null;ClearPreview();}else Cancel();return;}
-            var p=mouse.position.ReadValue();
-            if((EventSystem.current&&EventSystem.current.IsPointerOverGameObject())||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(preview)preview.SetActive(false);return;}
+            if(!Active||GameManagementOpen())return;if(game.Adventure.InBattle){Cancel();return;}if(!WorldPointer.Available)return;
+            if(WorldPointer.Cancel){if(anchor.HasValue){anchor=null;ClearPreview();}else Cancel();return;}
+            var p=WorldPointer.Position;
+            if((WorldPointer.Blocked)||p.y<Screen.height*.12f||p.y>Screen.height*.91f){if(preview)preview.SetActive(false);return;}
             var ray=game.World.View.ScreenPointToRay(p);
             if(mode==2)
             {
                 ClearPreview();FenceRecord target=null;float nearestHit=float.MaxValue;
                 foreach(var hit in Physics.RaycastAll(ray,200)){var f=hit.collider.GetComponentInParent<FenceTarget>();if(f!=null&&hit.distance<nearestHit){target=f.record;nearestHit=hit.distance;}}
-                Hint="围栏拆除模式";if(mouse.leftButton.wasPressedThisFrame){if(target!=null)Remove(target);else game.ShowMessage("选择要拆除的围栏。");}return;
+                Hint="围栏拆除模式";if(WorldPointer.Pressed){if(target!=null)Remove(target);else game.ShowMessage("选择要拆除的围栏。");}return;
             }
             if(!game.World.HexGrid.RaycastGround(ray,out var cursor)){if(preview)preview.SetActive(false);return;}
             MakePlan(cursor);bool valid=PlanAllowed(out var why);
@@ -236,7 +251,7 @@ namespace StarfieldEra
             }
             preview.SetActive(true);if(previewValid!=valid){foreach(var r in preview.GetComponentsInChildren<Renderer>())r.sharedMaterial=valid?allowed:blocked;previewValid=valid;}
             Hint=!anchor.HasValue?"选择围栏起点":(mode==1?"牧场门":"木围栏")+" 共"+plan.Count+" · 木材 "+(plan.Count*(mode==1?4:2))+" · "+(valid?"选择结束位置，连续建造":why);
-            if(!mouse.leftButton.wasPressedThisFrame)return;
+            if(!WorldPointer.Pressed)return;
             if(!anchor.HasValue)
             {
                 if(!EquipmentCatalog.Require(game,"hammer"))return;

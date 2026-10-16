@@ -133,3 +133,10 @@ InitTestScene*.unity*
 
 /Assets/Wild Boar/
 /Assets/Wild Boar.meta
+
+# Unity editor recovery scenes and temporary captures
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+/Assets/Builds.meta
+/Assets/Screenshots/
+/Assets/Screenshots.meta

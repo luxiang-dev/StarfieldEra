@@ -29,6 +29,7 @@ namespace StarfieldEra
         void LateUpdate()
         {
             if(!animator||Time.deltaTime<=0)return;
+            if(!game.IsGrounded){left.planted=right.planted=false;transform.localPosition=baseLocal;previous=actor.position;return;}
             var delta=actor.position-previous;delta.y=0;previous=actor.position;bool teleport=delta.sqrMagnitude>4;
             speed=teleport?0:delta.magnitude/Time.deltaTime;
             // CharacterController skin width must not lift the rendered soles off the ground.

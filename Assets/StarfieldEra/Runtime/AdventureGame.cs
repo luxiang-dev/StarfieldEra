@@ -35,7 +35,7 @@ namespace StarfieldEra
             if(!State.discovered[region])
             {
                 State.discovered[region]=true;Revision++;
-                Game.ShowMessage("发现新区域："+AdventureContent.Regions[region]+"。按 M 查看地图与旅行点。");
+                Game.ShowMessage("发现新区域："+AdventureContent.Regions[region]+"。");
                 Game.Persist();
             }
         }
@@ -49,7 +49,7 @@ namespace StarfieldEra
                 if((Target.kind<=EncounterKind.Fish || Target.kind==EncounterKind.Crystal) && State.gatheredDay[Target.id]==Game.State.day)return Target.name+" · 今天已采集，明天恢复";
                 if(Target.kind==EncounterKind.Companion)
                     return Target.name+" · "+(Target.id==0?"招募需要三份浆果":Target.id==1?"招募需要两条鱼和两份浆果":"击败守卫后，用一枚晶石招募");
-                return Target.name+" · E 交互";
+                return Target.name+" · 可交互";
             }
         }
         public void Interact()
@@ -58,6 +58,7 @@ namespace StarfieldEra
             var item=Target;if(item==null)return;
             switch(item.kind)
             {
+                case EncounterKind.Landmark:Game.ShowMessage("北岭狼窟：荒野狼群的栖息地。位置在东北山岭，营地守卫时留意狼群。此处暂用于探索与观察。");break;
                 case EncounterKind.Fish:Game.Expedition.BeginFishing(item);break;
                 case EncounterKind.Fiber:case EncounterKind.Treasure:case EncounterKind.Rune:Game.Expedition.Interact(item);break;
                 case EncounterKind.Elder:Quest();break;
@@ -71,11 +72,11 @@ namespace StarfieldEra
                     if(item.kind==EncounterKind.Wood&&!EquipmentCatalog.Require(Game,"axe"))return;
                     if((item.kind==EncounterKind.Stone||item.kind==EncounterKind.Crystal)&&!EquipmentCatalog.Require(Game,"pick"))return;
                     if(!Game.State.SpendEnergy(2)){Game.ShowMessage("体力不足，使用料理或回小屋休息。");return;}
-                    State.gatheredDay[item.id]=Game.State.day;
-                    if(item.kind==EncounterKind.Wood){int amount=3+State.toolLevel*2;State.wood+=amount;Commit("采集木材 +"+amount+"，体力 -2。");}
-                    if(item.kind==EncounterKind.Stone){int amount=3+State.toolLevel*2;State.stone+=amount;Commit("开采石料 +"+amount+"，体力 -2。");}
+                    State.gatheredDay[item.id]=Game.State.day;Game.State.weather.survivalExperience++;
+                    if(item.kind==EncounterKind.Wood){int amount=3+State.toolLevel*2+WeatherCatalog.Get(Game.State.Weather).extraWood;State.wood+=amount;Commit("采集木材 +"+amount+"，体力 -2。");}
+                    if(item.kind==EncounterKind.Stone){int amount=3+State.toolLevel*2+WeatherCatalog.Get(Game.State.Weather).extraStone;State.stone+=amount;Commit("开采石料 +"+amount+"，体力 -2。");}
                     if(item.kind==EncounterKind.Berry){State.berries+=3;Commit("采摘浆果 +3。浆果可以招募森林伙伴。");}
-                    if(item.kind==EncounterKind.Crystal){State.crystals++;Commit("开采晶石 +1，体力 -2。");}
+                    if(item.kind==EncounterKind.Crystal){State.crystals++;Game.State.weather.starStones++;Commit("开采晶石与星石 +1，体力 -2。");}
                     break;
             }
         }
@@ -88,7 +89,7 @@ namespace StarfieldEra
             if(species==1){State.fish-=2;State.berries-=2;}
             if(species==2)State.crystals--;
             State.companions[species]=true;State.activeCompanion=species;
-            Commit(AdventureContent.Names[species]+"成为了伙伴！"+AdventureContent.Roles[species]+"。按 C 切换随行伙伴。");
+            Commit(AdventureContent.Names[species]+"成为了伙伴！"+AdventureContent.Roles[species]+"。");
         }
         public float QuestProgress
         {
@@ -169,6 +170,8 @@ namespace StarfieldEra
         }
         public void Travel(int region)
         {
+            if(Game.Night&&Game.Night.Active)return;
+            Game.Night?.CancelTrap();
             if(InBattle||region<0||region>=8||!State.discovered[region])return;
             Vector3[] destinations={new Vector3(-5,.2f,7),new Vector3(13,.2f,6),new Vector3(-8,.2f,-7),new Vector3(10,.2f,8),new Vector3(24,.2f,-22),new Vector3(25,.2f,24),new Vector3(-27,.2f,20),new Vector3(-28,.2f,-18)};
             Game.World.Controller.enabled=false;Game.World.Player.position=Game.World.HexGrid.SafeLand(destinations[region],Game.World.Controller.radius);Game.World.Controller.enabled=true;
@@ -176,6 +179,7 @@ namespace StarfieldEra
         }
         void StartBattle(int id)
         {
+            if(Game.Night&&Game.Night.Active)return;
             if(State.CompanionCount==0){Game.ShowMessage("遗迹危机四伏，先招募一位伙伴再来挑战。");return;}
             if(State.bossDay[id]==Game.State.day){Game.ShowMessage("守卫今日已被击退，明天可以再次挑战。");return;}
             enemyId=id;EnemyName=id==0?"岩甲兽":id==1?"白岩首领 · 野蛮人":"幽光守卫";
@@ -197,7 +201,7 @@ namespace StarfieldEra
             if(EnemyHP==0)
             {
                 InBattle=false;if(enemyId==0){State.ruinsWon=true;State.guardianDay=Game.State.day;}else if(enemyId==1)State.mountainWon=true;else State.marshWon=true;
-                State.victories++;State.crystals+=enemyId==0?2:3;Game.State.coins+=enemyId==0?25:40;State.science+=enemyId==0?2:4;State.bossDay[enemyId]=Game.State.day;
+                State.victories++;Game.State.weather.survivalExperience+=5;Game.State.weather.starStones++;State.crystals+=enemyId==0?2:3;Game.State.coins+=enemyId==0?25:40;State.science+=enemyId==0?2:4;State.bossDay[enemyId]=Game.State.day;
                 Hud.Hide();Commit("击败"+EnemyName+"！获得晶石、金币和知识。守卫将在明天重新出现。");return;
             }
             int retaliation=Turn%3==0?13+enemyId*2:8+enemyId;
@@ -215,13 +219,13 @@ namespace StarfieldEra
             bool kitchen=Game.NearHouse||(Target!=null&&Target.kind==EncounterKind.Camp);
             if(action=="eat")
             {
-                if(State.meals<1||Game.State.energy>=30){Game.ShowMessage("没有料理，或体力已经充足。");return;}
-                State.meals--;Game.State.energy=Mathf.Min(30,Game.State.energy+12);Commit("使用料理，体力回复12。");return;
+                if(State.meals<1||Game.State.energy>=FarmState.MaxEnergy){Game.ShowMessage("没有料理，或体力已经充足。");return;}
+                State.meals--;Game.State.RestoreEnergy(12);Commit("使用料理，体力回复12。");return;
             }
             if(action=="cook")
             {
                 if(!kitchen||State.berries<3||State.fish<1){Game.ShowMessage("在小屋或营地，用浆果3、鲜鱼1制作料理。");return;}
-                State.berries-=3;State.fish--;State.meals++;Commit("制作料理 +1。按 I 随时使用。");return;
+                State.berries-=3;State.fish--;State.meals++;Commit("制作料理 +1。可在背包中使用。");return;
             }
             if(!merchant){Game.ShowMessage("请走近远行驿站或金穗平原的商人交易。");return;}
             if(action=="seeds"){Game.BuySeed();return;}

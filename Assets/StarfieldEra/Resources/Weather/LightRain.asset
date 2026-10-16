@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c467cad96598f7dab98a4a09371a8344, type: 3}
+  m_Name: LightRain
+  m_EditorClassIdentifier: StarfieldEra.Runtime::StarfieldEra.WeatherDataSO
+  weatherType: 2
+  displayName: "\u5C0F\u96E8"
+  fullColorIcon: {fileID: 21300000, guid: 4e38c18860a0cfd6dbc62442bfeb082e, type: 3}
+  sketchIcon: {fileID: 21300000, guid: ab1f757430f23b626977efdae90cc58d, type: 3}
+  temperatureRange: {x: 12, y: 19}
+  windDescription: "\u8F7B\u98CE \xB7 \u7A7A\u6C14\u6E7F\u6DA6"
+  buffDescription: "\u7EC6\u96E8\u6DA6\u7530\uFF1A\u519C\u7530\u4E0E\u5E7C\u6811\u81EA\u52A8\u8865\u6C34"
+  experienceProverb: "\u8349\u53F6\u6302\u73E0\uFF0C\u8FDC\u5C71\u8499\u7EB1\uFF0C\u8FC7\u4E24\u5929\u8981\u7559\u5FC3\u4E00\u9635\u7EC6\u96E8\u3002"
+  cropGrowthMultiplier: 1
+  extraWood: 0
+  extraStone: 0
+  watersSoil: 1

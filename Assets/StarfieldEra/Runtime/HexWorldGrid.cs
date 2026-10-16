@@ -7,7 +7,8 @@ namespace StarfieldEra
     public sealed partial class HexWorldGrid : MonoBehaviour
     {
         public const float Radius = 1.15f;
-        public const float HalfWidth=42, HalfDepth=36;
+        public const float HalfWidth=84, HalfDepth=72;
+        public const int MinColumn=-43,MaxColumn=42,MinRow=-41,MaxRow=41;
         public const float RowSpacing = Radius * 1.5f;
         public static float ColumnSpacing => Mathf.Sqrt(3) * Radius;
         public static Vector3 Center(int column, int row) =>
@@ -28,7 +29,7 @@ namespace StarfieldEra
         public void Build(FarmWorld world, Material edge)
         {
             // Cells are gameplay records, not separate renderers.
-            for (int row=-20;row<=20;row++)for(int column=-23;column<=22;column++)
+            for (int row=HexWorldGrid.MinRow;row<=HexWorldGrid.MaxRow;row++)for(int column=HexWorldGrid.MinColumn;column<=HexWorldGrid.MaxColumn;column++)
             {
                 var position=Center(column,row);
                 if(position.x < -HalfWidth+1 || position.x > HalfWidth-1 || position.z < -HalfDepth+1 || position.z > HalfDepth-1)continue;
