@@ -8,7 +8,7 @@ namespace StarfieldEra
         public static void Track(Transform root)
         {
             var rock=root.GetComponent<HarvestableRock>();if(!rock)rock=root.gameObject.AddComponent<HarvestableRock>();
-            var game=root.GetComponentInParent<FarmGame>();if(game&&game.Mining)game.Mining.Register(rock);
+            var game=root.GetComponentInParent<FarmGame>();if(game&&game.Mining)game.Mining.Register(rock);if(game&&game.Inspection)WorldInspection.Volume(root);
         }
         public void Hide()
         {

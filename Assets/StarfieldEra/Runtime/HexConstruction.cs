@@ -111,26 +111,7 @@ namespace StarfieldEra
             var ray=Game.World.View.ScreenPointToRay(pixel);
             if(Game.Land&&Game.Land.Active)return;
             if(Game.Fences&&Game.Fences.Active)return;
-            if(!Active)
-            {
-                if(!blocked&&WorldPointer.Clicked)
-                {
-                    if(Physics.Raycast(ray,out var hit,150,~0,QueryTriggerInteraction.Collide))
-                    {
-                        var landmark=hit.collider.GetComponentInParent<ExpeditionTarget>();if(landmark){Game.Expedition.Inspect(landmark.encounter);return;}
-                        var rabbit=hit.collider.GetComponentInParent<RabbitActor>();if(rabbit){Game.Homestead.Inspect(rabbit);return;}
-                        var site=hit.collider.GetComponentInParent<ResourceSiteTarget>();if(site){Game.Management.OpenResourceBuilding(site.index);return;}
-                        var animal=hit.collider.GetComponentInParent<AnimalActor>();if(animal){Game.Animals.Inspect(animal);return;}
-                        var fence=hit.collider.GetComponentInParent<FenceTarget>();if(fence){Game.Fences.Inspect(fence.record);return;}
-                        var info=hit.collider.GetComponentInParent<BuildingInspectable>();
-                        if(info){Inspect(info);return;}
-                    }
-                    if(Game.World.HexGrid.RaycastGround(ray,out var groundPoint)&&Game.World.HexGrid.TryCell(groundPoint,out var cell)&&occupants.TryGetValue(cell,out var record))
-                        {Inspect(models[new Vector2Int(record.column,record.row)].GetComponent<BuildingInspectable>());return;}
-                    ClearInspection();Game.Adventure.Hud.DismissBuildingDetails();
-                }
-                return;
-            }
+            if(!Active)return;
             if(WorldPointer.Cancel){Cancel();return;}
             Vector3 groundHit=default;hasTile=!blocked&&Game.World.HexGrid.RaycastGround(ray,out groundHit);
             if(!hasTile){preview.SetActive(false);Hint="建造 · 等待选址";return;}

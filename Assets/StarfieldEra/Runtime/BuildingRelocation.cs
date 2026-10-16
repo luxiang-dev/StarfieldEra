@@ -38,7 +38,7 @@ namespace StarfieldEra
             Release(record);models.Remove(oldCell);Game.World.Adventure.Encounters.RemoveAll(e=>e.root==old.transform);
             old.SetActive(false);Destroy(old);
             record.column=cell.x;record.row=cell.y;record.rotation=facing;Claim(record);Spawn(record);
-            LastPlacementFrame=Time.frameCount;ClearInspection();Game.Adventure.Commit("建筑位置与朝向已保存，村民、等级和库存保持不变。");return true;
+            Game.Inspection?.RebindBuilding(record,models[cell].GetComponent<BuildingInspectable>());LastPlacementFrame=Time.frameCount;ClearInspection();Game.Adventure.Commit("建筑位置与朝向已保存，村民、等级和库存保持不变。");return true;
         }
     }
 }

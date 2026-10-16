@@ -40,7 +40,7 @@ namespace StarfieldEra
         {
             if(!game||game.Management.IsOpen||game.Adventure.InBattle||game.Expedition.Fishing||game.Night.Active||game.Night.TrapPlacing||game.Construction.Active||game.Fences.Active||game.Land.Active||game.Construction.Menu.IsOpen)return;
             if(!game.IsGrounded){game.ShowMessage("落地后再开采。");return;}
-            UpdateTarget();var rock=requested?requested:Target;
+            UpdateTarget();if(!requested&&game.Inspection&&game.Inspection.HasSelection){requested=game.Inspection.Current.rock;if(!requested){game.ShowMessage("选中的目标不是石头。");return;}}var rock=requested?requested:Target;
             if(!Reachable(rock)){game.ShowMessage("走近石头再开采，第一人称需要面向石头。");return;}
             if(Time.time<nextSwing||!EquipmentCatalog.Require(game,"pick"))return;
             if(game.State.energy<2){game.ShowMessage("体力不足，使用料理或回小屋休息。");return;}

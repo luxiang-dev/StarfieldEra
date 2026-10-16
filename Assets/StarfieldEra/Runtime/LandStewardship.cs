@@ -41,7 +41,7 @@ namespace StarfieldEra
             string missing=EquipmentCatalog.LandMissing(game,kind);if(missing!=""){game.ShowMessage(missing+"，请先学习图纸并制作。");return;}
             game.Management.Close();game.Construction.Cancel();game.Fences.Cancel();game.Adventure.Hud.Hide();Cancel();tool=kind;
             preview=new GameObject("Land tool target",typeof(MeshFilter),typeof(MeshRenderer));preview.GetComponent<MeshFilter>().sharedMesh=outline;preview.GetComponent<MeshRenderer>().sharedMaterial=good;
-            game.ShowMessage(Names[kind]+"：点击身边六步内地块；右键或 Esc 取消。H 打开土地手册。");
+            game.ShowMessage(Names[kind]+"：点击身边六步内地块；右键或 Esc 取消。J 打开土地建造面板。");
         }
         public void Cancel(){tool=-1;Hint="";if(preview)Destroy(preview);preview=null;}
         void Update()
@@ -182,7 +182,14 @@ namespace StarfieldEra
         {
             if(Active||game.Construction.Active||game.Fences.Active)return false;LandCell chosen=null;float best=1.7f;
             foreach(var c in S.cells)if(c.tilled||(water&&c.tree&&c.treeGrowth<3)){float d=WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position);if(d<best){chosen=c;best=d;}}
-            if(chosen==null)return false;var crop=chosen.crop;var s=game.State;
+            if(chosen==null)return false;return InteractCell(chosen.Cell,water);
+        }
+        public bool InteractCell(Vector2Int cell,bool water)
+        {
+            if(Active||game.Construction.Active||game.Fences.Active||game.Management.IsOpen||game.Adventure.InBattle||game.Expedition.Fishing)return false;
+            var chosen=S.Find(cell);if(chosen==null||(!chosen.tilled&&!(chosen.tree&&water)))return false;
+            if(WorldRelief.PlanarDistance(HexWorldGrid.Center(cell.x,cell.y),game.World.Player.position)>=1.7f){game.ShowMessage("请靠近选中的农田或树苗。");return true;}
+            var crop=chosen.crop;var s=game.State;
             if((water||chosen.tree)&&!EquipmentCatalog.Require(game,"can"))return true;
             if(!water&&!chosen.tree&&(crop.Ready||!crop.planted)&&!EquipmentCatalog.Require(game,crop.Ready?"sickle":"hoe"))return true;
             if(chosen.tree)
@@ -233,7 +240,7 @@ namespace StarfieldEra
             {
                 var p=grid.SurfacePoint(HexWorldGrid.Center(c.column,c.row),.018f);
                 if(c.tree)
-                {var tree=game.World.GetComponent<FantasyPresentation>().PlantTree(p,Mathf.Lerp(.65f,3.5f,Mathf.Clamp01(c.treeGrowth/3f)));if(tree){var marker=tree.GetComponent<HarvestableTree>();if(marker){marker.planted=true;marker.cell=c.Cell;marker.Felled=false;tree.gameObject.SetActive(true);}visuals.Add(tree.gameObject);}}
+                {var tree=game.World.GetComponent<FantasyPresentation>().PlantTree(p,Mathf.Lerp(.65f,3.5f,Mathf.Clamp01(c.treeGrowth/3f)));if(tree){var marker=tree.GetComponent<HarvestableTree>();if(marker){marker.planted=true;marker.cell=c.Cell;marker.Felled=false;tree.gameObject.SetActive(true);if(game.Inspection)WorldInspection.Volume(tree);game.Inspection?.RebindPlantedTree(c.Cell,marker);}visuals.Add(tree.gameObject);}}
                 if(!c.tilled)continue;
                 var vertices=new List<Vector3>();var colors=new List<Color>();var uv=new List<Vector2>();var tris=new List<int>();
                 const int count=22;
@@ -247,14 +254,14 @@ namespace StarfieldEra
                 }
                 var mesh=new Mesh{name="Player tilled soft furrows"};mesh.SetVertices(vertices);mesh.SetUVs(0,uv);mesh.SetColors(colors);mesh.SetTriangles(tris,0);mesh.RecalculateNormals();mesh.RecalculateBounds();owned.Add(mesh);
                 var mat=new Material(Shader.Find("StarfieldEra/Cultivated Soil"));mat.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas"));owned.Add(mat);
-                var bed=new GameObject("Player cultivated bed",typeof(MeshFilter),typeof(MeshRenderer));bed.transform.SetParent(transform,false);bed.GetComponent<MeshFilter>().sharedMesh=mesh;bed.GetComponent<MeshRenderer>().sharedMaterial=mat;visuals.Add(bed);
+                var bed=new GameObject("Player cultivated bed",typeof(MeshFilter),typeof(MeshRenderer));bed.transform.SetParent(transform,false);bed.GetComponent<MeshFilter>().sharedMesh=mesh;bed.GetComponent<MeshRenderer>().sharedMaterial=mat;visuals.Add(bed);var bedTarget=bed.AddComponent<WorldPickTarget>();bedTarget.land=true;bedTarget.cell=c.Cell;
                 if(!c.crop.planted)continue;
                 for(int row=-1;row<=1;row++)for(int i=-1;i<=1;i++)
                 {
                     var v=p+new Vector3(i*.48f,0,row*.52f);v.x=Mathf.Round((v.x-FarmFieldArt.Bend(v.z))/.64f)*.64f+FarmFieldArt.Bend(v.z);v.y=grid.GroundHeight(v)+FarmFieldArt.Ridge(v)+.04f;
                     float size=c.crop.Ready?.27f:.07f+c.crop.growth*.04f;
-                    var leaf=game.World.Shape("New crop leaves",PrimitiveType.Sphere,v,new Vector3(size,.09f+size,size*.7f),good);leaf.SetParent(transform,true);visuals.Add(leaf.gameObject);
-                    if(c.crop.growth>0){var fruit=game.World.Shape("New crop fruit",PrimitiveType.Sphere,v+Vector3.up*.1f,Vector3.one*size*.8f,c.crop.Ready?bad:good);fruit.SetParent(transform,true);visuals.Add(fruit.gameObject);}
+                    var leaf=game.World.Shape("New crop leaves",PrimitiveType.Sphere,v,new Vector3(size,.09f+size,size*.7f),good);leaf.SetParent(transform,true);visuals.Add(leaf.gameObject);var leafTarget=leaf.gameObject.AddComponent<WorldPickTarget>();leafTarget.land=true;leafTarget.cell=c.Cell;
+                    if(c.crop.growth>0){var fruit=game.World.Shape("New crop fruit",PrimitiveType.Sphere,v+Vector3.up*.1f,Vector3.one*size*.8f,c.crop.Ready?bad:good);fruit.SetParent(transform,true);visuals.Add(fruit.gameObject);var fruitTarget=fruit.gameObject.AddComponent<WorldPickTarget>();fruitTarget.land=true;fruitTarget.cell=c.Cell;}
                 }
             }
         }

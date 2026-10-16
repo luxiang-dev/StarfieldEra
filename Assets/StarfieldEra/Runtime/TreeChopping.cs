@@ -47,16 +47,22 @@ namespace StarfieldEra
                 float d=delta.magnitude;if(d<nearest){nearest=d;Target=tree;}
             }
         }
-        public void Chop()
+        public bool Reachable(HarvestableTree tree)
+        {
+            if(!tree||tree.Felled||!tree.gameObject.activeInHierarchy||tree.planted&&game.State.land.Find(tree.cell)?.treeGrowth<3)return false;
+            var delta=tree.transform.position-game.World.Player.position;delta.y=0;
+            return delta.magnitude<2.7f&&(!game.World.Adventure.CameraRig.IsFirstPerson||Vector3.Dot(delta.normalized,game.World.Player.forward)>=.15f);
+        }
+        public void Chop(HarvestableTree requested=null)
         {
             if(!game||game.Management.IsOpen||game.Adventure.InBattle||game.Expedition.Fishing||game.Night.Active||game.Construction.Active||game.Fences.Active||game.Land.Active)return;
             if(!game.IsGrounded){game.ShowMessage("落地后再挥斧。");return;}
-            UpdateTarget();if(!HasNearby){game.ShowMessage("走近树木再砍伐，第一人称需要面向树干。");return;}
+            UpdateTarget();if(!requested&&game.Inspection&&game.Inspection.HasSelection){requested=game.Inspection.Current.tree;if(!requested){game.ShowMessage("选中的目标不是树木。");return;}}var tree=requested?requested:Target;if(!Reachable(tree)){game.ShowMessage("走近树木再砍伐，第一人称需要面向树干。");return;}
             if(Time.time<nextSwing)return;
             if(!EquipmentCatalog.Require(game,"axe"))return;
-            if(game.State.forestry.felled.Count>=4096&&!Target.planted){game.ShowMessage("已达到树木记录上限。");return;}
+            if(game.State.forestry.felled.Count>=4096&&!tree.planted){game.ShowMessage("已达到树木记录上限。");return;}
             if(!game.State.SpendEnergy(1)){game.ShowMessage("体力不足，请先休息或使用料理。");return;}
-            nextSwing=Time.time+.45f;var tree=Target;tree.hits++;
+            nextSwing=Time.time+.45f;tree.hits++;
             StartCoroutine(Sway(tree,tree.hits>=3));
             if(tree.hits<3){game.Adventure.Commit("挥斧砍树 "+tree.hits+" / 3，体力 -1。");return;}
             tree.Felled=true;

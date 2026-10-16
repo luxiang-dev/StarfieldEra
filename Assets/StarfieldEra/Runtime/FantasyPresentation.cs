@@ -32,7 +32,8 @@ namespace StarfieldEra
             }
             var houseNames=new HashSet<string>{"Farmhouse","Roof west","Roof east","Door","Window","Window frame","Chimney","Clay roof tile","Farmhouse stonework","Door planks","Door latch","Porch crate","Crate strap"};
             foreach(var renderer in world.GetComponentsInChildren<Renderer>())if(houseNames.Contains(renderer.name))renderer.enabled=false;
-            Add(world.HexGrid.SurfacePoint(new Vector3(-5,0,5.3f)),3,4.8f,"Painted fantasy farmhouse");
+            var farmhouseArt=Add(world.HexGrid.SurfacePoint(new Vector3(-5,0,5.3f)),3,4.8f,"Painted fantasy farmhouse");
+            var farmhouseAnchor=world.transform.Find("Farmhouse");if(farmhouseAnchor)farmhouseArt.SetParent(farmhouseAnchor,true);
             // Town buildings use the same illustrated facade and retain their own colliders,
             // inspectable roots and unlock visibility.
             var houses=new HashSet<string>{"Seed market","Village bakery","Workshop","Library","Southern mill","Observatory"};

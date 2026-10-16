@@ -58,6 +58,7 @@ namespace StarfieldEra
                 var p=Game.World.HexGrid.SurfacePoint(new Vector3(trap.x,0,trap.z),.06f);var root=new GameObject(trap.spent?"Spent camp trap":"Armed camp trap");root.transform.SetParent(transform,false);root.transform.position=p;
                 for(int i=0;i<4;i++){var part=Game.World.Shape("Trap stakes",PrimitiveType.Cube,p+new Vector3(i<2?(i==0?-.4f:.4f):0,.12f,i>=2?(i==2?-.4f:.4f):0),i<2?new Vector3(.1f,.2f,.9f):new Vector3(.9f,.2f,.1f),trap.spent?spentMaterial:trapMaterial);part.SetParent(root.transform,true);}
                 if(!trap.spent){var rope=Game.World.Shape("Trap rope",PrimitiveType.Cylinder,p,new Vector3(.65f,.025f,.65f),trapMaterial);rope.SetParent(root.transform,true);}
+                var selectable=root.AddComponent<WorldPickTarget>();selectable.trap=trap;WorldInspection.Volume(root.transform);
                 trapModels[trap]=root;
             }
         }
@@ -109,6 +110,7 @@ namespace StarfieldEra
             var root=new GameObject("Night raider "+threat.id).transform;root.SetParent(transform,false);root.position=Game.World.HexGrid.SurfacePoint(new Vector3(threat.x,0,threat.z));
             if(LocalEnvironment.Wolf(root,root.position)){}
             else{var body=Game.World.Shape("Wild beast",PrimitiveType.Capsule,root.position+Vector3.up*.4f,new Vector3(.6f,.5f,1),spentMaterial);body.SetParent(root,true);}
+            var selectable=root.gameObject.AddComponent<WorldPickTarget>();selectable.threat=threat;WorldInspection.Volume(root);
             enemies[threat.id]=root;
         }
         void MoveThreat(RaidThreat threat,Transform root,Vector3 target,float dt)
@@ -127,11 +129,12 @@ namespace StarfieldEra
             if(Physics.OverlapSphere(next+Vector3.up*.45f,.2f,~0,QueryTriggerInteraction.Ignore).Any(c=>!Game.World.HexGrid.IsGroundCollider(c)&&!(c is CharacterController)))return;
             root.position=next;root.rotation=Quaternion.Slerp(root.rotation,Quaternion.LookRotation(direction),dt*7);
         }
-        public void Attack()
+        public void Attack(RaidThreat requested=null)
         {
             if(!Active||State.attackCooldown>0)return;
-            var nearest=State.threats.Where(t=>t.hp>0&&Game.Homestead.Near(new Vector3(t.x,0,t.z),3)).OrderBy(t=>WorldRelief.PlanarDistance(Game.World.Player.position,new Vector3(t.x,0,t.z))).FirstOrDefault();
-            if(nearest==null){Game.ShowMessage("走近野兽三步以内驱赶。");return;}
+            if(requested==null&&Game.Inspection&&Game.Inspection.HasSelection){requested=Game.Inspection.Current.threat;if(requested==null){Game.ShowMessage("请先选中要驱赶的野狼。");return;}}
+            var nearest=requested??State.threats.Where(t=>t.hp>0&&Game.Homestead.Near(new Vector3(t.x,0,t.z),3)).OrderBy(t=>WorldRelief.PlanarDistance(Game.World.Player.position,new Vector3(t.x,0,t.z))).FirstOrDefault();
+            if(nearest==null||!State.threats.Contains(nearest)||nearest.hp<=0||!Game.Homestead.Near(new Vector3(nearest.x,0,nearest.z),3)){Game.ShowMessage("走近选中的野兽三步以内驱赶。");return;}
             State.attackCooldown=.55f;nearest.hp--;if(nearest.hp==0)Defeat(nearest);Game.Persist();
         }
         void Defeat(RaidThreat threat){threat.hp=0;if(enemies.TryGetValue(threat.id,out var root)&&root)Destroy(root.gameObject);enemies.Remove(threat.id);}

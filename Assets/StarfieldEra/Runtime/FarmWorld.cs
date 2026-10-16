@@ -65,11 +65,13 @@ namespace StarfieldEra
                 var plot = new GameObject("Hex plot " + (i + 1), typeof(MeshFilter), typeof(MeshRenderer));
                 plot.transform.SetParent(transform, false); plot.transform.position = pos;
                 plot.GetComponent<MeshFilter>().sharedMesh = soilMesh;
+                plot.AddComponent<WorldPickTarget>().plot=i;
                 soils[i] = plot.GetComponent<MeshRenderer>();
                 soils[i].sharedMaterials = new[] {dry, dry};
                 var cropRoot = new GameObject("Crop " + (i + 1)).transform;
                 cropRoot.SetParent(transform);
                 cropRoot.position = pos + Vector3.up * .1f;
+                cropRoot.gameObject.AddComponent<WorldPickTarget>().plot=i;
                 crops[i] = cropRoot;
                 for (int j = 0; j < 3; j++)
                 {

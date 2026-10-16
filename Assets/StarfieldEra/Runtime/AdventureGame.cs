@@ -54,10 +54,11 @@ namespace StarfieldEra
                 return Target.name+" · 可交互";
             }
         }
-        public void Interact()
+        public void Interact(WorldEncounter requested=null)
         {
             if(InBattle)return;
-            var item=Target;if(item==null)return;
+            var item=requested??Target;if(item==null)return;
+            if(requested!=null){if(!Game.World.Adventure.Encounters.Contains(item)||!item.root||!item.root.gameObject.activeInHierarchy||WorldRelief.PlanarDistance(Game.World.Player.position,item.Position)>2.75f){Game.ShowMessage("请靠近选中的目标。");return;}Target=item;}
             switch(item.kind)
             {
                 case EncounterKind.Landmark:Game.ShowMessage("北岭狼窟：荒野狼群的栖息地。位置在东北山岭，营地守卫时留意狼群。此处暂用于探索与观察。");break;

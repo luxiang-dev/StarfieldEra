@@ -54,7 +54,7 @@ namespace StarfieldEra
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             string terrain=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
-            string signature=game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
             location.text=AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
@@ -81,6 +81,7 @@ namespace StarfieldEra
             if(game.Construction.Active){context=game.Construction.Hint;canInteract=false;}if(game.Fences.Active){context=game.Fences.Hint;canInteract=false;}
             if(game.Night&&game.Night.Active){context="夜间守卫 · E驱赶身旁野兽 · R修补设施";canInteract=true;actionLabel.text="驱赶";}
             if(game.Night&&game.Night.TrapPlacing){context="陷阱布置 · 点击六步内空地 · 木2石1 · 右键取消";canInteract=false;}
+            if(game.Inspection&&game.Inspection.HasSelection&&!game.Construction.Active&&!game.Fences.Active&&!game.Land.Active&&!game.Expedition.Fishing&&!game.Adventure.InBattle){context=game.Inspection.Hint;canInteract=game.Inspection.CanInteract;actionLabel.text="选中目标";}
             contextIcon.sprite=UITheme.GetIcon(game.Night&&game.Night.Active?22:game.Construction.Active||game.Fences.Active?17:game.Land.Active?8:game.Expedition.Fishing?21:crop!=null?20:game.Forestry.HasNearby?18:game.Animals.HasNearby?11:15);
             target.text=context+" · "+terrain;actionButton.interactable=canInteract&&!managed;
             game.Adventure.Hud.Refresh();

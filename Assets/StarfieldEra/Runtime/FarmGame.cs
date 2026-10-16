@@ -22,6 +22,7 @@ namespace StarfieldEra
         public LandStewardship Land {get;private set;}
         public TreeChopping Forestry {get;private set;}
         public RockMining Mining {get;private set;}
+        public WorldInspection Inspection {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
         bool jumpRequested;
@@ -68,6 +69,7 @@ namespace StarfieldEra
             hud.Create(this, interfaceFont);
             Management=hud.GetComponent<ManagementHud>();
             Construction.CreateMenu(hud.transform,interfaceFont);
+            Inspection=hud.gameObject.AddComponent<WorldInspection>();Inspection.Initialize(this,interfaceFont);
             World.GetComponent<FantasyPresentation>()?.Stylize(transform);
             Weather = gameObject.AddComponent<WeatherSystem>();
             Weather.Initialize(this);
@@ -95,6 +97,7 @@ namespace StarfieldEra
             if(Construction.Menu&&Construction.Menu.IsOpen)
             {
                 jumpRequested=false;
+                if(keyboard!=null&&keyboard.jKey.wasPressedThisFrame){Construction.Menu.Close();Management.Open("land");}
                 if(keyboard!=null&&(keyboard.escapeKey.wasPressedThisFrame||keyboard.hKey.wasPressedThisFrame||keyboard.gKey.wasPressedThisFrame))Construction.Menu.Close();
                 hud.Refresh();return;
             }
@@ -108,6 +111,7 @@ namespace StarfieldEra
                     else if(keyboard.qKey.wasPressedThisFrame)Management.Toggle("tasks");
                     else if(keyboard.lKey.wasPressedThisFrame)Management.Toggle("craft");
                     else if(keyboard.mKey.wasPressedThisFrame)Management.Toggle("map");
+                    else if(keyboard.jKey.wasPressedThisFrame)Management.Toggle("land");
                     else if(keyboard.hKey.wasPressedThisFrame)Construction.Open();
                     else if(keyboard.yKey.wasPressedThisFrame)Management.Toggle("weather");
                 }
@@ -158,6 +162,7 @@ namespace StarfieldEra
                 if (keyboard.lKey.wasPressedThisFrame) Management.Toggle("craft");
                 if (keyboard.gKey.wasPressedThisFrame) Construction.Open();
                 if (keyboard.hKey.wasPressedThisFrame) Construction.Open();
+                if (keyboard.jKey.wasPressedThisFrame) Management.Toggle("land");
                 if (keyboard.qKey.wasPressedThisFrame) Adventure.Hud.Show("journal");
                 if (keyboard.mKey.wasPressedThisFrame) Adventure.Hud.Show("map");
                 if (keyboard.tKey.wasPressedThisFrame) CycleCrop();
@@ -176,7 +181,7 @@ namespace StarfieldEra
                 if (keyboard.rKey.wasPressedThisFrame) {if(Construction.Active)Construction.Rotate();else Water();}
                 if (keyboard.fKey.wasPressedThisFrame) Sleep();
                 if (keyboard.bKey.wasPressedThisFrame) BuySeed();
-                if (keyboard.escapeKey.wasPressedThisFrame) { Night.CancelTrap(); Construction.Cancel(); Fences.Cancel(); Land.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
+                if (keyboard.escapeKey.wasPressedThisFrame) { Inspection.Clear(); Night.CancelTrap(); Construction.Cancel(); Fences.Cancel(); Land.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
             }
             hud.Refresh();
         }
@@ -201,30 +206,38 @@ namespace StarfieldEra
 
         public void Interact()
         {
-            if(Night&&Night.Active){Night.Attack();return;}
+            if(Night&&Night.Active){if(Inspection&&Inspection.HasSelection)Inspection.InteractSelected();else Night.Attack();return;}
             if(Night&&Night.TrapPlacing)return;
             if(Expedition.Fishing){Expedition.Reel();return;}
             if(Adventure.InBattle||Construction.Active||Fences.Active||Land.Active)return;
+            if(Inspection&&Inspection.HasSelection){Inspection.InteractSelected();return;}
             if(Homestead.InteractNearby())return;
             if(Land.InteractNearby(false))return;
             if(Animals.InteractNearby())return;
             if(Adventure.Target!=null){Adventure.Interact();return;}
             if(Mining.HasNearby){Mining.Mine();return;}
             if(SelectedPlot<0&&Forestry.HasNearby){Forestry.Chop();return;}
-            if (SelectedPlot < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
-            if(SelectedPlot>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}
+            InteractPlot(SelectedPlot);
+        }
+        public void InteractPlot(int index)
+        {
+            if(Adventure.InBattle||Expedition.Fishing||Management.IsOpen||Construction.Active||Fences.Active||Land.Active)return;
+            if(index>=FarmState.PlotCount)return;
+            if(index>=0&&WorldRelief.PlanarDistance(World.Player.position,World.PlotPositions[index])>=1.7f){Notify("请靠近选中的农田。");return;}
+            if (index < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
+            if(index>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}
             if(State.energy<1){Notify("体力不足，回小屋休息或在营地使用料理。");return;}
-            CropState crop = State.plots[SelectedPlot];
+            CropState crop = State.plots[index];
             if (crop.Ready)
             {
                 if(!EquipmentCatalog.Require(this,"sickle"))return;
-                int kind=crop.kind;State.Harvest(SelectedPlot);
+                int kind=crop.kind;State.Harvest(index);
                 Changed("收获"+FarmState.CropNames[kind]+"并售出！浆果田会继续生长。可以在小屋购买新种子。");
             }
             else if (!crop.planted)
             {
                 if(!EquipmentCatalog.Require(this,"hoe"))return;
-                if (!State.Plant(SelectedPlot)) { Notify("种子不足，请在小屋或商人旁购买。"); return; }
+                if (!State.Plant(index)) { Notify("种子不足，请在小屋或商人旁购买。"); return; }
                 Changed("已种下"+FarmState.CropNames[State.selectedCrop]+(State.Rainy?"。雨水已浇灌。":"。作物需要浇水。"));
             }
             else Notify(crop.watered ? "今天已浇水。回小屋休息，等待作物成长。" : "作物需要浇水。");
@@ -234,6 +247,7 @@ namespace StarfieldEra
         {
             if(Night&&Night.Active){Night.Repair();return;}
             if(Adventure.InBattle||Expedition.Fishing)return;
+            if(Inspection&&Inspection.HasSelection&&Inspection.WaterSelected())return;
             if(!EquipmentCatalog.Require(this,"can"))return;
             if(Land.InteractNearby(true))return;
             if (SelectedPlot < 0) { Notify("走近已播种的农田才能浇水。"); return; }

@@ -9,7 +9,7 @@ namespace StarfieldEra
         public static void Track(Transform root)
         {
             var tree=root.GetComponent<HarvestableTree>();if(!tree)tree=root.gameObject.AddComponent<HarvestableTree>();
-            var game=root.GetComponentInParent<FarmGame>();if(game&&game.Forestry)game.Forestry.Register(tree);
+            var game=root.GetComponentInParent<FarmGame>();if(game&&game.Forestry)game.Forestry.Register(tree);if(game&&game.Inspection)WorldInspection.Volume(root);
         }
     }
 }
