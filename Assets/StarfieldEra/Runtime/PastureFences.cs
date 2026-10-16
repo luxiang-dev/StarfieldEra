@@ -331,7 +331,8 @@ namespace StarfieldEra
             Endpoints(f,out var a,out var b);a=game.World.HexGrid.SurfacePoint(a);b=game.World.HexGrid.SurfacePoint(b);
             float span=WorldRelief.PlanarDistance(a,b);root.transform.position=(a+b)*.5f;
             root.transform.rotation=Quaternion.LookRotation((b-a).normalized,Vector3.up);
-            if(fencePrefab)
+            if(f.gate&&LocalEnvironment.Gate(root.transform,Vector3.Distance(a,b),f.open)){}
+            else if(fencePrefab)
             {
                 var art=Instantiate(fencePrefab,root.transform);art.name="Painted fence";art.transform.localScale=new Vector3(SegmentLength,SegmentLength,Vector3.Distance(a,b));
                 foreach(var part in art.GetComponentsInChildren<Transform>())

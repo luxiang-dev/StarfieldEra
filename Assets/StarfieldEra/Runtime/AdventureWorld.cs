@@ -116,8 +116,11 @@ namespace StarfieldEra
             var elder=Marker("村长 · 阿岚",new Vector3(-5,0,8.8f),EncounterKind.Elder,0);
             Villager(elder,cream,purple);
             var board=Marker("城镇议事牌",new Vector3(-2,0,7.5f),EncounterKind.Town,0);
-            world.Shape("Board post",PrimitiveType.Cube,board.position+Vector3.up*.7f,new Vector3(.18f,1.4f,.18f),timber).SetParent(board,true);
-            world.Shape("Board",PrimitiveType.Cube,board.position+Vector3.up*1.3f,new Vector3(1.6f,.8f,.15f),cream).SetParent(board,true);
+            if(!LocalEnvironment.TownBoard(board,board.position))
+            {
+                world.Shape("Board post",PrimitiveType.Cube,board.position+Vector3.up*.7f,new Vector3(.18f,1.4f,.18f),timber).SetParent(board,true);
+                world.Shape("Board",PrimitiveType.Cube,board.position+Vector3.up*1.3f,new Vector3(1.6f,.8f,.15f),cream).SetParent(board,true);
+            }
             for(int i=0;i<3;i++)
             {
                 var pos=i==0?new Vector3(14,0,6):i==1?new Vector3(-8,0,-7):new Vector3(14,0,12);

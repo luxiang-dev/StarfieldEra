@@ -232,6 +232,7 @@ namespace StarfieldEra
             float width=building.footprintVersion==0?1.8f:kind<2?5.2f:kind==6||kind==8?4.6f:kind==2?3.9f:3.2f;
             float height=building.footprintVersion==0?2:kind==1?3.1f:kind==3?2.6f:3.7f;
             if(kind==6&&LocalEnvironment.Workshop(root.transform,center)){}
+            else if(kind==5&&LocalEnvironment.Warehouse(root.transform,center,height,width)){}
             else if(kind==3&&LocalEnvironment.Camp(root.transform,center,height,width)){}
             else if((kind==4||kind==11)&&LocalEnvironment.House(root.transform,center,height,width)){}
             else if(LocalEnvironment.ProductionBuilding(kind,root.transform,center,height,width)){}
@@ -243,7 +244,7 @@ namespace StarfieldEra
             }
             if(!ghost)
             {
-                if(kind==5)for(int i=0;i<3;i++){var crate=Game.World.Shape("Warehouse crate",PrimitiveType.Cube,center+new Vector3(-.7f+i*.7f,.35f,-1.6f),new Vector3(.6f,.7f,.65f),roofMaterial);crate.SetParent(root.transform,true);}
+                if(kind==5&&!LocalEnvironment.HasBuildingVisual(root.transform))for(int i=0;i<3;i++){var crate=Game.World.Shape("Warehouse crate",PrimitiveType.Cube,center+new Vector3(-.7f+i*.7f,.35f,-1.6f),new Vector3(.6f,.7f,.65f),roofMaterial);crate.SetParent(root.transform,true);}
                 var info=root.AddComponent<BuildingInspectable>();info.record=building;info.kind=kind;info.displayName=Names[kind];
                 var visuals=root.GetComponentsInChildren<Renderer>();
                 if(visuals.Length>0)

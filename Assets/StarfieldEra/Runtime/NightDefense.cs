@@ -56,8 +56,11 @@ namespace StarfieldEra
             foreach(var trap in State.traps)
             {
                 var p=Game.World.HexGrid.SurfacePoint(new Vector3(trap.x,0,trap.z),.06f);var root=new GameObject(trap.spent?"Spent camp trap":"Armed camp trap");root.transform.SetParent(transform,false);root.transform.position=p;
-                for(int i=0;i<4;i++){var part=Game.World.Shape("Trap stakes",PrimitiveType.Cube,p+new Vector3(i<2?(i==0?-.4f:.4f):0,.12f,i>=2?(i==2?-.4f:.4f):0),i<2?new Vector3(.1f,.2f,.9f):new Vector3(.9f,.2f,.1f),trap.spent?spentMaterial:trapMaterial);part.SetParent(root.transform,true);}
-                if(!trap.spent){var rope=Game.World.Shape("Trap rope",PrimitiveType.Cylinder,p,new Vector3(.65f,.025f,.65f),trapMaterial);rope.SetParent(root.transform,true);}
+                if(!LocalEnvironment.Trap(root.transform,p,trap.spent))
+                {
+                    for(int i=0;i<4;i++){var part=Game.World.Shape("Trap stakes",PrimitiveType.Cube,p+new Vector3(i<2?(i==0?-.4f:.4f):0,.12f,i>=2?(i==2?-.4f:.4f):0),i<2?new Vector3(.1f,.2f,.9f):new Vector3(.9f,.2f,.1f),trap.spent?spentMaterial:trapMaterial);part.SetParent(root.transform,true);}
+                    if(!trap.spent){var rope=Game.World.Shape("Trap rope",PrimitiveType.Cylinder,p,new Vector3(.65f,.025f,.65f),trapMaterial);rope.SetParent(root.transform,true);}
+                }
                 var selectable=root.AddComponent<WorldPickTarget>();selectable.trap=trap;WorldInspection.Volume(root.transform);
                 trapModels[trap]=root;
             }

@@ -32,6 +32,35 @@ namespace StarfieldEra
             =>Place("Environment/AncientPillar",parent,position,height,1.8f,yaw,"Local ancient pillar");
         public static Transform Workshop(Transform parent,Vector3 position)
         {var visual=Place("Environment/Workshop",parent,position,3.1f,4.6f,0,"Local workshop");if(visual)visual.rotation=parent.rotation;return visual;}
+        public static Transform Warehouse(Transform parent,Vector3 position,float height,float width)
+        {var visual=Place("Environment/Warehouse",parent,position,height,width,0,"Local warehouse");if(visual)visual.rotation=parent.rotation;return visual;}
+        public static Transform TownBoard(Transform parent,Vector3 position)
+            =>Place("Environment/TownBoard",parent,position,2.15f,2.6f,0,"Local town board");
+        public static Transform Trap(Transform parent,Vector3 position,bool spent=false)
+        {
+            var visual=Place("Environment/AnimalTrap",parent,position,.48f,1.05f,0,"Local animal trap");
+            if(visual&&spent)
+            {
+                visual.localScale=new Vector3(visual.localScale.x,visual.localScale.y*.45f,visual.localScale.z);
+                var tint=new MaterialPropertyBlock();tint.SetColor("_BaseColor",new Color(.43f,.39f,.34f,1));
+                foreach(var renderer in visual.GetComponentsInChildren<Renderer>())renderer.SetPropertyBlock(tint);
+            }
+            return visual;
+        }
+        public static Transform Gate(Transform parent,float span,bool open)
+        {
+            var prefab=Resources.Load<GameObject>("Environment/PastureGate");if(!prefab)return null;
+            var art=Object.Instantiate(prefab,parent).transform;art.name="Local pasture gate";
+            art.localScale=new Vector3(PastureFences.SegmentLength,PastureFences.SegmentLength,span);
+            if(open)foreach(var part in art.GetComponentsInChildren<Transform>())
+            {
+                bool start=part.name=="GateLeafStart";if(!start&&part.name!="GateLeafEnd")continue;
+                var hinge=new GameObject(start?"Gate hinge start":"Gate hinge end").transform;
+                hinge.SetParent(parent,false);hinge.localPosition=new Vector3(0,0,(start?-.43f:.43f)*span);
+                part.SetParent(hinge,true);hinge.localRotation=Quaternion.Euler(0,start?85:-85,0);
+            }
+            return art;
+        }
         public static Transform Camp(Transform parent,Vector3 position,float height=2.6f,float width=3.2f)
         {
             var visual=Place("Environment/Camp",parent,position,height,width,0,"Local camp");
@@ -45,7 +74,7 @@ namespace StarfieldEra
         }
         public static bool HasBuildingVisual(Transform root)
         {
-            foreach(var node in root.GetComponentsInChildren<Transform>(true))if(node.name=="Local lumberyard"||node.name=="Local quarry"||node.name=="Local workshop"||node.name=="Local camp"||node.name=="Local resident house")return true;
+            foreach(var node in root.GetComponentsInChildren<Transform>(true))if(node.name=="Local lumberyard"||node.name=="Local quarry"||node.name=="Local workshop"||node.name=="Local camp"||node.name=="Local resident house"||node.name=="Local warehouse")return true;
             return false;
         }
         public static Transform Fence(Transform parent,Vector3 a,Vector3 b,bool hideStart=false)

@@ -1,0 +1,14 @@
+{
+  "source": "/home/lx/模型/资源/仓库.glb",
+  "originalFaces": 498392,
+  "gameFaces": 24000,
+  "parts": {
+    "node_0": 24000
+  },
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "Warehouse_BaseColor0.png"
+    }
+  ]
+}
