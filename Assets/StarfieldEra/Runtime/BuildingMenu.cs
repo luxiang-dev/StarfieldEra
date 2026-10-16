@@ -2,60 +2,64 @@ using TMPro;
 using UnityEngine;
 namespace StarfieldEra
 {
-    /// <summary>Small, independent construction picker; world placement starts after choosing a card.</summary>
     public sealed class BuildingMenu:MonoBehaviour
     {
-        FarmGame game;TMP_FontAsset font;RectTransform root;TextMeshProUGUI wallet;
-        Sprite[] icons;Texture2D atlas;
+        FarmGame game;TMP_FontAsset font;RectTransform root,cards,footer;TextMeshProUGUI wallet,hint;
+        int category;readonly UnityEngine.UI.Button[] tabs=new UnityEngine.UI.Button[4];
         public bool IsOpen=>root&&root.gameObject.activeSelf;
         public void Initialize(FarmGame owner,TMP_FontAsset asset)
         {
-            game=owner;font=asset;atlas=Resources.Load<Texture2D>("UI/BuildingIcons");
-            if(atlas){icons=new Sprite[16];int w=atlas.width/4,h=atlas.height/4;for(int i=0;i<16;i++)icons[i]=Sprite.Create(atlas,new Rect(i%4*w,(3-i/4)*h,w,h),Vector2.one*.5f,100);}
-            root=Box(transform,"Building picker",new Vector2(-24,-104),new Vector2(666,646),new Color(.06f,.16f,.15f,.99f));
-            root.anchorMin=root.anchorMax=root.pivot=Vector2.one;HudOrnament.Border(root);
-            Label(root,"H · 选择建筑",new Vector2(20,-12),new Vector2(420,40),26,new Color(1,.86f,.58f));
-            wallet=Label(root,"",new Vector2(20,-56),new Vector2(620,30),17,Color.white);
-            for(int i=0;i<12;i++)
-            {
-                int kind=i;float x=20+i%3*210,y=-96-i/3*112;
-                var card=Button(root,HexConstruction.Names[i],new Vector2(x,y),new Vector2(202,104),()=>game.Construction.Choose(kind),i);
-                Label(card,HexConstruction.Names[i],new Vector2(70,-8),new Vector2(128,32),21,new Color(1,.91f,.72f));
-                Label(card,"木"+HexConstruction.WoodCost[i]+" 石"+HexConstruction.StoneCost[i]+" 金"+HexConstruction.GoldCost[i],new Vector2(8,-68),new Vector2(190,30),16,Color.white);
-            }
-            Label(root,"选建筑 → 鼠标选址 · R旋转 · 左键建造 · 右键取消",new Vector2(20,-548),new Vector2(626,30),17,new Color(.94f,.85f,.65f));
-            Button(root,"围栏 / 门",new Vector2(20,-592),new Vector2(146,38),()=>{Close();game.Adventure.Hud.Show("pasture");});
-            Button(root,"地形改造",new Vector2(180,-592),new Vector2(146,38),()=>{Close();game.Management.Open("land");});
-            Button(root,"拆除建筑",new Vector2(340,-592),new Vector2(146,38),()=>game.Construction.Choose(HexConstruction.DemolitionKind));
-            Button(root,"关闭",new Vector2(500,-592),new Vector2(146,38),Close);
+            game=owner;font=asset;
+            root=Box(transform,"Building picker",new Vector2(-24,-106),new Vector2(732,700),new Color(.035f,.11f,.095f,.91f));root.anchorMin=root.anchorMax=root.pivot=Vector2.one;UITheme.Frame(root);
+            UITheme.Icon(root,17,18,12,48,48);Label(root,"建造与规划",new Vector2(80,-12),new Vector2(480,40),26,UITheme.Paper);
+            wallet=Label(root,"",new Vector2(80,-54),new Vector2(628,28),16,UITheme.Gold);
+            string[] names={"全部建筑","生产与研究","居住与商贸","营地与防御"};
+            for(int i=0;i<4;i++){int id=i;tabs[i]=Button(root,names[i],new Vector2(20+i*174,-94),new Vector2(164,38),()=>{category=id;Rebuild();});}
+            cards=Box(root,"Building category cards",new Vector2(20,-148),new Vector2(692,444),Color.clear);
+            hint=Label(root,"H · 关闭菜单    R · 旋转    左键 · 放置    右键 · 取消",new Vector2(22,-604),new Vector2(688,28),16,UITheme.Gold);
+            footer=Box(root,"Building menu footer",new Vector2(20,-650),new Vector2(692,38),Color.clear);
+            Button(footer,"地形改造",new Vector2(0,0),new Vector2(164,38),()=>{Close();game.Management.Open("land");});
+            Button(footer,"拆除建筑",new Vector2(174,0),new Vector2(164,38),()=>game.Construction.Choose(HexConstruction.DemolitionKind));
+            Button(footer,"拆除围栏",new Vector2(348,0),new Vector2(164,38),()=>{Close();game.Fences.Choose(2);});
+            Button(footer,"返回世界",new Vector2(522,0),new Vector2(164,38),Close);
             root.gameObject.SetActive(false);
         }
+        bool InCategory(int kind)=>category==0||category==1&&(kind<3||kind>=6&&kind<=9)||category==2&&(kind>=4&&kind<=5||kind>=10&&kind<=11)||category==3&&(kind>=12||kind==3);
+        void Rebuild()
+        {
+            for(int i=cards.childCount-1;i>=0;i--){cards.GetChild(i).gameObject.SetActive(false);Destroy(cards.GetChild(i).gameObject);}
+            for(int i=0;i<tabs.Length;i++)tabs[i].GetComponent<UnityEngine.UI.Image>().color=i==category?new Color(.31f,.36f,.22f,.95f):UITheme.Card;
+            int slot=0;
+            for(int kind=0;kind<15;kind++)
+            {
+                if(!InCategory(kind))continue;int choice=kind;
+                string name=kind<12?HexConstruction.Names[kind]:kind==12?"木围栏":kind==13?"牧场门":"捕兽陷阱";
+                string cost=kind<12?"木"+HexConstruction.WoodCost[kind]+" 石"+HexConstruction.StoneCost[kind]+" 金"+HexConstruction.GoldCost[kind]:kind==12?"木材 2":kind==13?"木材 4":"木材 2 · 石料 1";
+                var card=Button(cards,"",new Vector2(slot%4*174,-(slot/4)*112),new Vector2(164,102),()=>Choose(choice));card.name=name;
+                UITheme.Icon(card.transform,kind<14?kind:22,6,8,58,58,false,kind<14);
+                Label(card.transform,name,new Vector2(70,-12),new Vector2(88,30),18,UITheme.Paper);
+                Label(card.transform,kind<12?BuildingFootprints.Counts[kind]+"格建筑":kind==14?"资源点守卫":"沿地块边缘",new Vector2(70,-45),new Vector2(88,24),12,new Color(.72f,.82f,.73f));
+                Label(card.transform,cost,new Vector2(12,-76),new Vector2(145,23),14,UITheme.Gold);slot++;
+            }
+            int rows=Mathf.Max(1,Mathf.CeilToInt(slot/4f));float body=rows*112;
+            root.sizeDelta=new Vector2(732,252+body);cards.sizeDelta=new Vector2(692,body-4);hint.rectTransform.anchoredPosition=new Vector2(22,-(156+body));footer.anchoredPosition=new Vector2(20,-(202+body));Fit();
+        }
+        void Choose(int kind)
+        {Close();if(kind<12)game.Construction.Choose(kind);else if(kind<14)game.Fences.Choose(kind-12);else game.Night.ChooseTrap();}
         public void Show()
         {
             game.Management.Close();game.Adventure.Hud.HideContextOnly();game.Land.Cancel();game.Fences.Cancel();
-            wallet.text="木材 "+game.State.adventure.wood+" · 石料 "+game.State.adventure.stone+" · 金币 "+game.State.coins+"    产出按天结算";
-            root.gameObject.SetActive(true);root.SetAsLastSibling();
-            var canvas=GetComponent<Canvas>();float factor=canvas?canvas.scaleFactor:1;
-            root.localScale=Vector3.one*Mathf.Min(1,(Screen.height/Mathf.Max(.1f,factor)-200)/646f);
-            Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
+            wallet.text="木材 "+game.State.adventure.wood+" · 石料 "+game.State.adventure.stone+" · 金币 "+game.State.coins;
+            Rebuild();root.gameObject.SetActive(true);root.SetAsLastSibling();
+            Fit();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
         }
+        void Fit(){var canvas=GetComponent<Canvas>();float factor=canvas?canvas.scaleFactor:1;root.localScale=Vector3.one*Mathf.Max(.25f,Mathf.Min(1,(Screen.height/Mathf.Max(.1f,factor)-190)/root.sizeDelta.y));}
         public void Close(){if(root)root.gameObject.SetActive(false);}
         RectTransform Box(Transform parent,string name,Vector2 pos,Vector2 size,Color color)
-        {
-            var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;go.GetComponent<UnityEngine.UI.Image>().color=color;return rect;
-        }
+        {var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;var image=go.GetComponent<UnityEngine.UI.Image>();image.color=color;UITheme.Round(image);return rect;}
         TextMeshProUGUI Label(Transform parent,string text,Vector2 pos,Vector2 size,float points,Color color)
-        {
-            var go=new GameObject("Label",typeof(RectTransform),typeof(TextMeshProUGUI));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;
-            var label=go.GetComponent<TextMeshProUGUI>();label.font=font;label.fontSize=points;label.text=text;label.color=color;label.raycastTarget=false;return label;
-        }
-        RectTransform Button(Transform parent,string name,Vector2 pos,Vector2 size,UnityEngine.Events.UnityAction action,int icon=-1)
-        {
-            var rect=Box(parent,name,pos,size,new Color(.16f,.29f,.25f));var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();button.onClick.AddListener(action);
-            if(icon>=0&&icons!=null){var image=Box(rect,"Building icon",new Vector2(8,-4),new Vector2(60,60),Color.white).GetComponent<UnityEngine.UI.Image>();image.sprite=icons[icon];image.preserveAspect=true;image.raycastTarget=false;}
-            else if(icon<0)Label(rect,name,new Vector2(6,-4),size-new Vector2(12,4),18,Color.white).alignment=TextAlignmentOptions.Center;
-            return rect;
-        }
-        void OnDestroy(){if(icons!=null)foreach(var sprite in icons)if(sprite)Destroy(sprite);}
+        {var go=new GameObject("Label",typeof(RectTransform),typeof(TextMeshProUGUI));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=pos;rect.sizeDelta=size;var label=go.GetComponent<TextMeshProUGUI>();label.font=font;label.fontSize=points;label.text=text;label.color=color;label.raycastTarget=false;return label;}
+        UnityEngine.UI.Button Button(Transform parent,string name,Vector2 pos,Vector2 size,UnityEngine.Events.UnityAction action)
+        {var rect=Box(parent,name,pos,size,UITheme.Card);var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();button.onClick.AddListener(action);UITheme.Frame(rect);UITheme.Button(button);if(name!="")Label(rect,name,new Vector2(6,-4),size-new Vector2(12,4),17,UITheme.Paper).alignment=TextAlignmentOptions.Center;return button;}
     }
 }

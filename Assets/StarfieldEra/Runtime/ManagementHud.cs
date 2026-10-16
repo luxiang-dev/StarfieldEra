@@ -9,7 +9,8 @@ namespace StarfieldEra
     public sealed partial class ManagementHud : MonoBehaviour
     {
         FarmGame game;FarmHud worldHud;TMP_FontAsset font;RectTransform overlay,window,content;
-        TextMeshProUGUI heading,wallet,feedback;
+        TextMeshProUGUI heading,wallet,feedback,pageIntro;
+        UnityEngine.UI.Image pageEmblem;
         readonly Dictionary<string,UnityEngine.UI.Button> tabs=new Dictionary<string,UnityEngine.UI.Button>();
         string page="inventory",filter="全部",itemKey="wood",buildingKey="",signature="",openingMessage="";
         int selectedLandTool,equipmentSelection,equipmentPage,inventoryPage;
@@ -19,8 +20,8 @@ namespace StarfieldEra
         readonly Color cream=new Color(.94f,.89f,.77f),gold=new Color(.83f,.69f,.41f),ink=new Color(.22f,.21f,.16f),green=new Color(.07f,.18f,.16f);
         public string Page=>page;
         public bool IsOpen=>overlay&&overlay.gameObject.activeSelf;
-        static readonly string[] PageKeys={"inventory","weather","tasks","craft","town","companions","map","market","land","tutorial","camera"};
-        static readonly string[] PageNames={"背包","天气","任务","制作","城镇","伙伴","地图","交易","土地工具","操作教程","视角"};
+        static readonly string[] PageKeys={"inventory","weather","tasks","craft","town","companions","map","market","land","tutorial","camera","homestead"};
+        static readonly string[] PageNames={"背包","天气","任务","制作","城镇","伙伴","地图","交易","土地工具","操作教程","视角","牧场与营地"};
         static readonly string[] RecipeKeys={"bait","rod","boots","amulet","camp","meal"};
         static readonly string[] RecipeNames={"草编鱼饵","精制鱼竿","湿地长靴","星辉护符","野营补给","暖心料理"};
         static readonly string[] RecipeCosts={"纤维2 · 浆果1","木材8 · 纤维4 · 知识2","纤维8 · 木材4 · 金币20","碎片3 · 晶石2 · 知识6","纤维4 · 浆果4 · 鲜鱼1","浆果3 · 鲜鱼1"};
@@ -31,19 +32,24 @@ namespace StarfieldEra
         public void Create(FarmGame owner,TMP_FontAsset asset)
         {
             game=owner;worldHud=GetComponent<FarmHud>();font=asset;
-            overlay=Box(transform,"Management backdrop",0,0,0,0,new Color(.015f,.035f,.03f,.88f),true);
+            overlay=Box(transform,"Management backdrop",0,0,0,0,new Color(.015f,.035f,.03f,.42f),true);
             overlay.anchorMin=Vector2.zero;overlay.anchorMax=Vector2.one;overlay.offsetMin=overlay.offsetMax=Vector2.zero;
-            window=Box(overlay,"Traveler handbook",0,0,1400,760,green,true);window.anchorMin=window.anchorMax=window.pivot=new Vector2(.5f,.5f);window.anchoredPosition=Vector2.zero;HudOrnament.Border(window);
-            var header=Box(window,"Handbook header",0,0,1400,86,cream);
-            Text(header,"星野纪元 · 旅人手册",26,20,440,44,30,ink);
-            heading=Text(header,"",500,18,410,48,25,ink);
-            wallet=Text(header,"",1000,20,370,60,16,ink);wallet.alignment=TextAlignmentOptions.Right;
-            Box(window,"Navigation rail",0,86,202,674,new Color(.04f,.12f,.11f));
+            window=Box(overlay,"Traveler handbook",0,0,1440,820,new Color(.035f,.105f,.09f,.93f),true);window.anchorMin=window.anchorMax=window.pivot=new Vector2(.5f,.5f);window.anchoredPosition=Vector2.zero;UITheme.Frame(window);
+            var header=Box(window,"Handbook header",12,12,1416,88,new Color(.085f,.19f,.15f,.86f));
+            UITheme.Icon(header,9,16,8,64,64);Text(header,"旅人手册",92,7,236,43,29,cream);Text(header,"旅途 · 生活 · 营地",94,54,226,26,14,gold);
+            pageEmblem=UITheme.Icon(header,0,326,14,52,52);
+            heading=Text(header,"",392,16,628,44,27,cream);
+            UITheme.Icon(header,14,1042,14,38,38);wallet=Text(header,"",1092,10,302,66,16,gold);wallet.alignment=TextAlignmentOptions.Right;
+            var rail=Box(window,"Navigation rail",16,112,210,690,new Color(.025f,.08f,.07f,.70f));
             for(int i=0;i<PageKeys.Length;i++)
-            {string key=PageKeys[i];tabs[key]=Button(window,PageNames[i],24,108+i*51,154,45,()=>Open(key));}
-            Button(window,"返回世界",24,680,154,46,Close);
-            content=Box(window,"Management page",208,96,1168,598,new Color(0,0,0,0));
-            feedback=Text(window,"",232,708,1140,32,17,new Color(.93f,.84f,.64f));
+            {
+                string key=PageKeys[i];var button=Button(rail,PageNames[i],8,10+i*48,194,42,()=>Open(key));tabs[key]=button;
+                UITheme.Icon(button.transform,UITheme.PageIcon(key),9,4,34,34);var label=button.GetComponentInChildren<TextMeshProUGUI>();label.rectTransform.anchoredPosition=new Vector2(52,-6);label.rectTransform.sizeDelta=new Vector2(134,30);label.alignment=TextAlignmentOptions.MidlineLeft;label.fontSize=18;
+            }
+            Button(rail,"返回世界",10,634,190,42,Close);
+            pageIntro=Text(window,"",246,112,1168,34,18,new Color(.76f,.84f,.74f));
+            content=Box(window,"Management page",244,156,1168,598,new Color(0,0,0,0));
+            feedback=Text(window,"",246,777,1168,28,15,new Color(.82f,.83f,.66f));
             overlay.gameObject.SetActive(false);
         }
         public void Toggle(string target){if(IsOpen&&page==target)Close();else Open(target);}
@@ -74,7 +80,7 @@ namespace StarfieldEra
         public static bool Handles(string mode)=>mode=="journal"||mode=="expedition"||mode=="supplies"||mode=="craft"||mode=="craft2"||mode=="town"||mode=="town2"||mode=="map"||mode=="map2"||mode=="companions"||mode=="market";
         public void Close(){if(!IsOpen)return;if(overlay)overlay.gameObject.SetActive(false);worldHud.SetWorldVisible(true);confirmDemolition=false;game.Persist();}
         void Update(){if(IsOpen){FitWindow();Refresh();}}
-        void FitWindow(){var area=overlay.rect;if(area.width<1||area.height<1)return;float fit=Mathf.Min(1,Mathf.Min((area.width-32)/1400,(area.height-32)/760));window.localScale=Vector3.one*Mathf.Max(.1f,fit);}
+        void FitWindow(){var area=overlay.rect;if(area.width<1||area.height<1)return;float fit=Mathf.Min(1,Mathf.Min((area.width-32)/1440,(area.height-32)/820));window.localScale=Vector3.one*Mathf.Max(.1f,fit);}
         public void Refresh()
         {
             if(!IsOpen)return;
@@ -86,8 +92,9 @@ namespace StarfieldEra
             signature=game.Adventure.Revision+"/"+game.State.day+"/"+game.State.selectedCrop+"/"+game.State.energy+"/"+game.Message;
             for(int i=content.childCount-1;i>=0;i--){content.GetChild(i).gameObject.SetActive(false);Destroy(content.GetChild(i).gameObject);}
             int tab=Array.IndexOf(PageKeys,page);heading.text=(page=="homestead"?"牧场与经营":PageNames[tab])+" · "+(page=="weather"?"天气与经验预判":page=="homestead"?"照料与生产":page=="inventory"?"物品与装备":page=="tasks"?"委托与进度":page=="craft"?"配方与准备":page=="town"?"建设与发展":page=="companions"?"同行与能力":page=="market"?"买卖与订单":page=="land"?"改造与生态":page=="tutorial"?"按键与玩法":page=="camera"?"观察与跟随":"大陆与旅途");
+            pageEmblem.sprite=UITheme.GetIcon(UITheme.PageIcon(page));pageIntro.text=PageIntroduction();
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
-            foreach(var pair in tabs)pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.35f,.31f,.2f):new Color(.12f,.25f,.22f);
+            foreach(var pair in tabs){pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.24f,.34f,.24f,.98f):new Color(.06f,.17f,.14f,.72f);pair.Value.GetComponent<UnityEngine.UI.Outline>().effectColor=pair.Key==page?new Color(.85f,.72f,.42f,.80f):new Color(.50f,.58f,.39f,.20f);}
             feedback.text=(game.Message==openingMessage?"阅览手册时角色暂停移动 · 操作自动保存":game.Message)+(game.SaveHealthy?"":" · 保存失败");
             if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
         }
@@ -95,11 +102,11 @@ namespace StarfieldEra
         {
             var rig=game.World.Adventure.CameraRig;
             Text(content,"当前视角："+PlayerCameraRig.ModeNames[rig.Mode],0,4,1100,42,26,cream);
-            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","从角色眼睛位置观察。\n镜头始终跟随角色朝向。\n\n按住鼠标左键拖动转身与抬头低头。\nWASD 前后移动和左右平移。"};
+            string[] descriptions={"稳定跟随角色。\n适合种田、建造与日常探索。\n\n世界方向固定，走路时不随角色转向。","从高处观察地图。\n适合规划道路、围栏与城镇。\n\n保留正交地图的清晰比例。","近距离跟随角色。\n适合观察角色和村落细节。\n\n镜头会避开地形与建筑。","角色视线高度，跟随朝向。\n\n左键拖动转向与抬头低头。\nW/S 前后 · A/D 平移。"};
             for(int i=0;i<PlayerCameraRig.ModeNames.Length;i++)
             {
-                int mode=i;float x=i*291;var card=Box(content,"View card",x,66,275,300,new Color(.09f,.22f,.19f));HudOrnament.Border(card);
-                Text(card,PlayerCameraRig.ModeNames[i],18,20,239,40,24,gold);Text(card,descriptions[i],18,78,239,144,18,cream);
+                int mode=i;float x=i*291;var card=Box(content,"View card",x,66,275,300,new Color(.09f,.22f,.19f));UITheme.Frame(card);
+                UITheme.Icon(card,i<2?6:10,12,12,52,52);Text(card,PlayerCameraRig.ModeNames[i],78,22,179,36,22,gold);Text(card,descriptions[i],18,78,239,144,18,cream);
                 Button(card,rig.Mode==i?"已启用":"使用此视角",18,238,239,44,()=>{rig.SetMode(mode);Rebuild();},rig.Mode!=i);
             }
             Text(content,"V 切换视角 · 左键拖动转向 · H 建造 · Shift 奔跑 · 空格跳跃",0,390,1120,38,19,cream);
@@ -112,9 +119,9 @@ namespace StarfieldEra
         }
         void LandTools()
         {
-            Text(content,"改造与生态 · H 打开",0,4,620,40,24,cream);
+            Text(content,"改造与生态 · 从建造菜单进入",0,4,620,40,24,cream);
             for(int i=0;i<LandStewardship.Names.Length;i++)
-            {int id=i;var button=Button(content,LandStewardship.Names[i]+"   "+LandStewardship.Costs[i],0,60+i*49,620,43,()=>{selectedLandTool=id;Rebuild();});button.GetComponent<UnityEngine.UI.Image>().color=selectedLandTool==i?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);}
+            {int id=i;var button=Button(content,LandStewardship.Names[i]+"   "+LandStewardship.Costs[i],0,60+i*49,620,43,()=>{selectedLandTool=id;Rebuild();});UITheme.Icon(button.transform,i==0?18:i==1?26:i==4?7:24,10,4,35,35,true);button.GetComponent<UnityEngine.UI.Image>().color=selectedLandTool==i?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);}
             Text(content,"土方 "+game.State.land.soil+" · 木材 "+A.wood+" · 石料 "+A.stone+" · 纤维 "+X.fiber,0,475,620,36,18,cream);
             Text(content,"灌溉技术："+(A.irrigation?"已掌握，临水农田自动浇水":"未研究，临水可保湿；自动浇水需研究"),0,519,630,54,17,cream);
             var detail=Details(LandStewardship.Names[selectedLandTool],LandStewardship.Costs[selectedLandTool],LandStewardship.Descriptions[selectedLandTool]+"\n\n选择工具后点击六步内的地块。\n绿色可施工，红色不可施工。\n右键 / Esc 取消；施工自动保存。");
@@ -161,8 +168,8 @@ namespace StarfieldEra
         }
         void TutorialCard(float x,string title,string description)
         {
-            var panel=Box(content,"Tutorial card",x,66,570,496,cream);HudOrnament.Border(panel);
-            Text(panel,title,22,18,526,42,25,ink);
+            var panel=Box(content,"Tutorial card",x,66,570,496,cream);UITheme.Frame(panel);
+            UITheme.Icon(panel,9,18,12,54,54);Text(panel,title,86,22,462,40,24,ink);
             Text(panel,description,22,78,526,396,19,ink);
         }
         sealed class Item
@@ -191,7 +198,7 @@ namespace StarfieldEra
             {
                 var item=items[i];int slot=i-inventoryPage*16;float x=(slot%4)*155,y=60+(slot/4)*105;
                 var button=Button(content,"",x,y,145,95,()=>{itemKey=item.key;Rebuild();});button.GetComponent<UnityEngine.UI.Image>().color=item.key==itemKey?new Color(.29f,.37f,.28f):new Color(.11f,.23f,.2f);
-                Icon(button.transform,12,10,36,item.symbol,gold);
+                UITheme.Icon(button.transform,UITheme.ItemIcon(item.key),8,5,50,50,true);
                 var count=Text(button.transform,item.category=="装备"?(item.count>0?"已持有":"未拥有"):item.count.ToString(),55,10,78,36,item.category=="装备"?14:22,item.count>0?cream:new Color(.58f,.66f,.58f));count.alignment=TextAlignmentOptions.Right;
                 Text(button.transform,item.name,10,57,125,30,17,cream);
             }
@@ -276,9 +283,9 @@ namespace StarfieldEra
         public void OpenWorkshop(){game.Construction.Choose(6);}
         void Town()
         {
-            Chip("牧场与经营",360,()=>OpenHomestead(true),false);
-            Chip("营地与守卫",540,OpenCamp,false);
-            Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",180,()=>{buildingsView=true;Rebuild();},buildingsView);
+            Chip("牧场与经营",316,()=>OpenHomestead(true),false);
+            Chip("营地与守卫",474,OpenCamp,false);
+            Chip("城镇项目",0,()=>{buildingsView=false;Rebuild();},!buildingsView);Chip("自建建筑",158,()=>{buildingsView=true;Rebuild();},buildingsView);
             if(buildingsView){Buildings();return;}
             for(int i=0;i<TechKeys.Length;i++){int id=i;Row(TechNames[i],TechOwned(i)?"已完成":TechCosts[i],i,()=>{selectedTech=id;Rebuild();},selectedTech==i,58);}
             string[] effects={"每天木材+6，解锁书院、农场扩建和采集工具。","每天知识+6，解锁灌溉与观星台。","每天照料前6块农田，农场扩建后照料12块。","伙伴战斗伤害增加3。","解锁南侧12块农田，总共24块。","每天金币+18。","采集木材、石料每次额外获得2份。","每天知识+12，需书院和白岩守卫胜利。"};
@@ -346,8 +353,8 @@ namespace StarfieldEra
         }
         RectTransform Details(string title,string subtitle,string description)
         {
-            var panel=Box(content,"Selected detail",654,8,506,554,cream);HudOrnament.Border(panel);
-            Text(panel,title,22,18,462,52,26,ink);Text(panel,subtitle,22,76,462,30,16,new Color(.46f,.38f,.22f));Text(panel,description,22,116,462,280,18,ink);return panel;
+            var panel=Box(content,"Selected detail",654,8,506,554,cream);UITheme.Frame(panel);
+            DetailIcon(panel,title);Text(panel,title,96,20,386,48,25,ink);Text(panel,subtitle,22,82,462,30,16,new Color(.46f,.38f,.22f));Box(panel,"Detail divider",22,118,462,1,new Color(.63f,.53f,.30f,.40f));Text(panel,description,22,132,462,264,18,ink);return panel;
         }
         void Progress(Transform parent,float value)
         {var track=Box(parent,"Task progress",22,395,462,8,new Color(.64f,.65f,.51f));Box(track,"Task progress fill",0,0,462*Mathf.Clamp01(value),8,new Color(.36f,.54f,.32f));}
@@ -355,13 +362,19 @@ namespace StarfieldEra
         void Chip(string label,float x,UnityEngine.Events.UnityAction callback,bool selected)
         {var button=Button(content,label,x,4,118,38,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.36f,.32f,.2f):new Color(.12f,.25f,.22f);}
         void Row(string title,string description,int row,UnityEngine.Events.UnityAction callback,bool selected,float spacing=78)
-        {var button=Button(content,"",0,60+row*spacing,620,spacing-8,callback);button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);Text(button.transform,title,16,spacing<78?3:7,588,spacing<78?30:36,spacing<78?18:20,cream);Text(button.transform,description,16,spacing<78?28:44,588,spacing<78?22:26,spacing<78?13:15,new Color(.74f,.8f,.69f));}
+        {
+            var button=Button(content,"",0,60+row*spacing,620,spacing-8,callback);button.name="Row - "+title;button.GetComponent<UnityEngine.UI.Image>().color=selected?new Color(.23f,.34f,.25f,.96f):new Color(.075f,.18f,.155f,.78f);
+            float size=Mathf.Min(50,spacing-18);RowIcon(button.transform,title,description,10,(spacing-8-size)/2,size);
+            if(selected)Box(button.transform,"Selection accent",0,8,3,spacing-24,gold);
+            Text(button.transform,title,76,spacing<78?3:7,522,spacing<78?30:36,spacing<78?18:20,cream);
+            Text(button.transform,description,76,spacing<78?28:44,522,spacing<78?22:26,spacing<78?13:15,new Color(.74f,.82f,.73f));
+        }
         RectTransform Box(Transform parent,string name,float x,float y,float width,float height,Color color,bool raycast=false)
-        {var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);go.GetComponent<UnityEngine.UI.Image>().color=color;go.GetComponent<UnityEngine.UI.Image>().raycastTarget=raycast;return rect;}
+        {var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);var image=go.GetComponent<UnityEngine.UI.Image>();image.color=color;image.raycastTarget=raycast;if(width>12&&height>12)UITheme.Round(image);return rect;}
         TextMeshProUGUI Text(Transform parent,string text,float x,float y,float width,float height,float point,Color color)
         {var go=new GameObject("Label",typeof(RectTransform),typeof(TextMeshProUGUI));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=new Vector2(width,height);var label=go.GetComponent<TextMeshProUGUI>();label.font=font;label.fontSize=point;label.text=text;label.color=color;label.raycastTarget=false;label.enableAutoSizing=false;label.overflowMode=TextOverflowModes.Ellipsis;return label;}
         UnityEngine.UI.Button Button(Transform parent,string text,float x,float y,float width,float height,UnityEngine.Events.UnityAction callback,bool enabled=true)
-        {var rect=Box(parent,text,x,y,width,height,new Color(.13f,.28f,.23f),true);HudOrnament.Border(rect);var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();button.onClick.AddListener(callback);button.interactable=enabled;var caption=Text(rect,text,8,4,width-16,height-8,18,cream);caption.alignment=TextAlignmentOptions.Center;return button;}
+        {var rect=Box(parent,text,x,y,width,height,new Color(.13f,.28f,.23f),true);UITheme.Frame(rect);var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();button.onClick.AddListener(callback);button.interactable=enabled;UITheme.Button(button);var caption=Text(rect,text,8,4,width-16,height-8,18,cream);caption.alignment=TextAlignmentOptions.Center;return button;}
         void Icon(Transform parent,float x,float y,float size,int symbol,Color color)
         {var go=new GameObject("Item emblem",typeof(RectTransform),typeof(CanvasRenderer),typeof(HudOrnament));var rect=go.GetComponent<RectTransform>();rect.SetParent(parent,false);rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(0,1);rect.anchoredPosition=new Vector2(x,-y);rect.sizeDelta=Vector2.one*size;var icon=go.GetComponent<HudOrnament>();icon.symbol=symbol;icon.color=color;icon.raycastTarget=false;}
     }

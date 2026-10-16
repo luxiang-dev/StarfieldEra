@@ -10,9 +10,9 @@ namespace StarfieldEra
         void HomesteadPage()
         {
             Chip("兔子与委托",0,()=>{campView=false;rabbitView=true;Rebuild();},rabbitView&&!campView);
-            Chip("资源点经营",180,()=>{campView=false;rabbitView=false;Rebuild();},!rabbitView&&!campView);
-            Chip("营地与守卫",360,OpenCamp,campView);
-            Chip("返回城镇",540,()=>Open("town"),false);
+            Chip("资源点经营",158,()=>{campView=false;rabbitView=false;Rebuild();},!rabbitView&&!campView);
+            Chip("营地与守卫",316,OpenCamp,campView);
+            Chip("返回城镇",474,()=>Open("town"),false);
             if(campView)CampPage();else if(rabbitView)RabbitPage();else ResourcePage();
         }
         void RabbitPage()
@@ -75,8 +75,8 @@ namespace StarfieldEra
             Text(content,"村民 "+state.UsedWorkers(A)+" / "+state.WorkerCapacity(A)+" 已派驻 · 每处最多2人\n木材 "+A.wood+" · 石料 "+A.stone+" · 木板 "+state.planks+" · 石砖 "+state.bricks,0,446,620,68,20,cream);
             Text(content,"休息结算生产，库存随仓库增加。靠近六步内领取和施工。\n自建林场与采石场也在此分配村民、升级和领取。",0,530,620,58,17,gold);
             int chosen=selectedSite;var s=sites[chosen];int kind=h.SiteKind(chosen);bool near=h.Near(h.SitePosition(chosen),6);
-            var panel=Box(content,"Production details",654,8,506,574,cream);HudOrnament.Border(panel);
-            Text(panel,h.SiteName(chosen),22,18,462,46,25,ink);
+            var panel=Box(content,"Production details",654,8,506,574,cream);UITheme.Frame(panel);
+            UITheme.Icon(panel,kind,18,12,58,58,false,true);Text(panel,h.SiteName(chosen),92,23,392,40,25,ink);
             string cost=s.level==0?"修复：木4 石4 金10":s.level==1?"升级：木8 石6 金20":s.level==2?"升级：木12 石10 金35 木板2 石砖2":"已达到三级上限";
             Text(panel,(s.level==0?"废弃":s.level+"级 · 每人每日原料+"+((s.level+1)*2))+"\n"+cost+"\n库存："+(kind==0?"木材":"石料")+s.stock+" / "+state.StorageCapacity(A)+" · "+(kind==0?"木板":"石砖")+s.goods+" / "+state.StorageCapacity(A)+"\n耐久："+(100-s.damage)+" / 100 · 停产"+s.downtime+"天\n加工："+(s.processing?"开启":"关闭")+" · 二级解锁\n每人每日消耗4原料，产出2成品。\n位置 ["+h.SitePosition(chosen).x.ToString("F0")+","+h.SitePosition(chosen).z.ToString("F0")+"] · "+(near?"可施工与领取":"需靠近六步内施工与领取"),22,82,462,210,18,ink);
             Button(panel,s.level==0?"修复资源点":s.level<3?"升级资源点":"已经满级",22,302,462,42,()=>h.Improve(chosen),s.level<3&&near);

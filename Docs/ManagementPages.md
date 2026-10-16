@@ -31,3 +31,6 @@
 ![背包](Images/BackpackManagement.png)
 
 ![任务](Images/TasksManagement.png)
+
+
+新版所有页面的图标、布局和逐页验证见 [状态栏与旅人手册](HUDAndHandbook.md)。
