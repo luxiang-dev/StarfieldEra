@@ -11,14 +11,15 @@ namespace StarfieldEra
     }
     [Serializable] public sealed class ResourceSiteState
     {
+        public int workplaceId;
         public int level, workers, stock, goods, damage, downtime;
         public bool processing;
         public bool Valid()=>level>=0&&level<=3&&workers>=0&&workers<=2&&stock>=0&&stock<=120&&goods>=0&&goods<=120&&damage>=0&&damage<=100&&downtime>=0&&downtime<=1&&(level>0||workers==0)&&(!processing||level>=2);
-        public void NewDay(int capacity=30)
+        public void NewDay(int capacity=30,float productivity=1)
         {
             if(downtime>0){downtime--;return;}
             if(level==0||workers==0||damage>=100)return;
-            int raw=workers*(level+1)*2;
+            int raw=(int)Math.Floor(workers*(level+1)*2*productivity+.0001f);
             stock+=Math.Min(raw,Math.Max(0,capacity-stock));
             if(processing){int amount=Math.Min(workers*2,Math.Min(stock/2,Math.Max(0,capacity-goods)));stock-=amount*2;goods+=amount;}
         }
@@ -53,7 +54,7 @@ namespace StarfieldEra
         public void NewDay(FarmState farm)
         {
             foreach(var rabbit in rabbits)if(rabbit.status==2&&rabbit.fedDay==farm.day-1){rabbit.care++;farm.coins+=4;}
-            foreach(var site in Sites(farm.adventure))site.NewDay(StorageCapacity(farm.adventure));
+            foreach(var site in Sites(farm.adventure))site.NewDay(StorageCapacity(farm.adventure),farm.adventure.village.Productivity(farm.adventure,site));
         }
         public bool BuyCarrots(FarmState farm)
         {if(farm.coins<6)return false;farm.coins-=6;carrots+=3;return true;}
@@ -69,7 +70,7 @@ namespace StarfieldEra
         public bool Assign(AdventureState adventure,ResourceSiteState site,int delta)
         {
             if(site==null||!Sites(adventure).Contains(site)||site.level==0||Math.Abs(delta)!=1||site.workers+delta<0||site.workers+delta>2||(delta>0&&UsedWorkers(adventure)>=WorkerCapacity(adventure)))return false;
-            site.workers+=delta;return true;
+            return adventure.village.Adjust(adventure,site,delta);
         }
         public void Collect(AdventureState adventure,ResourceSiteState site,int kind)
         {

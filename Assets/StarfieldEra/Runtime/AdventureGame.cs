@@ -26,7 +26,7 @@ namespace StarfieldEra
             Target=null;float best=2.25f;
             foreach(var item in Game.World.Adventure.Encounters)
             {
-                if(!item.root.gameObject.activeSelf)continue;
+                if(!item.root||!item.root.gameObject.activeInHierarchy)continue;
                 if(item.kind==EncounterKind.Stone&&Game.Mining&&!Game.Mining.Reachable(item.root.GetComponentInChildren<HarvestableRock>()))continue;
                 var delta=item.Position-Game.World.Player.position;delta.y=0;
                 float distance=delta.magnitude;
@@ -66,7 +66,8 @@ namespace StarfieldEra
                 case EncounterKind.Fish:Game.Expedition.BeginFishing(item);break;
                 case EncounterKind.Fiber:case EncounterKind.Treasure:case EncounterKind.Rune:Game.Expedition.Interact(item);break;
                 case EncounterKind.Elder:Quest();break;
-                case EncounterKind.Town:Hud.Show("town");break;
+                case EncounterKind.Town:Game.Management.Open("orders");break;
+                case EncounterKind.Resident:case EncounterKind.Caravan:case EncounterKind.Route:case EncounterKind.FrontierResource:case EncounterKind.Decoration:Game.Settlement.Interact(item);break;
                 case EncounterKind.Companion:Recruit(item.id);break;
                 case EncounterKind.Guardian:StartBattle(item.id);break;
                 case EncounterKind.Market:Hud.Show("market");break;
@@ -237,7 +238,7 @@ namespace StarfieldEra
         }
         public void Commit(string message)
         {
-            Revision++;Game.World.Adventure.Refresh(State);Game.Expedition?.RefreshVisuals();Game.ShowMessage(message);Game.Persist();Hud?.Refresh();
+            Game.Settlement?.Refresh();Revision++;Game.World.Adventure.Refresh(State);Game.Expedition?.RefreshVisuals();Game.ShowMessage(message);Game.Persist();Hud?.Refresh();
         }
     }
 }

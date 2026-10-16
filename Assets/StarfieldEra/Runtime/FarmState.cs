@@ -13,7 +13,7 @@ namespace StarfieldEra
         public int kind;
         public float growthBonus;
         public void Advance(float multiplier){if(!planted||!watered||Ready)return;float progress=growth+growthBonus+multiplier;growth=Math.Min(RequiredDays,(int)Math.Floor(progress+0.00001f));growthBonus=growth>=RequiredDays?0:Math.Max(0,progress-growth);}
-        public int RequiredDays => kind==1?3:kind==2?4:FarmState.GrowthDays;
+        public int RequiredDays => kind==3?5:kind==1?3:kind==2?4:FarmState.GrowthDays;
         public bool Ready => planted && growth >= RequiredDays;
     }
 
@@ -35,15 +35,16 @@ namespace StarfieldEra
         public int energy = MaxEnergy;
         public float energyRecoverySeconds;
         public int selectedCrop;
-        public int wheatSeeds, berrySeeds;
+        public int wheatSeeds, berrySeeds, starSeeds;
+        public StormWaterState storm=new StormWaterState();
         public WeatherState weather=new WeatherState();
         public WeatherType Weather {get{weather.Ensure(day);return weather.trueWeatherQueue[0];}}
         public WeatherType TomorrowWeather {get{weather.Ensure(day);return weather.trueWeatherQueue[1];}}
         public bool Rainy => WeatherCatalog.Get(Weather).watersSoil;
         public string Season => new[]{"春季","夏季","秋季","冬季"}[((day-1)/14)%4];
-        public int SeedCost => selectedCrop==0?5:selectedCrop==1?8:10;
-        public int SelectedSeeds => selectedCrop==0?seeds:selectedCrop==1?wheatSeeds:berrySeeds;
-        public static readonly string[] CropNames = {"金萝卜","小麦","浆果"};
+        public int SeedCost => selectedCrop==0?5:selectedCrop==1?8:selectedCrop==2?10:25;
+        public int SelectedSeeds => selectedCrop==0?seeds:selectedCrop==1?wheatSeeds:selectedCrop==2?berrySeeds:starSeeds;
+        public static readonly string[] CropNames = {"金萝卜","小麦","浆果","星辉南瓜"};
         public bool SpendEnergy(int cost) { if(energy<cost)return false;energy-=cost;return true; }
         public int RestoreEnergy(int amount)
         {
@@ -61,12 +62,13 @@ namespace StarfieldEra
         }
         public void Upgrade()
         {
+            if(storm==null)storm=new StormWaterState();
             if(weather==null)weather=new WeatherState();weather.Ensure(day,true);
             if(schema<2){schema=2;energy=MaxEnergy;}
             if(plots!=null && plots.Length==12)
             {var expanded=new CropState[PlotCount];Array.Copy(plots,expanded,12);for(int i=12;i<PlotCount;i++)expanded[i]=new CropState();plots=expanded;}
             if(adventure==null)adventure=new AdventureState();
-            adventure.Upgrade();
+            adventure.Upgrade();adventure.trade.Ensure(day);
             if(land==null)land=new LandState();land.Upgrade();
             if(forestry==null)forestry=new ForestryState();
             if(mining==null)mining=new MiningState();
@@ -92,7 +94,7 @@ namespace StarfieldEra
             plots[index].kind = selectedCrop;
             plots[index].watered = Rainy;
             SpendEnergy(1);
-            if(selectedCrop==0)seeds--;else if(selectedCrop==1)wheatSeeds--;else berrySeeds--;
+            if(selectedCrop==0)seeds--;else if(selectedCrop==1)wheatSeeds--;else if(selectedCrop==2)berrySeeds--;else starSeeds--;
             return true;
         }
 
@@ -111,7 +113,8 @@ namespace StarfieldEra
             if(!SpendEnergy(1))return false;
             if(kind==2){plots[index].growth=0;plots[index].growthBonus=0;plots[index].watered=Rainy;adventure.berries+=2;}
             else plots[index] = new CropState();
-            coins += kind==0?HarvestPrice:kind==1?24:18;
+            coins += kind==0?HarvestPrice:kind==1?24:kind==2?18:60;
+            if(kind==3)adventure.village.pantry+=3;
             if(kind==0)adventure.homestead.carrots+=2;
             harvests++;weather.survivalExperience+=2;
             return true;
@@ -119,7 +122,7 @@ namespace StarfieldEra
 
         public bool BuySeed()
         {
-            if (coins < SeedCost) return false;
+            if (selectedCrop==3||coins < SeedCost) return false;
             coins -= SeedCost;
             if(selectedCrop==0)seeds++;else if(selectedCrop==1)wheatSeeds++;else berrySeeds++;
             return true;
@@ -141,15 +144,15 @@ namespace StarfieldEra
 
         public bool IsValid()
         {
-            if(weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid()||mining==null||!mining.Valid())return false;
+            if(storm==null||!storm.Valid()||weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid()||mining==null||!mining.Valid())return false;
             if(float.IsNaN(energyRecoverySeconds)||float.IsInfinity(energyRecoverySeconds)||energyRecoverySeconds<0||energyRecoverySeconds>=EnergyRecoveryInterval)return false;
             if(land!=null&&!land.Valid())return false;
             if (adventure != null && !adventure.Valid()) return false;
-            if (schema!=2 || energy<0 || energy>MaxEnergy || selectedCrop<0 || selectedCrop>2 || wheatSeeds<0 || berrySeeds<0 || version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
+            if (schema!=2 || energy<0 || energy>MaxEnergy || selectedCrop<0 || selectedCrop>3 || wheatSeeds<0 || berrySeeds<0 || starSeeds<0 || version != 1 || day < 1 || coins < 0 || seeds < 0 || harvests < 0 ||
                 plots == null || plots.Length != PlotCount || float.IsNaN(playerX) || float.IsNaN(playerZ) ||
                 float.IsInfinity(playerX) || float.IsInfinity(playerZ)) return false;
             foreach (var crop in plots)
-                if (crop == null || crop.growth < 0 || crop.growth > crop.RequiredDays || crop.kind<0 || crop.kind>2 || float.IsNaN(crop.growthBonus)||float.IsInfinity(crop.growthBonus)||crop.growthBonus<0||crop.growthBonus>=1 ||
+                if (crop == null || crop.growth < 0 || crop.growth > crop.RequiredDays || crop.kind<0 || crop.kind>3 || float.IsNaN(crop.growthBonus)||float.IsInfinity(crop.growthBonus)||crop.growthBonus<0||crop.growthBonus>=1 ||
                     (!crop.planted && (crop.watered || crop.growth != 0 || crop.growthBonus!=0))) return false;
             return true;
         }

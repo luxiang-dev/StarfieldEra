@@ -20,7 +20,7 @@ namespace StarfieldEra
         public float HeightAt(Vector3 p)
         {
             p.y=0;Sample(p,out _,out float water,out _);
-            float h=LandElevation.Height(p,owner?.State?.land);
+            float h=LandElevation.Height(p,owner?.State?.land)-(owner?owner.State.storm.GroundDrop(p):0);
             if(owner&&owner.State.land!=null&&grid.TryCell(p,out var cell))
             {
                 var edit=owner.State.land.Find(cell);
@@ -32,6 +32,7 @@ namespace StarfieldEra
                     float bed=waterLevels.TryGetValue(cell,out float level)?Mathf.Min(h,level-CanalHydrology.BedDepth):h-.45f;
                     h=Mathf.Lerp(h,bed,cut);
                 }
+                else if(edit!=null&&edit.drainage){var center=HexWorldGrid.Center(cell.x,cell.y);float cut=1-Mathf.SmoothStep(.06f,.24f,Mathf.Abs(p.x-center.x));h-=.12f*cut;}
             }
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }

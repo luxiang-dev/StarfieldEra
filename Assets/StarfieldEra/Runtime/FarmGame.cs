@@ -23,6 +23,7 @@ namespace StarfieldEra
         public TreeChopping Forestry {get;private set;}
         public RockMining Mining {get;private set;}
         public WorldInspection Inspection {get;private set;}
+        public SettlementGame Settlement {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
         bool jumpRequested;
@@ -76,6 +77,7 @@ namespace StarfieldEra
             Night=gameObject.AddComponent<NightDefense>();Night.Initialize(this);
             World.Controller.slopeLimit=50;
             World.RefreshCrops(State);
+            Settlement=gameObject.AddComponent<SettlementGame>();Settlement.Initialize(this);
             UpdateSelection();
             hud.Refresh();
         }
@@ -142,7 +144,7 @@ namespace StarfieldEra
             float verticalMove=gravity*frameDelta-10*frameDelta*frameDelta;
             gravity=Mathf.Max(-20,gravity-20*frameDelta);
             var grid=World.HexGrid;var before=World.Player.position;
-            float speed=Expedition.MovementSpeed(grid.TerrainAt(before));
+            float speed=Expedition.MovementSpeed(grid.TerrainAt(before))*(State.storm.DepthAt(before)>.025f?.65f:1);
             IsSprinting=move.sqrMagnitude>.01f&&!Adventure.InBattle&&(SprintRequested||keyboard!=null&&(keyboard.leftShiftKey.isPressed||keyboard.rightShiftKey.isPressed));
             var horizontal=grid.ConstrainMovement(before,move*(IsSprinting?6.6f:4)*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius);
             World.Controller.Move(horizontal+Vector3.up*verticalMove);
@@ -227,6 +229,7 @@ namespace StarfieldEra
             if (index < 0) { Notify("先走近一块农田。金色边框表示当前目标。"); return; }
             if(index>=12 && !State.adventure.expandedFarm){Notify("南侧农田尚未开垦，在村庄议事牌扩建农场后启用。");return;}
             if(State.energy<1){Notify("体力不足，回小屋休息或在营地使用料理。");return;}
+            if(State.storm.DepthAt(World.PlotPositions[index])>.15f){Notify("农田积水过深，请在附近修排水沟后再耕作。");return;}
             CropState crop = State.plots[index];
             if (crop.Ready)
             {
@@ -268,8 +271,10 @@ namespace StarfieldEra
         {
             Land.BeforeSleep();
             State.Sleep();
+            Settlement.AdvanceWeather();
             Land.NewDay();
-            Adventure.Commit("新的一天！设施完成了生产，伙伴和灌溉设施会照料农田。"+(Night&&Night.State.Target(State)>=0?Night.Forecast:""));
+            Settlement.NewDay();
+            Adventure.Commit("新的一天！设施完成了生产。"+Settlement.DaySummary+(Night&&Night.State.Target(State)>=0?Night.Forecast:""));
             World.RefreshCrops(State);
         }
 
@@ -277,20 +282,20 @@ namespace StarfieldEra
         {
             if(Adventure.InBattle||Expedition.Fishing)return;
             if (!NearHouse && !(Adventure.Target!=null && Adventure.Target.kind==EncounterKind.Market)) { Notify("种子商店在小屋门前，也可以与远行商人交易。"); return; }
-            if (!State.BuySeed()) { Notify("金币不足：当前种子需要 "+State.SeedCost+" 金币。"); return; }
+            if (!State.BuySeed()) { Notify(State.selectedCrop==3?"星辉南瓜种子只由商队和新区域宝箱提供。":"金币不足：当前种子需要 "+State.SeedCost+" 金币。"); return; }
             Changed("购买"+FarmState.CropNames[State.selectedCrop]+"种子 +1。");
         }
 
         public void SelectCrop(int kind)
         {
-            if(Adventure.InBattle||Expedition.Fishing||kind<0||kind>2)return;
+            if(Adventure.InBattle||Expedition.Fishing||kind<0||kind>3)return;
             State.selectedCrop=kind;Changed("当前种子："+FarmState.CropNames[kind]+"。");
         }
 
         public void CycleCrop()
         {
             if(Adventure.InBattle||Expedition.Fishing)return;
-            State.selectedCrop=(State.selectedCrop+1)%3;
+            State.selectedCrop=(State.selectedCrop+1)%FarmState.CropNames.Length;
             Changed("当前种子："+FarmState.CropNames[State.selectedCrop]+"。余量 "+State.SelectedSeeds+"，购买价 "+State.SeedCost+" 金币。");
         }
 

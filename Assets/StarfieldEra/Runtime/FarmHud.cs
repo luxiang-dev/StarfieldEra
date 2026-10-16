@@ -53,7 +53,8 @@ namespace StarfieldEra
         public void Refresh()
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
-            string terrain=TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position)));
+            bool wet=state.storm.DepthAt(game.World.Player.position)>.025f;
+            string terrain=(wet?"积水 · ":"")+TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position))*(wet?.65f:1));
             string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);

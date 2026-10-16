@@ -24,11 +24,11 @@ namespace StarfieldEra
             operationsLayout=new WindowLayout{backdrop=root,window=panel,content=Box(panel,"Operations page",46,140,1168,598,Color.clear),heading=title,wallet=balance,emblem=emblem,introduction=Text(panel,"",46,104,1168,36,18,new Color(.76f,.84f,.74f)),feedback=Text(panel,"",46,756,1168,32,16,gold)};
             root.gameObject.SetActive(false);
         }
-        public static bool IsOperationsPage(string target)=>target=="land"||target=="building"||target=="production"||target=="buildings"||target=="camp";
-        static string OperationsTitle(string target)=>target=="land"?"土地建造 · 改造与生态":target=="production"?"资源点经营 · 生产与库存":target=="buildings"?"建筑管理 · 自建建筑":target=="camp"?"营地与守卫 · 建设与防御":"建筑管理 · 生产与建设";
+        public static bool IsOperationsPage(string target)=>target=="land"||target=="building"||target=="production"||target=="buildings"||target=="camp"||target=="villagers"||target=="orders"||target=="caravan"||target=="frontier";
+        static string OperationsTitle(string target)=>target=="villagers"?"村民职业与生活":target=="orders"?"议事牌 · 村庄订单":target=="caravan"?"行脚商队 · 限时贸易":target=="frontier"?"区域探索 · 道路与水患":target=="land"?"土地建造 · 改造与生态":target=="production"?"资源点经营 · 生产与库存":target=="buildings"?"建筑管理 · 自建建筑":target=="camp"?"营地与守卫 · 建设与防御":"建筑管理 · 生产与建设";
         void OperationsWorkspace()
         {
-            Chip("资源点经营",0,()=>Open("production"),page=="production");Chip("自建建筑",158,()=>Open("buildings"),page=="buildings");Chip("营地与守卫",316,OpenCamp,page=="camp");Chip("开始建造",474,game.Construction.Open,false);
+            OperationsNavigation();
             if(page=="production")ResourcePage();else if(page=="buildings")Buildings();else CampPage();
         }
         void SelectWindow(string target)

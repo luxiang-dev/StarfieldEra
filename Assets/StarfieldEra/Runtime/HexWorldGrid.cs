@@ -20,6 +20,7 @@ namespace StarfieldEra
         {excavated.Clear();if(edits!=null)foreach(var edit in edits)if(edit.channel)excavated.Add(edit.Cell);}
         bool WalkableAt(Vector3 p)
         {
+            var owner=GetComponentInParent<FarmGame>();if(owner&&(owner.State.storm.DepthAt(p)>=.32f||owner.Settlement&&!owner.Settlement.CanEnter(p)))return false;
             if(!TryCell(p,out var cell)||excavated.Contains(cell)||!TerrainTraits.Walkable(TerrainAt(cell)))return false;
             var surface=GetComponent<ContinuousTerrain>();
             return !surface||surface.SupportsWalking(p);
@@ -51,7 +52,7 @@ namespace StarfieldEra
         public TerrainKind TerrainAt(Vector2Int cell)=>terrain.TryGetValue(cell,out var kind)?kind:TerrainKind.Water;
         public TerrainKind TerrainAt(Vector3 position)=>TryCell(position,out var cell)?TerrainAt(cell):TerrainKind.Water;
         public bool IsDry(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Walkable(TerrainAt(cell));
-        public bool CanBuildOn(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Buildable(TerrainAt(cell));
+        public bool CanBuildOn(Vector2Int cell)=>Contains(cell)&&TerrainTraits.Buildable(TerrainAt(cell))&&(!GetComponentInParent<FarmGame>()||GetComponentInParent<FarmGame>().State.storm.Depth(cell)<.08f&&(!GetComponentInParent<FarmGame>().Settlement||GetComponentInParent<FarmGame>().Settlement.CanEnter(Center(cell.x,cell.y))));
         public bool CanStand(Vector3 position,float radius=.3f)
         {
             if(!WalkableAt(position))return false;

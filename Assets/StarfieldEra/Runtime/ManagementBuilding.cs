@@ -40,7 +40,7 @@ namespace StarfieldEra
                 StorageBar(output,raw,s.stock,capacity,54);StorageBar(output,goods,s.goods,capacity,94);
                 string plan;
                 if(workshop)plan="每日木材 +"+s.level*6+" 自动入背包；村民加工最多 "+s.workers*s.level*2+" 份"+(s.processing?"石砖":"木板")+"（每份消耗2原料）。";
-                else{var forecast=BuildingOperations.Forecast(s,capacity);plan="下次结算预计："+raw+" "+Signed(forecast.stock-s.stock)+" · "+goods+" "+Signed(forecast.goods-s.goods)+"。";}
+                else{var forecast=BuildingOperations.Forecast(s,capacity,A.village.Productivity(A,s));plan="下次结算预计："+raw+" "+Signed(forecast.stock-s.stock)+" · "+goods+" "+Signed(forecast.goods-s.goods)+"。";}
                 Text(output,plan,20,136,656,40,16,ink);
             }
             else Text(output,(managedDescription!=""?managedDescription:BuildingEconomy.Description(managedKind))+"\n自动产出直接进入背包；无需分配工人。",20,56,656,100,20,ink);
@@ -49,8 +49,8 @@ namespace StarfieldEra
             Text(upgrade,s==null?BuildingEconomy.Description(managedKind):BuildingOperations.UpgradeCost(s)+"\n"+(BuildingOperations.UpgradeBlock(game.State,s)==""?"材料已备齐":BuildingOperations.UpgradeBlock(game.State,s))+"\n"+(near?"已在施工与领取范围内":"请靠近建筑六步内升级、修补或领取"),20,50,656,94,17,ink);
             var actions=Box(content,"Building management actions",722,0,438,582,new Color(.075f,.19f,.155f));UITheme.Frame(actions);
             Text(actions,"管理这座建筑",22,10,394,44,24,cream);
-            Text(actions,s!=null?"派驻 "+s.workers+" / 2 · 全部村民 "+h.UsedWorkers(A)+" / "+h.WorkerCapacity(A):"自动运行 · 无需派驻村民",22,62,394,36,18,gold);
-            Button(actions,"派驻 +1",22,104,190,42,()=>ManageAssign(1),s!=null&&s.level>0&&s.workers<2&&h.UsedWorkers(A)<h.WorkerCapacity(A));
+            Button(actions,s!=null?"村民 "+s.workers+" / 2 · 空闲 "+A.village.residents.Count(r=>r.workplace==0)+" 人 · 查看分工":"村民职业与生活",22,58,394,42,()=>Open("villagers"));
+            Button(actions,"派驻 +1",22,104,190,42,()=>ManageAssign(1),s!=null&&s.level>0&&s.workers<2&&h.UsedWorkers(A)<h.WorkerCapacity(A)&&A.village.residents.Any(r=>r.workplace==0));
             Button(actions,"召回 -1",226,104,190,42,()=>ManageAssign(-1),s!=null&&s.workers>0);
             Button(actions,s==null?"无需设置加工":workshop?(s.level<2?"二级解锁石砖加工":s.processing?"切换为木板加工":"切换为石砖加工"):s.level<2?"二级解锁加工":s.processing?"关闭原料加工":"开启原料加工",22,160,394,42,ManageProcessing,s!=null&&s.level>=2);
             Button(actions,"领取全部库存",22,214,394,42,ManageCollect,s!=null&&near&&(s.stock>0||s.goods>0));
@@ -70,6 +70,7 @@ namespace StarfieldEra
             if(s.damage>=100)return "设施损毁 · 请先修补，再恢复生产";
             if(s.downtime>0)return "暂停生产 · 还需休整 "+s.downtime+" 天";
             if(s.workers==0)return workshop?"无人加工 · 自动木材仍会产出，派驻村民可加工成品":"无人工作 · 请派驻村民，否则没有产出";
+            float productivity=A.village.Productivity(A,s);if(productivity<.999f)return "生活补给不足 · 效率 "+Mathf.RoundToInt(productivity*100)+"%，请查看村民住房与口粮";
             if(workshop)
             {
                 int available=s.processing?A.stone:A.wood+s.level*6;

@@ -9,6 +9,10 @@ namespace StarfieldEra
         {
             switch(page)
             {
+                case "villagers":return "村民分工、住房与餐桌 · 专长影响生产，按时补充口粮";
+                case "orders":return "每四天更新 · 接受订单，带齐物资到议事牌交付";
+                case "caravan":return "每四天到访并停留两天 · 珍稀种子、工具图纸与装饰";
+                case "frontier":return "修桥清路，探索林谷与矿脉 · 留意暴雨积水";
                 case "production":return "资源点经营 · 分配村民、管理库存与升级设施";
                 case "buildings":return "建筑管理 · 查看建筑，调整位置或拆除返还";
                 case "camp":return "营地建设 · 修建防御，准备夜间守卫";

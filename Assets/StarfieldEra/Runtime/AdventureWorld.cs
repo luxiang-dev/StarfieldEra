@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace StarfieldEra
 {
-    public enum EncounterKind { Wood, Stone, Berry, Fish, Elder, Town, Companion, Guardian, Market, Camp, Crystal, Fiber, Treasure, Rune, Landmark }
+    public enum EncounterKind { Wood, Stone, Berry, Fish, Elder, Town, Companion, Guardian, Market, Camp, Crystal, Fiber, Treasure, Rune, Landmark, Resident, Caravan, Route, FrontierResource, Decoration }
     public sealed class WorldEncounter
     {
         public int id;

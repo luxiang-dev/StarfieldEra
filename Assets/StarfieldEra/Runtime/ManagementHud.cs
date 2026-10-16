@@ -96,7 +96,7 @@ namespace StarfieldEra
             wallet.text="金币 "+game.State.coins+"   知识 "+A.science+"\n第 "+game.State.day+" 天 · "+game.State.Season;
             foreach(var pair in tabs){pair.Value.GetComponent<UnityEngine.UI.Image>().color=pair.Key==page?new Color(.24f,.34f,.24f,.98f):new Color(.06f,.17f,.14f,.72f);pair.Value.GetComponent<UnityEngine.UI.Outline>().effectColor=pair.Key==page?new Color(.85f,.72f,.42f,.80f):new Color(.50f,.58f,.39f,.20f);}
             feedback.text=(game.Message==openingMessage?"操作自动保存 · 返回游戏后继续探索":game.Message)+(game.SaveHealthy?"":" · 保存失败");
-            if(page=="production"||page=="buildings"||page=="camp")OperationsWorkspace();else if(page=="building")BuildingManagement();else if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
+            if(page=="villagers"||page=="orders"||page=="caravan"||page=="frontier")SettlementWorkspace();else if(page=="production"||page=="buildings"||page=="camp")OperationsWorkspace();else if(page=="building")BuildingManagement();else if(page=="weather")WeatherPage();else if(page=="homestead")HomesteadPage();else if(page=="inventory")Inventory();else if(page=="tasks")Tasks();else if(page=="craft")Crafting();else if(page=="town")Town();else if(page=="companions")Companions();else if(page=="market")Market();else if(page=="land")LandTools();else if(page=="tutorial")Tutorial();else if(page=="camera")CameraSettings();else Map();
         }
         void CameraSettings()
         {
@@ -121,7 +121,7 @@ namespace StarfieldEra
         {
             Text(content,"J · 土地建造工具",0,4,620,40,24,cream);
             for(int i=0;i<LandStewardship.Names.Length;i++)
-            {int id=i;var button=Button(content,LandStewardship.Names[i]+"   "+LandStewardship.Costs[i],0,60+i*49,620,43,()=>{selectedLandTool=id;Rebuild();});UITheme.Icon(button.transform,i==0?18:i==1?26:i==4?7:24,10,4,35,35,true);button.GetComponent<UnityEngine.UI.Image>().color=selectedLandTool==i?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);}
+            {int id=i;var button=Button(content,LandStewardship.Names[i]+"   "+LandStewardship.Costs[i],0,60+i*43,620,38,()=>{selectedLandTool=id;Rebuild();});UITheme.Icon(button.transform,i==0?18:i==1?26:i==4?7:24,10,4,35,35,true);button.GetComponent<UnityEngine.UI.Image>().color=selectedLandTool==i?new Color(.28f,.36f,.27f):new Color(.1f,.23f,.2f);}
             Text(content,"土方 "+game.State.land.soil+" · 木材 "+A.wood+" · 石料 "+A.stone+" · 纤维 "+X.fiber,0,475,620,36,18,cream);
             Text(content,"灌溉技术："+(A.irrigation?"已掌握，临水农田自动浇水":"未研究，临水可保湿；自动浇水需研究"),0,519,630,54,17,cream);
             var detail=Details(LandStewardship.Names[selectedLandTool],LandStewardship.Costs[selectedLandTool],LandStewardship.Descriptions[selectedLandTool]+"\n\n选择工具后点击六步内的地块。\n绿色可施工，红色不可施工。\n右键 / Esc 取消；施工自动保存。");
@@ -182,6 +182,7 @@ namespace StarfieldEra
             new Item("crystals","晶石","材料",A.crystals,5,"矿脉、宝箱与守卫奖励，用于研究和制作护符。"),new Item("fiber","纤维","材料",X.fiber,3,"采集野生草束或开启补给箱获得，用于远行装备。"),
             new Item("shards","遗迹碎片","材料",X.shards,5,"解读石碑或完美收线获得，星辉护符需要三份。"),new Item("truffles","松露","材料",A.truffles,3,"喂食牧场野猪后次日获得，可在动物详情中出售。"),
             new Item("seed0","金萝卜种子","种子",game.State.seeds,3,"两天成熟，收获后售出。选为当前种子，再回农田种植。"),new Item("seed1","小麦种子","种子",game.State.wheatSeeds,3,"三天成熟，每次收获售24金币。"),new Item("seed2","浆果种子","种子",game.State.berrySeeds,3,"四天成熟，可重复收获，产出金币和浆果。"),
+            new Item("seed3","星辉南瓜种子","种子",game.State.starSeeds,14,"商队与秘境宝箱提供，五天成熟，收获60金币和村民口粮3。"),
             new Item("meal","暖心料理","补给",A.meals,0,"随时使用，体力回复12，最高300。小屋或营地可制作。"),new Item("bait","草编鱼饵","补给",X.bait,4,"抛竿时自动使用一份，扩大绿色收线窗口。"),new Item("camp","野营补给","补给",X.campSupplies,0,"在稳定陆地休整，体力回复15，不推进天数或刷新每日采集。"),
             };
             for(int i=0;i<EquipmentCatalog.Recipes.Length;i++){var r=EquipmentCatalog.Recipes[i];items.Add(new Item(r.key,r.name,"装备",EquipmentCatalog.Has(game,r.key)?1:0,0,r.effect+"\n\n图纸："+(EquipmentCatalog.State(game).blueprints[i]?"已学习":"未学习")+"\n持有工具即可自动用于操作，无需重复切换装备。"));}
@@ -328,6 +329,7 @@ namespace StarfieldEra
                 var rect=button.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.anchoredPosition=new Vector2(p.x/(HexWorldGrid.HalfWidth*2)*620,p.z/(HexWorldGrid.HalfDepth*2)*510);button.GetComponent<UnityEngine.UI.Image>().color=selectedRegion==i?new Color(.38f,.32f,.18f):A.discovered[i]?green:new Color(.23f,.28f,.25f);
                 button.GetComponentInChildren<TextMeshProUGUI>().fontSize=10;
             }
+            FrontierMapPins(map);
             var den=ExpandedWilderness.DenPosition;var denButton=Button(map,"北岭狼窟",0,0,90,32,()=>game.ShowMessage("狼窟在东北山岭，坐标 58，39。向东北方向探索可抵达。"));var denRect=denButton.GetComponent<RectTransform>();denRect.anchorMin=denRect.anchorMax=denRect.pivot=new Vector2(.5f,.5f);denRect.anchoredPosition=new Vector2(den.x/(HexWorldGrid.HalfWidth*2)*620,den.z/(HexWorldGrid.HalfDepth*2)*510);denButton.GetComponentInChildren<TextMeshProUGUI>().fontSize=13;
             var player=game.World.Player.position;var marker=Box(map,"Player map marker",0,0,12,12,gold);marker.anchorMin=marker.anchorMax=marker.pivot=new Vector2(.5f,.5f);marker.anchoredPosition=new Vector2(player.x/(HexWorldGrid.HalfWidth*2)*620,player.z/(HexWorldGrid.HalfDepth*2)*510);
             Text(content,"草地 · 森林 · 沼泽 · 沙地 · 岩地 · 雪地 · 道路 · 水面",0,538,630,30,16,cream);

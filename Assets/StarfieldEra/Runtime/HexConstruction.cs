@@ -164,7 +164,7 @@ namespace StarfieldEra
         }
         bool SiteAllowed(Vector2Int cell,PlacedBuilding ignore,bool migrating,out string explanation)
         {
-            var changed=Game.State.land?.Find(cell);if(changed!=null&&(changed.tree||changed.tilled||changed.channel)){explanation="请保留改造后的农田、树木和河道";return false;}
+            var changed=Game.State.land?.Find(cell);if(changed!=null&&(changed.tree||changed.tilled||changed.channel||changed.drainage)){explanation="请保留改造后的农田、树木、河道与排水沟";return false;}
 
             explanation="";
             if(!Game.World.HexGrid.Contains(cell)){explanation="建筑占地超出大陆边界";return false;}
