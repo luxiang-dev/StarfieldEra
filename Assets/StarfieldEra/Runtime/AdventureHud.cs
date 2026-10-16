@@ -228,7 +228,7 @@ namespace StarfieldEra
                 title.text="冒险日志 · 村庄复兴";
                 string friends="";
                 for(int i=0;i<3;i++)if(s.companions[i])friends+=AdventureContent.Names[i]+" · "+AdventureContent.Roles[i]+"\n";
-                body.text=AdventureContent.Quests[s.quest]+"\n\n收获 "+game.Game.State.harvests+" / 3   伙伴 "+s.CompanionCount+" / 3\n\n"+(friends==""?"森林的苗芽鹿喜欢浆果，去东侧找它吧！\n":friends)+"\n每日采集点会在休息后恢复。\n完成委托要回村长身边领取奖励。";
+                body.text=AdventureContent.Quests[s.quest]+"\n\n收获 "+game.Game.State.harvests+" / 3   伙伴 "+s.CompanionCount+" / 3\n\n"+(friends==""?"森林的苗芽喜欢浆果，去东侧找它吧！\n":friends)+"\n每日采集点会在休息后恢复。\n完成委托要回村长身边领取奖励。";
                 Action("C  切换随行伙伴",0,game.CycleCompanion);
                 Action("M  打开旅途地图",1,()=>Show("map"));
                 Action("查看建设与研究",2,()=>Show("town"));

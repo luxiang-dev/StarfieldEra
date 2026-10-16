@@ -91,12 +91,15 @@ namespace StarfieldEra
             {
                 var pos=new Vector3(7.5f+(i%3)*2.6f,0,12+(i/3)*3.5f);
                 float height=2.2f+i%2*.8f;
+                if(!Resources.Load<GameObject>("Environment/AncientPillar"))
+                {
                 for(int j=1;j<height/.48f;j++)
                     world.Shape("Column stone joint",PrimitiveType.Cylinder,pos+Vector3.up*(j*.48f),new Vector3(.81f,.016f,.81f),darkStone);
                 for(int j=0;j<6;j++)
                 {
                     var leaf=world.Shape("Climbing ivy",PrimitiveType.Sphere,pos+new Vector3(.32f+Mathf.Sin(j)*.12f,.4f+j*.36f,-.31f),new Vector3(.28f,.12f,.25f),ivy);
                     leaf.rotation=Quaternion.Euler(15,j*35,20);
+                }
                 }
                 world.Shape("Ruins rubble",PrimitiveType.Cube,pos+new Vector3(-.7f,.15f,-.3f),new Vector3(.55f,.28f,.4f),plaster).rotation=Quaternion.Euler(0,i*29,8);
             }

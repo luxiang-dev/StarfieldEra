@@ -61,7 +61,7 @@ namespace StarfieldEra
 
     public static class AdventureContent
     {
-        public static readonly string[] Names={"苗芽鹿","潮汐獭","焰晶狐"};
+        public static readonly string[] Names={"苗芽","潮汐獭","焰晶狐"};
         public static readonly string[] Roles={"草系 · 每天照料前三块农田","水系 · 钓鱼额外获得一条鱼","火系 · 战斗攻击增加三点"};
         public static readonly string[] Regions={"晨风村","青苔森林","镜湖岸","星辉遗迹","金穗平原","白岩山地","幽光湿地","远行驿站"};
         public static readonly string[] Quests={

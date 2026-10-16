@@ -24,6 +24,21 @@ namespace StarfieldEra
             }
             return Place("Environment/"+resource,parent,position,height,0,0,"Local "+resource);
         }
+        public static Transform Rabbit(Transform parent,Vector3 position)
+            =>Place("Environment/MeadowRabbit",parent,position,.92f,1.15f,0,"Local meadow rabbit");
+        public static Transform Pillar(Transform parent,Vector3 position,float height,float yaw=0)
+            =>Place("Environment/AncientPillar",parent,position,height,1.8f,yaw,"Local ancient pillar");
+        public static Transform ProductionBuilding(int kind,Transform parent,Vector3 position,float height,float width)
+        {
+            if(kind>1)return null;
+            var visual=Place("Environment/"+(kind==0?"Lumberyard":"Quarry"),parent,position,height,width,0,kind==0?"Local lumberyard":"Local quarry");
+            if(visual)visual.rotation=parent.rotation;return visual;
+        }
+        public static bool HasProductionVisual(Transform root)
+        {
+            foreach(var node in root.GetComponentsInChildren<Transform>(true))if(node.name=="Local lumberyard"||node.name=="Local quarry")return true;
+            return false;
+        }
         public static Transform Fence(Transform parent,Vector3 a,Vector3 b,bool hideStart=false)
         {
             var prefab=Resources.Load<GameObject>("Environment/FantasyFence");if(!prefab)return null;

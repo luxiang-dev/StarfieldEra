@@ -159,7 +159,7 @@ namespace StarfieldEra
         public void CycleCompanion()
         {
             if(InBattle){Game.ShowMessage("战斗中不能切换伙伴。");return;}
-            if(State.CompanionCount==0){Game.ShowMessage("先在森林找到苗芽鹿，用三份浆果招募。");return;}
+            if(State.CompanionCount==0){Game.ShowMessage("先在森林找到苗芽，用三份浆果招募。");return;}
             for(int step=1;step<=3;step++)
             {
                 int index=(State.activeCompanion+step)%3;

@@ -38,7 +38,9 @@ namespace StarfieldEra
             var houses=new HashSet<string>{"Seed market","Village bakery","Workshop","Library","Southern mill","Observatory"};
             foreach(var anchor in anchors)if(houses.Contains(anchor.name))
             {
-                Hide(anchor);var visual=Add(anchor.position,3,anchor.name=="Library"?4.5f:3.8f,"Painted "+anchor.name);
+                Hide(anchor);
+                if(anchor.name=="Workshop"&&LocalEnvironment.ProductionBuilding(0,anchor,anchor.position,3.1f,4.5f))continue;
+                var visual=Add(anchor.position,3,anchor.name=="Library"?4.5f:3.8f,"Painted "+anchor.name);
                 visual.SetParent(anchor,true);
                 if(anchor.name=="Library"||anchor.name=="Observatory"){var sprite=visual.GetComponent<SpriteRenderer>();if(sprite)sprite.color=new Color(.88f,.94f,1);}
             }
@@ -87,7 +89,7 @@ namespace StarfieldEra
         {return sprites==null?null:Add(position,1,height,"Restored woodland tree");}
         public void IllustrateBuilding(Transform root,int kind,Vector3 center,float height)
         {
-            if(sprites==null)return;
+            if(sprites==null||LocalEnvironment.HasProductionVisual(root))return;
             foreach(var renderer in root.GetComponentsInChildren<Renderer>())if(renderer.name!="Terrace foundation")renderer.enabled=false;
             var visual=Add(center,kind==1?2:3,kind==1?4.7f:kind==0?height*1.3f:height,"Painted constructed building");visual.SetParent(root,true);
             if(kind==2){var sprite=visual.GetComponent<SpriteRenderer>();if(sprite)sprite.color=new Color(.88f,.94f,1);}

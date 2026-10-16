@@ -67,6 +67,12 @@ namespace StarfieldEra
             for(int i=0;i<6;i++)
             {
                 Vector3 pos=new Vector3(7.5f+(i%3)*2.6f,0,12+(i/3)*3.5f);
+                var pillar=new GameObject("Ancient column").transform;pillar.SetParent(transform,false);pillar.position=pos;
+                if(LocalEnvironment.Pillar(pillar,pos,2.45f+i%2*.8f,i*12))
+                {
+                    var collision=pillar.gameObject.AddComponent<BoxCollider>();collision.center=Vector3.up*1.1f;collision.size=new Vector3(.85f,2.2f,.85f);continue;
+                }
+                Destroy(pillar.gameObject);
                 world.Shape("Broken column",PrimitiveType.Cylinder,pos+Vector3.up*(1.1f+i%2*.4f),new Vector3(.8f,1.1f+i%2*.4f,.8f),cream,true);
                 world.Shape("Column capital",PrimitiveType.Cube,pos+Vector3.up*(2.2f+i%2*.8f),new Vector3(1.2f,.25f,1.2f),cream);
             }
@@ -222,6 +228,7 @@ namespace StarfieldEra
         }
         void Creature(Transform root,int species)
         {
+            if(species==0&&LocalEnvironment.Rabbit(root,root.position))return;
             if(species==4){if(LocalCharacterMotion.AttachBoss(root))return;species=3;}
             var art=StoreVisuals.Current;
             var prefab=art?(species==3?art.guardian:(art.companions!=null && species<art.companions.Length?art.companions[species]:null)):null;
@@ -242,7 +249,7 @@ namespace StarfieldEra
 
         public void Refresh(AdventureState state)
         {
-            workshop.gameObject.SetActive(state.workshop);windmill.gameObject.SetActive(state.workshop);
+            workshop.gameObject.SetActive(state.workshop);windmill.gameObject.SetActive(state.workshop&&!Resources.Load<GameObject>("Environment/Lumberyard"));
             library.gameObject.SetActive(state.library);
             mill.gameObject.SetActive(state.mill);observatory.gameObject.SetActive(state.observatory);
             for(int i=0;i<3;i++)creatures[i].gameObject.SetActive(!state.companions[i]);
@@ -273,11 +280,11 @@ namespace StarfieldEra
             if(Follower.gameObject.activeSelf)
             {
                 Vector3 destination=player-world.Player.forward*1.2f+world.Player.right*.7f;
-                destination.y=world.HexGrid.GroundHeight(destination)+.08f+Mathf.Sin(Time.time*4)*.035f;
+                destination.y=world.HexGrid.GroundHeight(destination)+(followerSpecies==0?.01f:.08f+Mathf.Sin(Time.time*4)*.035f);
                 if(!world.HexGrid.CanStand(Follower.position,.15f))Follower.position=world.HexGrid.SafeLand(player,.15f,false);
                 var step=Vector3.Lerp(Follower.position,destination,Time.deltaTime*3)-Follower.position;
                 var horizontal=world.HexGrid.ConstrainMovement(Follower.position,step,.15f);
-                Follower.position+=horizontal;var grounded=Follower.position;grounded.y=world.HexGrid.GroundHeight(grounded)+.08f+Mathf.Sin(Time.time*4)*.035f;Follower.position=grounded;
+                Follower.position+=horizontal;var grounded=Follower.position;grounded.y=world.HexGrid.GroundHeight(grounded)+(followerSpecies==0?.01f:.08f+Mathf.Sin(Time.time*4)*.035f);Follower.position=grounded;
                 Follower.rotation=Quaternion.Slerp(Follower.rotation,world.Player.rotation,Time.deltaTime*4);
             }
             if(windmill.gameObject.activeSelf)windmill.Rotate(0,0,Time.deltaTime*30);

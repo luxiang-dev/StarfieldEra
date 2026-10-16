@@ -231,7 +231,8 @@ namespace StarfieldEra
             var prefab=art?(kind==0?art.workshop:kind==1?(art.quarry?art.quarry:art.rock):kind==2?art.library:art.market):null;
             float width=building.footprintVersion==0?1.8f:kind<2?5.2f:kind==2?3.9f:3.2f;
             float height=building.footprintVersion==0?2:kind==1?3.1f:kind==3?2.6f:3.7f;
-            if(prefab)art.Place(prefab,root.transform,center,height,0,width);
+            if(LocalEnvironment.ProductionBuilding(kind,root.transform,center,height,width)){}
+            else if(prefab)art.Place(prefab,root.transform,center,height,0,width);
             else
             {
                 var piece=Game.World.Shape("Building body",PrimitiveType.Cube,center+Vector3.up*height*.35f,new Vector3(width*.7f,height*.7f,width*.6f),wallMaterial);piece.SetParent(root.transform,true);

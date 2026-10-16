@@ -1,0 +1,34 @@
+[
+  {
+    "name": "MeadowRabbit",
+    "sourceFolder": "兔子",
+    "originalFaces": 499962,
+    "gameFaces": 10565,
+    "gameVertices": 5491,
+    "baseRemoved": true
+  },
+  {
+    "name": "AncientPillar",
+    "sourceFolder": "石柱",
+    "originalFaces": 49960,
+    "gameFaces": 12000,
+    "gameVertices": 15130,
+    "baseRemoved": false
+  },
+  {
+    "name": "Lumberyard",
+    "sourceFolder": "伐木场",
+    "originalFaces": 999114,
+    "gameFaces": 42000,
+    "gameVertices": 61551,
+    "baseRemoved": false
+  },
+  {
+    "name": "Quarry",
+    "sourceFolder": "采石场",
+    "originalFaces": 998296,
+    "gameFaces": 48000,
+    "gameVertices": 80354,
+    "baseRemoved": false
+  }
+]
