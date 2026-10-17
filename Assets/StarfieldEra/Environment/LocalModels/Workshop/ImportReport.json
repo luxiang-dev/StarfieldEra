@@ -1,0 +1,11 @@
+{
+  "source": "/home/lx/模型/建筑/工坊.glb",
+  "originalFaces": 499924,
+  "gameFaces": 24000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "Workshop_BaseColor0.png"
+    }
+  ]
+}

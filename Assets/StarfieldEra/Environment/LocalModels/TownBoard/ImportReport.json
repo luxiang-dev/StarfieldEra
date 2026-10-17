@@ -1,0 +1,14 @@
+{
+  "source": "/home/lx/模型/资源/城镇议事牌.glb",
+  "originalFaces": 499692,
+  "gameFaces": 24000,
+  "parts": {
+    "node_0": 24000
+  },
+  "materials": [
+    {
+      "name": "Material.002",
+      "texture": "TownBoard_BaseColor0.png"
+    }
+  ]
+}

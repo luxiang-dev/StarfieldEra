@@ -1,0 +1,18 @@
+{
+  "source": "/home/lx/模型/资源/牧场门.glb",
+  "originalFaces": 499802,
+  "gameFaces": 24000,
+  "parts": {
+    "GatePostStart": 8048,
+    "GatePostEnd": 8729,
+    "GateGround": 1736,
+    "GateLeafStart": 2934,
+    "GateLeafEnd": 2553
+  },
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "PastureGate_BaseColor0.png"
+    }
+  ]
+}

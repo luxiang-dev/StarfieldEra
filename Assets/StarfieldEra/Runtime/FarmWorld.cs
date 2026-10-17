@@ -1,0 +1,280 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace StarfieldEra
+{
+    public sealed class FarmWorld : MonoBehaviour
+    {
+        public Material materialTemplate;
+        public TMPro.TMP_FontAsset labelFont;
+        public AdventureWorld Adventure { get; private set; }
+        public HexWorldGrid HexGrid { get; private set; }
+        public Mesh ConstructionOutline => selectionMesh;
+        public Transform Player { get; private set; }
+        public CharacterController Controller { get; private set; }
+        public Camera View { get; private set; }
+        public readonly Vector3 Door = new Vector3(-5, 0, 3.4f);
+        public readonly Vector3[] PlotPositions = new Vector3[FarmState.PlotCount];
+        readonly Renderer[] soils = new Renderer[FarmState.PlotCount];
+        readonly Transform[] crops = new Transform[FarmState.PlotCount];
+        readonly List<Material> materials = new List<Material>();
+        Mesh cone, soilMesh, selectionMesh;
+        Material dry, wet, leaf, ripe, berryFruit, wheatFruit;
+        Transform selection;
+
+        public void Generate()
+        {
+            var grass = Mat("Meadow", "82965C");
+            var stone = Mat("Island edge", "526856");
+            var sand = Mat("Warm stone", "D3C394");
+            var wood = Mat("Timber", "715346");
+            var cream = Mat("Plaster", "F1E2BC");
+            var roof = Mat("Terracotta", "B56648");
+            var green = Mat("Evergreen", "396952");
+            var lightGreen = Mat("Canopy", "638D50");
+            dry = Mat("Dry soil", "684936");
+            wet = Mat("Watered soil", "49382B");
+            leaf = Mat("Crop leaves", "77A34D");
+            ripe = Mat("Golden turnip", "EAB84D");
+            berryFruit=Mat("Crop berries","9D4E59");wheatFruit=Mat("Wheat ears","DCC180");
+            cone = CreateCone();
+
+            HexGrid = new GameObject("Hex world map").AddComponent<HexWorldGrid>();
+            HexGrid.transform.SetParent(transform, false);
+            HexGrid.Build(this, stone);
+            HexGrid.PaintBox(new Vector3(-2, 0, 2.6f), new Vector3(14, 0, 1.9f), sand);
+            soilMesh = HexWorldGrid.Prism(HexWorldGrid.Radius - .065f, .13f, "Hex farm plot");
+
+            // House doorway faces the farm; its collision never covers the interaction point.
+            Shape("Farmhouse", PrimitiveType.Cube, new Vector3(-5, 1.3f, 5.3f), new Vector3(3.6f, 2.6f, 3), cream, true);
+            var a = Shape("Roof west", PrimitiveType.Cube, new Vector3(-5.95f, 3, 5.3f), new Vector3(2.3f, .25f, 3.7f), roof);
+            a.rotation = Quaternion.Euler(0, 0, 30);
+            a = Shape("Roof east", PrimitiveType.Cube, new Vector3(-4.05f, 3, 5.3f), new Vector3(2.3f, .25f, 3.7f), roof);
+            a.rotation = Quaternion.Euler(0, 0, -30);
+            Shape("Door", PrimitiveType.Cube, new Vector3(-5, .75f, 3.77f), new Vector3(.85f, 1.5f, .08f), wood);
+            Shape("Doorstep", PrimitiveType.Cube, new Vector3(-5, .08f, 3.1f), new Vector3(1.5f, .16f, .7f), sand);
+            var blue = Mat("Window glass", "78A9AA");
+            Shape("Window", PrimitiveType.Cube, new Vector3(-6.1f, 1.45f, 3.76f), new Vector3(.65f, .7f, .09f), blue);
+            Shape("Window frame", PrimitiveType.Cube, new Vector3(-6.1f, 1.45f, 3.7f), new Vector3(.05f, .8f, .06f), cream);
+            Shape("Chimney", PrimitiveType.Cube, new Vector3(-4.3f, 3.3f, 5.9f), new Vector3(.5f, 1.5f, .5f), wood);
+
+            for (int i = 0; i < FarmState.PlotCount; i++)
+            {
+                var cell=PlotCell(i);Vector3 pos = HexWorldGrid.Center(cell.x,cell.y) + Vector3.up * .075f;
+                PlotPositions[i] = pos;
+                var plot = new GameObject("Hex plot " + (i + 1), typeof(MeshFilter), typeof(MeshRenderer));
+                plot.transform.SetParent(transform, false); plot.transform.position = pos;
+                plot.GetComponent<MeshFilter>().sharedMesh = soilMesh;
+                plot.AddComponent<WorldPickTarget>().plot=i;
+                soils[i] = plot.GetComponent<MeshRenderer>();
+                soils[i].sharedMaterials = new[] {dry, dry};
+                var cropRoot = new GameObject("Crop " + (i + 1)).transform;
+                cropRoot.SetParent(transform);
+                cropRoot.position = pos + Vector3.up * .1f;
+                cropRoot.gameObject.AddComponent<WorldPickTarget>().plot=i;
+                crops[i] = cropRoot;
+                for (int j = 0; j < 3; j++)
+                {
+                    Vector3 offset = new Vector3((j - 1) * .42f, .16f, (j % 2 == 0 ? -.15f : .25f));
+                    var bulb = Shape("Turnip", PrimitiveType.Sphere, cropRoot.position + offset, Vector3.one * .35f, ripe);
+                    bulb.SetParent(cropRoot, true);
+                    var sprout = Cone("Leaves", cropRoot.position + offset + Vector3.up * .13f, new Vector3(.35f, .55f, .35f), leaf);
+                    sprout.SetParent(cropRoot, true);
+                }
+            }
+
+            var markerMat = Mat("Selected plot", "F8DF94");
+            selection = new GameObject("Hex interaction marker", typeof(MeshFilter), typeof(MeshRenderer)).transform;
+            selection.SetParent(transform, false);
+            selectionMesh = HexWorldGrid.Outline(HexWorldGrid.Radius - .045f, .065f);
+            selection.GetComponent<MeshFilter>().sharedMesh = selectionMesh;
+            selection.GetComponent<MeshRenderer>().sharedMaterial = markerMat;
+
+            // Fixed seeds make the island reproducible without affecting gameplay random state.
+            var random = new System.Random(37);
+            for (int i = 0; i < 22; i++)
+            {
+                float x = i < 11 ? -9 + (float)random.NextDouble() * 1.5f : 8.5f + (float)random.NextDouble() * 1.4f;
+                float z = -8.5f + (float)random.NextDouble() * 17;
+                float height = 1.7f + (float)random.NextDouble() * 1.3f;
+                if(LocalEnvironment.Tree(transform,new Vector3(x,0,z),height+.5f,i*137.5f))continue;
+                if (StoreVisuals.Current && StoreVisuals.Current.tree)
+                { StoreVisuals.Current.Place(StoreVisuals.Current.tree, transform, new Vector3(x, 0, z), height + .5f); continue; }
+                Shape("Trunk", PrimitiveType.Cylinder, new Vector3(x, height / 3, z), new Vector3(.25f, height / 3, .25f), wood, true);
+                Cone("Pine", new Vector3(x, height / 3, z), new Vector3(1.5f, height, 1.5f), i % 2 == 0 ? green : lightGreen);
+            }
+            for (int i = 0; i < 13; i++)
+            {
+                float x = -7 + (float)random.NextDouble() * 14;
+                float z = -11.7f + (float)random.NextDouble();
+                var boundary = Shape("Boundary rock", PrimitiveType.Sphere, new Vector3(x, .15f, z), new Vector3(.7f, .5f, .7f), sand, true);
+                var rock=LocalEnvironment.Rock(transform,new Vector3(x,0,z),.65f,i*137.5f);
+                if(rock){boundary.GetComponent<Renderer>().enabled=false;boundary.SetParent(rock,true);}
+                else if(StoreVisuals.Current && StoreVisuals.Current.rock) { boundary.GetComponent<Renderer>().enabled=false; StoreVisuals.Current.Place(StoreVisuals.Current.rock,transform,new Vector3(x,0,z),.65f); }
+            }
+            if(Resources.Load<GameObject>("Environment/FantasyFence"))
+            {
+                for(int i=0;i<7;i++)LocalEnvironment.Fence(transform,new Vector3(-.4f+i*1.05f,0,1.9f),new Vector3(-.4f+(i+1)*1.05f,0,1.9f),i>0);
+            }
+            else
+            {
+                for(int i=0;i<8;i++)Shape("Fence post",PrimitiveType.Cube,new Vector3(-.4f+i*1.05f,.43f,1.9f),new Vector3(.12f,.85f,.12f),wood);
+                Shape("Fence rail",PrimitiveType.Cube,new Vector3(3.2f,.54f,1.9f),new Vector3(7.5f,.14f,.12f),wood);
+            }
+
+            var water = Mat("Pond", "639C9D");
+            HexGrid.PaintBox(new Vector3(-5.6f, 0, -4), new Vector3(4.4f, 0, 4), sand);
+            HexGrid.PaintBox(new Vector3(-5.6f, 0, -4), new Vector3(3.4f, 0, 2.8f), water);
+            Shape("Pond obstacle", PrimitiveType.Cube, new Vector3(-5.6f, -.45f, -4), new Vector3(3.2f, 1.2f, 2.5f), water, true).GetComponent<Renderer>().enabled = false;
+            var flowers = Mat("Wildflowers", "E2C07F");
+            for (int i = 0; i < 28; i++)
+                Shape("Wildflower", PrimitiveType.Sphere, new Vector3(-7 + (float)random.NextDouble() * 14, .17f, 7 + (float)random.NextDouble()), Vector3.one * .16f, flowers);
+
+            Player = new GameObject("Farmer").transform;
+            Player.SetParent(transform);
+            Controller = Player.gameObject.AddComponent<CharacterController>();
+            Controller.height = 1.5f;
+            Controller.radius = .28f;
+            Controller.center = new Vector3(0, .8f, 0);
+            Controller.stepOffset = .25f;
+            var body = Shape("Coat", PrimitiveType.Capsule, new Vector3(0, .7f, 0), new Vector3(.58f, .45f, .58f), Mat("Blue coat", "466D88"));
+            body.SetParent(Player, false);
+            var head = Shape("Face", PrimitiveType.Sphere, new Vector3(0, 1.35f, 0), Vector3.one * .4f, Mat("Skin", "E4B38A"));
+            head.SetParent(Player, false);
+            var hat = Shape("Straw hat", PrimitiveType.Cylinder, new Vector3(0, 1.57f, 0), new Vector3(.75f, .07f, .75f), flowers);
+            hat.SetParent(Player, false);
+            var crown = Shape("Hat crown", PrimitiveType.Cylinder, new Vector3(0, 1.68f, 0), new Vector3(.42f, .08f, .42f), flowers);
+            crown.SetParent(Player, false);
+
+            if (!LocalCharacterMotion.AttachHero(Player) && StoreVisuals.Current)
+                StoreVisuals.Current.Replace(StoreVisuals.Current.farmer, Player, 1.85f, true);
+
+            View = new GameObject("Farm camera", typeof(Camera), typeof(AudioListener)).GetComponent<Camera>();
+            View.transform.SetParent(transform);
+            View.tag = "MainCamera";
+            View.transform.position = new Vector3(18, 23, -25);
+            View.transform.LookAt(new Vector3(0, 0, 0));
+            View.orthographic = true;
+            View.orthographicSize = 10f;
+            View.nearClipPlane = .1f;
+            View.farClipPlane = 100;
+            View.clearFlags = CameraClearFlags.SolidColor;
+            View.backgroundColor = new Color(.73f, .82f, .81f);
+            var sun = new GameObject("Afternoon sun", typeof(Light)).GetComponent<Light>();
+            sun.transform.SetParent(transform);
+            sun.type = LightType.Directional;
+            sun.transform.rotation = Quaternion.Euler(45, -35, 0);
+            sun.color = new Color(1, .97f, .88f);
+            sun.intensity = 1.25f;
+            sun.shadowStrength = .8f;
+            sun.shadowBias = .025f;
+            sun.shadowNormalBias = .15f;
+            sun.shadows = LightShadows.Soft;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(.48f, .56f, .52f);
+            Adventure = gameObject.AddComponent<AdventureWorld>();
+            Adventure.Build(this);
+            var presentation = new GameObject("Painterly art direction").AddComponent<PainterlyPresentation>();
+            presentation.transform.SetParent(transform, false);
+            presentation.Build(this);
+        }
+
+        public static Vector2Int PlotCell(int index)=>new Vector2Int(index%4,index<12?index/4-2:(index-12)/4-5);
+        public bool TryPlotAt(Vector3 position,FarmState state,out int index)
+        {
+            index=-1;if(!HexGrid.TryCell(position,out var cell))return false;
+            for(int i=0;i<state.AvailablePlotCount;i++)if(PlotCell(i)==cell){index=i;return true;}
+            return false;
+        }
+
+        public void RefreshCrops(FarmState state)
+        {
+            for (int i = 0; i < FarmState.PlotCount; i++)
+            {
+                CropState crop = state.plots[i];
+                var soil = crop.watered ? wet : dry;
+                if(i>=12 && !state.adventure.expandedFarm)soil=dry;
+                soils[i].sharedMaterials = new[] {soil, soil};
+                crops[i].gameObject.SetActive(crop.planted&&state.IsPlotUnlocked(i));
+                crops[i].localScale = Vector3.one * (crop.Ready ? 1 : .3f + .7f * crop.growth/crop.RequiredDays);
+                foreach(var part in crops[i].GetComponentsInChildren<Renderer>())
+                {
+                    if(part.name!="Turnip")continue;
+                    part.sharedMaterial=crop.kind==0?ripe:crop.kind==1?wheatFruit:berryFruit;
+                    part.transform.localScale=crop.kind==1?new Vector3(.16f,.65f,.16f):Vector3.one*.35f;
+                }
+            }
+        }
+
+        public void Select(int index)
+        {
+            selection.gameObject.SetActive(index >= 0);
+            if (index >= 0) selection.position = PlotPositions[index] + Vector3.up * .025f;
+        }
+
+        public Material Mat(string name, string hex)
+        {
+            ColorUtility.TryParseHtmlString("#" + hex, out Color color);
+            var material = new Material(materialTemplate) { name = name, color = color };
+            if(name=="Dry soil" || name=="Watered soil")
+            {
+                var painted=Shader.Find("StarfieldEra/Cultivated Soil");
+                if(painted){material.shader=painted;material.SetTexture("_Atlas",Resources.Load<Texture2D>("TerrainArt/ReferenceAtlas"));material.color=name=="Watered soil"?new Color(.63f,.64f,.7f,1):Color.white;}
+            }
+            material.SetFloat("_Smoothness", .05f);
+            materials.Add(material);
+            return material;
+        }
+
+        public Transform Shape(string name, PrimitiveType type, Vector3 position, Vector3 scale, Material material, bool solid = false)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(transform);
+            go.transform.localPosition = position;
+            go.transform.localScale = scale;
+            go.GetComponent<Renderer>().sharedMaterial = material;
+            var collider = go.GetComponent<Collider>();
+            if (!solid) { collider.enabled = false; Destroy(collider); }
+            return go.transform;
+        }
+
+        public Transform Cone(string name, Vector3 position, Vector3 scale, Material material)
+        {
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(transform);
+            go.transform.position = position;
+            go.transform.localScale = scale;
+            go.GetComponent<MeshFilter>().sharedMesh = cone;
+            go.GetComponent<Renderer>().sharedMaterial = material;
+            return go.transform;
+        }
+
+        static Mesh CreateCone()
+        {
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            const int sides = 7;
+            for (int i = 0; i < sides; i++)
+            {
+                float a = i * Mathf.PI * 2 / sides, b = (i + 1) * Mathf.PI * 2 / sides;
+                int n = vertices.Count;
+                vertices.Add(new Vector3(Mathf.Cos(a) * .5f, 0, Mathf.Sin(a) * .5f));
+                vertices.Add(Vector3.up);
+                vertices.Add(new Vector3(Mathf.Cos(b) * .5f, 0, Mathf.Sin(b) * .5f));
+                triangles.Add(n); triangles.Add(n + 1); triangles.Add(n + 2);
+            }
+            var mesh = new Mesh { name = "Faceted canopy" };
+            mesh.SetVertices(vertices); mesh.SetTriangles(triangles, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        void OnDestroy()
+        {
+            foreach (var material in materials) if (material != null) Destroy(material);
+            if (cone != null) Destroy(cone);
+            if (soilMesh != null) Destroy(soilMesh);
+            if (selectionMesh != null) Destroy(selectionMesh);
+        }
+    }
+}
