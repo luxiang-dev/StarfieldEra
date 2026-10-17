@@ -15,6 +15,7 @@ namespace StarfieldEra
         readonly List<Vector3> shoreEdges=new List<Vector3>();
         readonly Dictionary<Vector2Int,float> waterLevels=new Dictionary<Vector2Int,float>();
         MeshCollider groundCollider;
+        public DrainageNetwork Drainage {get;private set;}
         public bool IsGround(Collider collider)=>collider==groundCollider;
         public bool Raycast(Ray ray,out RaycastHit hit)=>groundCollider.Raycast(ray,out hit,300);
         public float HeightAt(Vector3 p)
@@ -36,8 +37,9 @@ namespace StarfieldEra
                     float bed=waterLevels.TryGetValue(cell,out float level)?Mathf.Min(h,level-CanalHydrology.BedDepth):h-.45f;
                     h=Mathf.Lerp(h,bed,cut);
                 }
-                else if(edit!=null&&edit.drainage){var center=HexWorldGrid.Center(cell.x,cell.y);float cut=1-Mathf.SmoothStep(.06f,.24f,Mathf.Abs(p.x-center.x));h-=.12f*cut;}
+
             }
+            if(Drainage!=null)h-=Drainage.Cut(p);
             if(water<=0)return h;
             return Mathf.Lerp(h,WaterLevelAt(p)-.6f,Mathf.SmoothStep(0,1,Mathf.Clamp01(water*1.35f)));
         }
@@ -56,11 +58,12 @@ namespace StarfieldEra
         }
         void BuildWaterLevels()
         {
+            Drainage=new DrainageNetwork(owner?owner.State.land:new LandState(),c=>LandElevation.Height(HexWorldGrid.Center(c.x,c.y),owner?owner.State.land:null),grid.TerrainAt);
             shoreEdges.Clear();
             foreach(var cell in grid.Cells)if(grid.TerrainAt(cell)==TerrainKind.Water)
                 for(int edge=0;edge<6;edge++)if(grid.TerrainAt(PastureFences.Neighbor(cell,edge))!=TerrainKind.Water)
                 {var center=HexWorldGrid.Center(cell.x,cell.y);shoreEdges.Add(center+HexWorldGrid.Corner(edge,HexWorldGrid.Radius));shoreEdges.Add(center+HexWorldGrid.Corner((edge+1)%6,HexWorldGrid.Radius));}
-            waterLevels.Clear();var owner=GetComponentInParent<FarmGame>();
+            waterLevels.Clear();
             foreach(var pair in CanalHydrology.Resolve(grid,owner?owner.State.land:null))waterLevels[pair.Key]=pair.Value;
         }
         const float Step=.6f;
@@ -84,20 +87,31 @@ namespace StarfieldEra
             int count=(nx+1)*(nz+1);
             var vertices=new List<Vector3>(count);var colors=new List<Color>(count);var uv=new List<Vector2>(count);var varieties=new List<Vector4>(count);var triangles=new List<int>(nx*nz*6);
             var waterDistances=new float[count];
+            int AddGround(Vector3 p)
+            {
+                Sample(p,out var weights,out float water,out float tint);p.y=HeightAt(p,water);
+                int index=vertices.Count;vertices.Add(p);colors.Add(weights);uv.Add(new Vector2(tint,water));varieties.Add(GrassEcology.Weights(p,grid));return index;
+            }
             for(int z=0;z<=nz;z++)for(int x=0;x<=nx;x++)
             {
                 var p=new Vector3(-HexWorldGrid.HalfWidth+x*Step,0,-HexWorldGrid.HalfDepth+z*Step);
-                Sample(p,out var weights,out float water,out float tint);
-                p.y=HeightAt(p,water);
-                waterDistances[vertices.Count]=WaterDistance(p);
-                vertices.Add(p);colors.Add(weights);uv.Add(new Vector2(tint,water));varieties.Add(GrassEcology.Weights(p,grid));
+                waterDistances[vertices.Count]=WaterDistance(p);AddGround(p);
             }
             var waterVertices=new List<Vector3>();var waterColors=new List<Color>();var waterTriangles=new List<int>();
             var polygon=new List<Vector3>(4);
             for(int z=0;z<nz;z++)for(int x=0;x<nx;x++)
             {
                 int a=z*(nx+1)+x,b=a+1,c=a+nx+1,d=c+1;
-                triangles.Add(a);triangles.Add(c);triangles.Add(b);triangles.Add(b);triangles.Add(c);triangles.Add(d);
+                var middle=(vertices[a]+vertices[d])*.5f;
+                if(Drainage.NearChannel(middle,1.1f))
+                {
+                    // Only the strip around trenches needs a fine collision/render surface.
+                    // The outer patch edge lies beyond the excavation, avoiding cracks at its rim.
+                    int start=vertices.Count;
+                    for(int rz=0;rz<=3;rz++)for(int rx=0;rx<=3;rx++)AddGround(new Vector3(vertices[a].x+rx*Step/3,0,vertices[a].z+rz*Step/3));
+                    for(int rz=0;rz<3;rz++)for(int rx=0;rx<3;rx++){int i=start+rz*4+rx;triangles.Add(i);triangles.Add(i+4);triangles.Add(i+1);triangles.Add(i+1);triangles.Add(i+4);triangles.Add(i+5);}
+                }
+                else {triangles.Add(a);triangles.Add(c);triangles.Add(b);triangles.Add(b);triangles.Add(c);triangles.Add(d);}
                 WaterTriangle(vertices[a],vertices[c],vertices[b],waterDistances[a],waterDistances[c],waterDistances[b],polygon,waterVertices,waterColors,waterTriangles);
                 WaterTriangle(vertices[b],vertices[c],vertices[d],waterDistances[b],waterDistances[c],waterDistances[d],polygon,waterVertices,waterColors,waterTriangles);
             }
@@ -217,11 +231,20 @@ namespace StarfieldEra
         }
         public void RefreshHeights(Vector3 center,float radius=2.6f)
         {
+            Drainage=new DrainageNetwork(owner.State.land,c=>LandElevation.Height(HexWorldGrid.Center(c.x,c.y),owner.State.land),grid.TerrainAt);
             // Dry-land sculpting leaves shoreline topology intact; update existing geometry/collider.
             var mesh=groundCollider.sharedMesh;var points=mesh.vertices;
             for(int i=0;i<points.Length;i++)if(WorldRelief.PlanarDistance(points[i],center)<=radius)points[i].y=HeightAt(points[i]);
             mesh.vertices=points;mesh.RecalculateNormals();mesh.RecalculateBounds();
             groundCollider.sharedMesh=null;groundCollider.sharedMesh=mesh;Physics.SyncTransforms();
+        }
+        public void RefreshDrainedGround()
+        {
+            if(Drainage==null||Drainage.IntakeFloors.Count==0)return;
+            var mesh=groundCollider.sharedMesh;var points=mesh.vertices;
+            for(int i=0;i<points.Length;i++)if(Drainage.IntakeFloors.ContainsKey(StormWaterState.CellAt(points[i])))points[i].y=HeightAt(points[i]);
+            mesh.SetVertices(points);mesh.RecalculateNormals();mesh.RecalculateBounds();groundCollider.sharedMesh=null;groundCollider.sharedMesh=mesh;
+            Physics.SyncTransforms();
         }
         void OnDestroy(){foreach(var asset in owned)if(asset)Destroy(asset);}
     }

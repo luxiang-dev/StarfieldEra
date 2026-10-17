@@ -108,7 +108,7 @@ namespace StarfieldEra
             // sorted with gameplay targets so foreground objects can also be inspected.
             foreach(var renderer in game.GetComponentsInChildren<Renderer>())
             {
-                if(renderer.name=="Natural farm beds"||!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
+                if(renderer.GetComponentInParent<DrainageArt>()||renderer.name=="Natural farm beds"||!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
                 if(renderer.bounds.size.x>30&&renderer.bounds.size.z>30)continue;
                 if(!renderer.bounds.IntersectRay(ray,out float d)||d>limit)continue;
                 var choice=Resolve(renderer.transform)??new WorldChoice{root=renderer.transform};

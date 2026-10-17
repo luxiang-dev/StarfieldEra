@@ -16,7 +16,7 @@ namespace StarfieldEra
             if(mesh)Destroy(mesh);if(material)Destroy(material);ClumpCount=0;patches.Clear();System.Array.Clear(VarietyCounts,0,4);
             foreach(Transform child in transform)if(child.name=="Mixed grass sizes"){child.gameObject.SetActive(false);Destroy(child.gameObject);}
             var random=new System.Random(1947);var vertices=new List<Vector3>();var colors=new List<Color>();var triangles=new List<int>();
-            var occupied=new HashSet<Vector2Int>();var owner=world.GetComponentInParent<FarmGame>();
+            var occupied=new HashSet<Vector2Int>();var owner=world.GetComponentInParent<FarmGame>();var drainage=world.HexGrid.GetComponent<ContinuousTerrain>().Drainage;
             foreach(var building in owner.State.adventure.buildings)foreach(var cell in BuildingFootprints.Cells(building))occupied.Add(cell);
             var shades=new[]{new Color(.66f,.63f,.31f),new Color(.51f,.66f,.34f),new Color(.26f,.47f,.26f),new Color(.47f,.61f,.26f)};
             for(float z=-HexWorldGrid.HalfDepth+3;z<HexWorldGrid.HalfDepth-2;z+=1.3f)for(float x=-HexWorldGrid.HalfWidth+3;x<HexWorldGrid.HalfWidth-2;x+=1.3f)
@@ -26,7 +26,7 @@ namespace StarfieldEra
                 if(!world.HexGrid.CanStand(p,.35f)||!world.HexGrid.TryCell(p,out var cell)||occupied.Contains(cell))continue;
                 bool reserved=false;for(int i=0;i<owner.State.AvailablePlotCount;i++)if(WorldRelief.PlanarDistance(p,world.PlotPositions[i])<1.4f){reserved=true;break;}
                 foreach(var encounter in world.Adventure.Encounters)if(WorldRelief.PlanarDistance(p,encounter.Position)<1.6f){reserved=true;break;}
-                if(owner.State.land.Find(cell)?.tilled==true)reserved=true;
+                if(owner.State.land.Find(cell)?.tilled==true||drainage.Cut(p)>.01f)reserved=true;
                 if(reserved)continue;
                 var weights=GrassEcology.Weights(p,world.HexGrid);if(random.NextDouble()>GrassEcology.Density(weights))continue;
                 p=world.HexGrid.SurfacePoint(p,.01f);int variety=GrassEcology.Dominant(weights);ClumpCount++;VarietyCounts[variety]++;
@@ -60,6 +60,17 @@ namespace StarfieldEra
                 patch.point.y=height;patches[i]=patch;
             }
             mesh.vertices=points;mesh.RecalculateBounds();
+        }
+        public void RefreshDrainedGround(FarmWorld world,DrainageNetwork network)
+        {
+            if(!mesh)return;var points=mesh.vertices;
+            for(int i=0;i<patches.Count;i++)
+            {
+                var patch=patches[i];if(!network.IntakeFloors.ContainsKey(StormWaterState.CellAt(patch.point)))continue;
+                float height=world.HexGrid.GroundHeight(patch.point)+.01f,delta=height-patch.point.y;
+                for(int j=patch.start;j<patch.start+patch.count;j++)points[j].y+=delta;patch.point.y=height;patches[i]=patch;
+            }
+            mesh.SetVertices(points);mesh.RecalculateBounds();
         }
         void OnDestroy(){if(mesh)Destroy(mesh);if(material)Destroy(material);}
     }

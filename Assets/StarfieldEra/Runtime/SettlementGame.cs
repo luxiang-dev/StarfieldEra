@@ -81,7 +81,7 @@ namespace StarfieldEra
         float nextVisit;
         void Update()
         {
-            if(!Game)return;UpdateResidents();if(Time.unscaledTime<nextVisit)return;nextVisit=Time.unscaledTime+1;
+            if(!Game)return;UpdateResidents();UpdateDrainage();if(Time.unscaledTime<nextVisit)return;nextVisit=Time.unscaledTime+1;
             int region=FrontierState.Region(Game.World.Player.position);if(region>=0&&Frontier.unlocked[region]&&!Frontier.visited[region]){Frontier.visited[region]=true;Game.Adventure.Commit("发现新区域："+FrontierState.Names[region]+"，已解锁快速旅行。");}
         }
     }

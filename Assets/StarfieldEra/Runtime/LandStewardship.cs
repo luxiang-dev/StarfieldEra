@@ -18,7 +18,7 @@ namespace StarfieldEra
             "查看地形、土壤湿度、干旱天数、\n河道水源与树木生长状态。\n新农田也可直接播种或收获。",
             "每次将地面削低半米并获得土方2。\n可连续施工，将山丘逐步挖平。\n最低高度为0.2米，边缘自动过渡成缓坡。\n需要铁锹，避开建筑、农田、水岸和动物。",
             "每次消耗土方2，将地面抬高半米。\n可连续填土，将平地堆成山丘，最高12米。\n挖山取得的土方可以搬到这里使用。\n需要铁锹，施工结果自动保存。",
-            "在空陆地修建排水沟，暴雨前布置。\n与水源或低处连通后，可排走两格内积水。\n未连通的沟槽只能少量渗排。\n再次点击已有排水沟可移除。"};
+            "在空陆地修建排水沟，暴雨前布置。\n与水源或低处连通后，持续排走两格内积水。\n接通后水位持续下降，无需等待过夜。\n再次点击已有排水沟可移除。"};
         FarmGame game;HexWorldGrid grid;LandState S=>game.State.land;
         readonly Dictionary<Vector2Int,TerrainKind> baseline=new Dictionary<Vector2Int,TerrainKind>();
         readonly List<GameObject> visuals=new List<GameObject>();readonly List<Object> owned=new List<Object>();
@@ -97,7 +97,7 @@ namespace StarfieldEra
             if(action==1&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand)){reason="树苗需要空草地或沙地";return false;}
             if(action==1&&(a.wood<2||a.berries<1)){reason="需要木材2、浆果1";return false;}
             if(action==2&&(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Sand||c?.channel==true)){reason="只能开挖空草地或沙地";return false;}
-            if((action==1||action==2||action==3)&&ActorHere(cell)){reason="请让角色和动物离开目标地块";return false;}
+            if((action==1||action==2||action==3||action==8)&&ActorHere(cell)){reason="请让角色和动物离开目标地块";return false;}
             if(action==2)
             {
                 var flow=CanalHydrology.Resolve(grid,S,cell);
@@ -147,7 +147,7 @@ namespace StarfieldEra
             else if(action==1){a.wood-=2;a.berries--;c.tree=true;c.treeDay=game.State.day;c.tilled=false;}
             else if(action==2){c.channel=true;c.tilled=false;c.kind=(int)TerrainKind.Rock;S.soil+=3;}
             else if(action==3){S.soil-=2;a.stone-=2;c.channel=false;c.tilled=false;c.kind=(int)TerrainKind.Sand;}
-            else if(action==8){bool remove=c.drainage;c.drainage=!remove;c.tilled=false;if(!remove)a.stone--;game.Settlement.OnDrainChanged(cell);}
+            else if(action==8){bool remove=c.drainage;c.drainage=!remove;c.tilled=false;if(!remove)a.stone--;}
             else if(action==6||action==7)
             {
                 float height=c.elevationEdited?c.elevation:grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y));
@@ -155,7 +155,7 @@ namespace StarfieldEra
                 S.soil+=action==6?2:-2;
             }
             else {a.expedition.fiber-=2;c.tilled=false;c.channel=false;c.kind=(int)TerrainKind.Meadow;}
-            UpdateWater();if(action==6||action==7){var center=HexWorldGrid.Center(cell.x,cell.y);grid.GetComponent<ContinuousTerrain>().RefreshHeights(center);game.World.GetComponent<GrassPatches>().RefreshHeights(game.World,center);game.World.GetComponent<ExpandedWilderness>()?.RefreshGround();}else RefreshTerrain();if(action==8)game.Settlement.RefreshEnvironment();game.Adventure.Commit(Names[action]+"完成。"+(action==2?CanalStatus(cell):Describe(cell)));
+            UpdateWater();if(action==6||action==7){var center=HexWorldGrid.Center(cell.x,cell.y);grid.GetComponent<ContinuousTerrain>().RefreshHeights(center);game.World.GetComponent<GrassPatches>().RefreshHeights(game.World,center);game.World.GetComponent<ExpandedWilderness>()?.RefreshGround();}else RefreshTerrain();game.Settlement.RefreshEnvironment();game.Adventure.Commit(Names[action]+"完成。"+(action==2?CanalStatus(cell):Describe(cell)));
         }
         HashSet<Vector2Int> WetChannels(Vector2Int? extra=null)
         {
@@ -182,7 +182,7 @@ namespace StarfieldEra
         bool Irrigated(Vector2Int cell){if(!game.State.adventure.irrigation)return false;for(int i=0;i<6;i++)if(grid.TerrainAt(PastureFences.Neighbor(cell,i))==TerrainKind.Water)return true;return false;}
         public string Describe(Vector2Int cell)
         {
-            var c=S.Find(cell);return (c?.tilled==true?"新农田":TerrainTraits.Names[(int)grid.TerrainAt(cell)])+" · "+(Moist(cell)?"湿润":"偏干")+(c==null?"":" · 干旱 "+c.dryDays+" 天")+(c?.channel==true?" · "+CanalStatus(cell):"")+(c?.drainage==true?game.Settlement.ConnectedDrains().Contains(cell)?" · 排水沟已连通":" · 排水沟未接通出口":"")+" · 积水 "+(game.State.storm.Depth(cell)*100).ToString("0")+" 厘米"+(c?.tree==true?" · 树苗成长 "+c.treeGrowth+" / 3":"")+" · 海拔 "+grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y)).ToString("0.0")+" 米";
+            var c=S.Find(cell);return (c?.tilled==true?"新农田":TerrainTraits.Names[(int)grid.TerrainAt(cell)])+" · "+(Moist(cell)?"湿润":"偏干")+(c==null?"":" · 干旱 "+c.dryDays+" 天")+(c?.channel==true?" · "+CanalStatus(cell):"")+(c?.drainage==true?game.Settlement.ConnectedDrains().Contains(cell)?" · 排水沟已连通 · 持续排水":" · 排水沟缺少出口 · 请继续挖向低处或水边":"")+" · 积水 "+(game.State.storm.Depth(cell)*100).ToString("0")+" 厘米"+(c?.tree==true?" · 树苗成长 "+c.treeGrowth+" / 3":"")+" · 海拔 "+grid.GroundHeight(HexWorldGrid.Center(cell.x,cell.y)).ToString("0.0")+" 米";
         }
         public bool NearNewPlot
         {get {foreach(var c in S.cells)if(c.tilled&&WorldRelief.PlanarDistance(HexWorldGrid.Center(c.column,c.row),game.World.Player.position)<1.7f)return true;return false;}}
