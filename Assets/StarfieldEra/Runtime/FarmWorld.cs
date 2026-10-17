@@ -60,7 +60,7 @@ namespace StarfieldEra
 
             for (int i = 0; i < FarmState.PlotCount; i++)
             {
-                Vector3 pos = HexWorldGrid.Center(i % 4, i<12?i / 4 - 2:(i-12)/4-5) + Vector3.up * .075f;
+                var cell=PlotCell(i);Vector3 pos = HexWorldGrid.Center(cell.x,cell.y) + Vector3.up * .075f;
                 PlotPositions[i] = pos;
                 var plot = new GameObject("Hex plot " + (i + 1), typeof(MeshFilter), typeof(MeshRenderer));
                 plot.transform.SetParent(transform, false); plot.transform.position = pos;
@@ -179,6 +179,14 @@ namespace StarfieldEra
             presentation.Build(this);
         }
 
+        public static Vector2Int PlotCell(int index)=>new Vector2Int(index%4,index<12?index/4-2:(index-12)/4-5);
+        public bool TryPlotAt(Vector3 position,FarmState state,out int index)
+        {
+            index=-1;if(!HexGrid.TryCell(position,out var cell))return false;
+            for(int i=0;i<state.AvailablePlotCount;i++)if(PlotCell(i)==cell){index=i;return true;}
+            return false;
+        }
+
         public void RefreshCrops(FarmState state)
         {
             for (int i = 0; i < FarmState.PlotCount; i++)
@@ -187,7 +195,7 @@ namespace StarfieldEra
                 var soil = crop.watered ? wet : dry;
                 if(i>=12 && !state.adventure.expandedFarm)soil=dry;
                 soils[i].sharedMaterials = new[] {soil, soil};
-                crops[i].gameObject.SetActive(crop.planted);
+                crops[i].gameObject.SetActive(crop.planted&&state.IsPlotUnlocked(i));
                 crops[i].localScale = Vector3.one * (crop.Ready ? 1 : .3f + .7f * crop.growth/crop.RequiredDays);
                 foreach(var part in crops[i].GetComponentsInChildren<Renderer>())
                 {

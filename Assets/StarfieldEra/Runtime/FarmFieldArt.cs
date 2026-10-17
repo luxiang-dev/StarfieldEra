@@ -87,6 +87,7 @@ namespace StarfieldEra
                     var p=new Vector3(row*RowWidth,0,center.z+s*.48f);p.x+=Bend(p.z);float border=Boundary(p,out int owner);if(owner!=i||border<.22f||WorldRelief.PlanarDistance(p,center)>.93f)continue;
                     p.y=world.HexGrid.GroundHeight(p)+Ridge(p)+.009f;
                     var root=new GameObject("Sown row plant").transform;root.SetParent(container,false);root.position=p;
+                    root.gameObject.AddComponent<WorldPickTarget>().plot=i;
                     var plant=new Plant{plot=i,position=p,root=root};
                     plant.hole=Piece("Seed pocket",root,Vector3.zero,new Vector3(.15f,.009f,.12f),hole);
                     plant.seed=Piece("Sown kernel",root,Vector3.up*.006f,new Vector3(.047f,.018f,.03f),seed);

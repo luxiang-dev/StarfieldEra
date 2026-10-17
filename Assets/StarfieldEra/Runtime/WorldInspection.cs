@@ -44,7 +44,7 @@ namespace StarfieldEra
         public void RebindPlantedTree(Vector2Int cell,HarvestableTree tree)
         {if(selected!=null&&selected.tree&&selected.tree.planted&&selected.tree.cell==cell){selected.tree=tree;selected.root=tree.transform;}}
         public void SelectPlot(int index)
-        {if(index<0||index>=FarmState.PlotCount)return;selected=new WorldChoice{root=game.World.transform.Find("Farm plot click targets/Farm plot "+index)??game.World.transform,plot=index};choices.Clear();choices.Add(selected);RefreshPanel();}
+        {if(!game.State.IsPlotUnlocked(index))return;selected=new WorldChoice{root=game.World.transform.Find("Farm plot click targets/Farm plot "+index)??game.World.transform,plot=index};choices.Clear();choices.Add(selected);RefreshPanel();}
         public void SelectLand(Vector2Int cell)
         {selected=new WorldChoice{root=game.World.HexGrid.transform,land=true,cell=cell};choices.Clear();choices.Add(selected);RefreshPanel();}
         public WorldChoice Current=>HasSelection?selected:null;
@@ -71,7 +71,7 @@ namespace StarfieldEra
             if(!game.World.transform.Find("Farm plot click targets"))
             {
                 var root=new GameObject("Farm plot click targets").transform;root.SetParent(game.World.transform,false);
-                for(int i=0;i<FarmState.PlotCount;i++){var p=new GameObject("Farm plot "+i).transform;p.SetParent(root,false);p.position=game.World.PlotPositions[i];var marker=p.gameObject.AddComponent<WorldPickTarget>();marker.plot=i;var col=p.gameObject.AddComponent<BoxCollider>();col.isTrigger=true;col.center=Vector3.up*.15f;col.size=new Vector3(1.45f,.3f,1.45f);}
+                for(int i=0;i<FarmState.PlotCount;i++){var p=new GameObject("Farm plot "+i).transform;p.SetParent(root,false);p.position=game.World.PlotPositions[i];var marker=p.gameObject.AddComponent<WorldPickTarget>();marker.plot=i;}
             }
         }
         public static void Volume(Transform root)
@@ -90,28 +90,36 @@ namespace StarfieldEra
             var building=t.GetComponentInParent<BuildingInspectable>();if(building)return new WorldChoice{root=building.transform,building=building};
             var site=t.GetComponentInParent<ResourceSiteTarget>();if(site)return new WorldChoice{root=site.transform,site=site};
             var fence=t.GetComponentInParent<FenceTarget>();if(fence)return new WorldChoice{root=fence.transform,fence=fence};
-            var pick=t.GetComponentInParent<WorldPickTarget>();if(pick)return new WorldChoice{root=pick.land?game.World.HexGrid.transform:pick.plot>=0?(game.World.transform.Find("Farm plot click targets/Farm plot "+pick.plot)??pick.transform):pick.transform,land=pick.land,cell=pick.cell,encounter=pick.encounter,plot=pick.plot,threat=pick.threat,trap=pick.trap};
+            var pick=t.GetComponentInParent<WorldPickTarget>();if(pick&&pick.plot>=0&&!game.State.IsPlotUnlocked(pick.plot))return null;if(pick)return new WorldChoice{root=pick.land?game.World.HexGrid.transform:pick.plot>=0?(game.World.transform.Find("Farm plot click targets/Farm plot "+pick.plot)??pick.transform):pick.transform,land=pick.land,cell=pick.cell,encounter=pick.encounter,plot=pick.plot,threat=pick.threat,trap=pick.trap};
             var expedition=t.GetComponentInParent<ExpeditionTarget>();if(expedition)return new WorldChoice{root=expedition.transform,encounter=expedition.encounter};return null;
         }
         static string ChoiceKey(WorldChoice choice)=>choice.land?"land:"+choice.cell:choice.plot>=0?"plot:"+choice.plot:choice.root.GetInstanceID().ToString();
         public void Pick(Ray ray)
         {
             choices.Clear();var seen=new HashSet<string>();var candidates=new List<KeyValuePair<float,WorldChoice>>();float limit=150;
-            if(game.World.HexGrid.RaycastGround(ray,out var ground))limit=Mathf.Min(150,Vector3.Distance(ray.origin,ground)+.5f);
+            bool hasGround=game.World.HexGrid.RaycastGround(ray,out var ground);int groundPlot=-1;
+            if(hasGround){limit=Mathf.Min(150,Vector3.Distance(ray.origin,ground)+.5f);game.World.TryPlotAt(ground,game.State,out groundPlot);}
             foreach(var hit in Physics.RaycastAll(ray,limit,~0,QueryTriggerInteraction.Collide).OrderBy(h=>h.distance))
             {
                 if(hit.transform.IsChildOf(game.World.Player)||hit.collider.GetComponentInParent<LineRenderer>())continue;
-                var choice=Resolve(hit.transform);if(choice!=null&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(hit.distance,choice));
+                var choice=Resolve(hit.transform);if(choice!=null&&(choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(hit.distance,choice));
             }
             // Decorative art can have no collider. Include its visible bounds as an observation target,
             // sorted with gameplay targets so foreground objects can also be inspected.
             foreach(var renderer in game.GetComponentsInChildren<Renderer>())
             {
-                if(!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
+                if(renderer.name=="Natural farm beds"||!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
                 if(renderer.bounds.size.x>30&&renderer.bounds.size.z>30)continue;
                 if(!renderer.bounds.IntersectRay(ray,out float d)||d>limit)continue;
                 var choice=Resolve(renderer.transform)??new WorldChoice{root=renderer.transform};
-                if(choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(d,choice));
+                if((choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(d,choice));
+            }
+            // Farm targets follow the actual ground hex, never a rectangular proxy or the
+            // bounds of the combined field mesh. Locked expansion cells remain ordinary land.
+            if(groundPlot>=0&&seen.Add("plot:"+groundPlot))
+            {
+                var root=game.World.transform.Find("Farm plot click targets/Farm plot "+groundPlot);
+                candidates.Add(new KeyValuePair<float,WorldChoice>(Vector3.Distance(ray.origin,ground),new WorldChoice{root=root?root:game.World.transform,plot=groundPlot}));
             }
             choices.AddRange(candidates.OrderBy(x=>x.Key).Take(24).Select(x=>x.Value));
             if(choices.Count>0){selected=choices[0];RefreshPanel();return;}

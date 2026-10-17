@@ -24,7 +24,7 @@ namespace StarfieldEra
                 var p=new Vector3(x+((float)random.NextDouble()-.5f)*.95f,0,z+((float)random.NextDouble()-.5f)*.95f);
                 var kind=world.HexGrid.TerrainAt(p);if(kind!=TerrainKind.Meadow&&kind!=TerrainKind.Forest&&kind!=TerrainKind.Marsh)continue;
                 if(!world.HexGrid.CanStand(p,.35f)||!world.HexGrid.TryCell(p,out var cell)||occupied.Contains(cell))continue;
-                bool reserved=false;foreach(var plot in world.PlotPositions)if(WorldRelief.PlanarDistance(p,plot)<1.4f){reserved=true;break;}
+                bool reserved=false;for(int i=0;i<owner.State.AvailablePlotCount;i++)if(WorldRelief.PlanarDistance(p,world.PlotPositions[i])<1.4f){reserved=true;break;}
                 foreach(var encounter in world.Adventure.Encounters)if(WorldRelief.PlanarDistance(p,encounter.Position)<1.6f){reserved=true;break;}
                 if(owner.State.land.Find(cell)?.tilled==true)reserved=true;
                 if(reserved)continue;

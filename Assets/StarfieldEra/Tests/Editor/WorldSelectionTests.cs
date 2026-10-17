@@ -4,6 +4,35 @@ namespace StarfieldEra.Tests
 {
     public sealed class WorldSelectionTests
     {
+        [Test] public void LockedExpansionCannotBePlantedWateredOrHarvested()
+        {
+            var state=new FarmState();state.plots[17].planted=true;
+            Assert.That(state.IsPlotUnlocked(17),Is.False);Assert.That(state.Water(17),Is.False);
+            state.plots[17].growth=FarmState.GrowthDays;Assert.That(state.Harvest(17),Is.False);
+            state.plots[17]=new CropState();Assert.That(state.Plant(17),Is.False);
+            state.adventure.expandedFarm=true;Assert.That(state.IsPlotUnlocked(17),Is.True);Assert.That(state.Plant(17),Is.True);
+        }
+        [Test] public void FarmGroundLookupUsesOnlyUnlockedHexes()
+        {
+            var root=new GameObject("farm lookup test");
+            try
+            {
+                var world=root.AddComponent<FarmWorld>();var grid=new GameObject("grid").AddComponent<HexWorldGrid>();grid.transform.SetParent(root.transform);grid.Build(world,null);
+                typeof(FarmWorld).GetProperty(nameof(FarmWorld.HexGrid)).SetValue(world,grid);
+                var state=new FarmState();
+                for(int i=0;i<FarmState.PlotCount;i++)
+                {
+                    var cell=FarmWorld.PlotCell(i);var point=HexWorldGrid.Center(cell.x,cell.y);
+                    Assert.That(world.TryPlotAt(point,state,out int found),Is.EqualTo(i<12),"plot "+i);Assert.That(found,Is.EqualTo(i<12?i:-1));
+                }
+                var grass=HexWorldGrid.Center(8,-4);Assert.That(world.TryPlotAt(grass,state,out _),Is.False);
+                state.adventure.expandedFarm=true;
+                for(int i=0;i<FarmState.PlotCount;i++){var c=FarmWorld.PlotCell(i);Assert.That(world.TryPlotAt(HexWorldGrid.Center(c.x,c.y),state,out int found),Is.True);Assert.That(found,Is.EqualTo(i));}
+                // A point inside a square's corner can already belong to the next hex.
+                var origin=HexWorldGrid.Center(0,0);Assert.That(world.TryPlotAt(origin+new Vector3(-.9f,0,.9f),state,out _),Is.False);
+            }
+            finally{Object.DestroyImmediate(root);}
+        }
         [Test] public void LandAndEveryConstructionManagementPageUseIndependentWindows()
         {
             foreach(var page in new[]{"land","building","production","buildings","camp"})Assert.That(ManagementHud.IsOperationsPage(page),Is.True,page);

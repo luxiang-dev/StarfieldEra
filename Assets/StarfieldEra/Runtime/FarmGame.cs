@@ -194,7 +194,7 @@ namespace StarfieldEra
         {
             int selected = -1;
             float nearest = 1.65f;
-            for (int i = 0; i < FarmState.PlotCount; i++)
+            for (int i = 0; i < State.AvailablePlotCount; i++)
             {
                 float distance = Vector3.Distance(Flat(World.Player.position), Flat(World.PlotPositions[i]));
                 if (distance < nearest) { nearest = distance; selected = i; }

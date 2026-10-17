@@ -87,9 +87,12 @@ namespace StarfieldEra
             weather.Ensure(day);
         }
 
+        public int AvailablePlotCount=>adventure.expandedFarm?PlotCount:12;
+        public bool IsPlotUnlocked(int index)=>index>=0&&index<AvailablePlotCount;
+
         public bool Plant(int index)
         {
-            if (!ValidIndex(index) || plots[index].planted || SelectedSeeds <= 0 || (index>=12 && !adventure.expandedFarm) || energy<1) return false;
+            if (!IsPlotUnlocked(index) || plots[index].planted || SelectedSeeds <= 0 || energy<1) return false;
             plots[index].planted = true;
             plots[index].kind = selectedCrop;
             plots[index].watered = Rainy;
@@ -100,7 +103,7 @@ namespace StarfieldEra
 
         public bool Water(int index)
         {
-            if (!ValidIndex(index) || !plots[index].planted || plots[index].watered || plots[index].Ready || energy<1) return false;
+            if (!IsPlotUnlocked(index) || !plots[index].planted || plots[index].watered || plots[index].Ready || energy<1) return false;
             SpendEnergy(1);
             plots[index].watered = true;
             return true;
@@ -108,7 +111,7 @@ namespace StarfieldEra
 
         public bool Harvest(int index)
         {
-            if (!ValidIndex(index) || !plots[index].Ready) return false;
+            if (!IsPlotUnlocked(index) || !plots[index].Ready) return false;
             int kind=plots[index].kind;
             if(!SpendEnergy(1))return false;
             if(kind==2){plots[index].growth=0;plots[index].growthBonus=0;plots[index].watered=Rainy;adventure.berries+=2;}

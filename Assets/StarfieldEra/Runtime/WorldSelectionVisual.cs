@@ -98,10 +98,10 @@ namespace StarfieldEra
             if(cell)
             {
                 var center=choice.plot>=0?game.World.PlotPositions[choice.plot]:HexWorldGrid.Center(choice.cell.x,choice.cell.y);center=game.World.HexGrid.SurfacePoint(center,.07f);
-                int count=choice.land?6:4;groundBorder.positionCount=count;bounds=new Bounds(center,new Vector3(choice.land?HexWorldGrid.Radius*2:1.5f,.22f,choice.land?HexWorldGrid.Radius*2:1.5f));hasBounds=true;
+                int count=6;groundBorder.positionCount=count;bounds=new Bounds(center,new Vector3(HexWorldGrid.Radius*2,.22f,HexWorldGrid.Radius*2));hasBounds=true;
                 for(int i=0;i<count;i++)
                 {
-                    var offset=choice.land?HexWorldGrid.Corner(i,HexWorldGrid.Radius-.035f):new Vector3(i<2?-.75f:.75f,0,i==0||i==3?-.75f:.75f);
+                    var offset=HexWorldGrid.Corner(i,HexWorldGrid.Radius-.035f);
                     groundBorder.SetPosition(i,game.World.HexGrid.SurfacePoint(center+offset,.07f));
                 }
             }
