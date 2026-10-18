@@ -1,15 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering;
 namespace StarfieldEra
 {
     public sealed partial class SettlementGame
     {
         Transform villageRoot,caravanRoot,decorationRoot,weatherRoot;Transform[] barriers=new Transform[2],contents=new Transform[2],repairs=new Transform[2];
-        readonly Dictionary<int,Transform> people=new Dictionary<int,Transform>();readonly List<Object> weatherAssets=new List<Object>();
+        readonly Dictionary<int,Transform> people=new Dictionary<int,Transform>();
         int renderedDecorationsCount=-1;
-        DrainageArt drainageArt;Mesh puddleMesh;readonly List<Vector3> puddlePoints=new List<Vector3>();readonly List<Vector2Int> puddleCells=new List<Vector2Int>();readonly List<Vector3> originalPuddlePoints=new List<Vector3>();readonly List<float> originalDepths=new List<float>();
+        DrainageArt drainageArt;StormPuddleSurface puddleSurface;
         float drainageClock,drainageSaveClock;bool drainedGroundDirty;
         readonly List<WorldEncounter> decorationTargets=new List<WorldEncounter>();
         WorldEncounter Anchor(string name,Vector3 point,EncounterKind kind,int id,Transform parent)
@@ -104,18 +103,11 @@ namespace StarfieldEra
         public HashSet<Vector2Int> ConnectedDrains()=>Game.World.HexGrid.GetComponent<ContinuousTerrain>().Drainage.Connected;
         public void RefreshEnvironment()
         {
-            destinations.Clear();destinationInputs.Clear();puddleMesh=null;puddlePoints.Clear();puddleCells.Clear();originalPuddlePoints.Clear();originalDepths.Clear();
-            if(weatherRoot){weatherRoot.gameObject.SetActive(false);Destroy(weatherRoot.gameObject);}foreach(var a in weatherAssets)if(a)Destroy(a);weatherAssets.Clear();
-            weatherRoot=new GameObject("Rain puddles and drainage channels").transform;weatherRoot.SetParent(transform,false);var grid=Game.World.HexGrid;
-            var water=new Material(Shader.Find("StarfieldEra/Painted Water"));water.SetColor("_ShallowColor",new Color(.24f,.49f,.43f,.57f));water.SetFloat("_DepthMaxDistance",.45f);water.SetColor("_FoamColor",new Color(.8f,.9f,.83f,.15f));water.SetFloat("_FoamWidth",.08f);water.SetFloat("_FoamDistortion",.015f);water.SetFloat("_CausticsStrength",.05f);weatherAssets.Add(water);
-            var vertices=new List<Vector3>();var colors=new List<Color>();var indices=new List<int>();
-            foreach(var puddle in Game.State.storm.puddles)
-            {
-                puddleCells.Add(puddle.Cell);originalDepths.Add(puddle.depth);var center=grid.SurfacePoint(HexWorldGrid.Center(puddle.column,puddle.row));float level=center.y+puddle.depth+.015f;int start=vertices.Count;vertices.Add(new Vector3(center.x,level,center.z));colors.Add(new Color(puddle.depth,1,0,1));
-                for(int i=0;i<6;i++){var p=center+HexWorldGrid.Corner(i,HexWorldGrid.Radius*.87f);p.y=level;vertices.Add(p);colors.Add(new Color(0,0,0,1));}
-                for(int i=0;i<6;i++){indices.Add(start);indices.Add(start+(i+1)%6+1);indices.Add(start+i+1);}
-            }
-            if(vertices.Count>0){var mesh=new Mesh{name="Saved storm puddle surfaces"};mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetTriangles(indices,0);mesh.RecalculateNormals();weatherAssets.Add(mesh);puddleMesh=mesh;puddlePoints.AddRange(vertices);originalPuddlePoints.AddRange(vertices);var go=new GameObject("Visible storm accumulation",typeof(MeshFilter),typeof(MeshRenderer));go.transform.SetParent(weatherRoot,false);go.GetComponent<MeshFilter>().sharedMesh=mesh;go.GetComponent<MeshRenderer>().sharedMaterial=water;go.GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;}
+            destinations.Clear();destinationInputs.Clear();
+            if(weatherRoot){weatherRoot.gameObject.SetActive(false);Destroy(weatherRoot.gameObject);}
+            weatherRoot=new GameObject("Rain puddles and drainage channels").transform;weatherRoot.SetParent(transform,false);
+            var pools=new GameObject("Natural rain pools");pools.transform.SetParent(weatherRoot,false);
+            puddleSurface=pools.AddComponent<StormPuddleSurface>();puddleSurface.Build(Game);
             BuildDrainageArt();
         }
         void BuildDrainageArt()
@@ -133,21 +125,10 @@ namespace StarfieldEra
             if(removed>0)
             {
                 drainedGroundDirty=true;
-                if(puddleMesh)
-                {
-                    for(int i=0;i<puddleCells.Count;i++)
-                    {
-                        float depth=Game.State.storm.Depth(puddleCells[i]);int start=i*7;var center=HexWorldGrid.Center(puddleCells[i].x,puddleCells[i].y);
-                        float level=Game.World.HexGrid.GroundHeight(center)+depth+.015f;
-                        float shrink=depth<=.025f?0:Mathf.Sqrt(Mathf.Clamp01(depth/originalDepths[i]));
-                        for(int n=0;n<7;n++){var p=Vector3.Lerp(center,originalPuddlePoints[start+n],shrink);p.y=level;puddlePoints[start+n]=p;}
-                    }
-                    puddleMesh.SetVertices(puddlePoints);puddleMesh.RecalculateBounds();
-                }
+                if(puddleSurface)puddleSurface.Refresh();
             }
-            else if(drainedGroundDirty){drainedGroundDirty=false;surface.RefreshDrainedGround();Game.World.GetComponent<GrassPatches>().RefreshDrainedGround(Game.World,surface.Drainage);BuildDrainageArt();Game.Persist();drainageSaveClock=0;}
+            else if(drainedGroundDirty){drainedGroundDirty=false;surface.RefreshDrainedGround();if(puddleSurface)puddleSurface.Refresh(true);Game.World.GetComponent<GrassPatches>().RefreshDrainedGround(Game.World,surface.Drainage);BuildDrainageArt();Game.Persist();drainageSaveClock=0;}
             if(removed>0&&drainageSaveClock>=5){Game.Persist();drainageSaveClock=0;}
         }
-        void OnDestroy(){foreach(var a in weatherAssets)if(a)Destroy(a);}
     }
 }
