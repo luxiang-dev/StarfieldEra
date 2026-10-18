@@ -85,6 +85,7 @@ namespace StarfieldEra
                     target=new Vector3(-4+r.id*.6f,0,2.6f);
                     if(r.id>=3){int houseIndex=(r.id-3)/2;foreach(var b in Game.State.adventure.buildings)if(b.kind==4&&houseIndex--==0){target=HexWorldGrid.Center(b.column,b.row)+Vector3.back*3;break;}}
                 }
+                if(DutyDestination(r,out var dutyTarget))target=dutyTarget;
                 var grid=Game.World.HexGrid;
                 if(!destinationInputs.TryGetValue(r.id,out var old)||(old-target).sqrMagnitude>.01f){destinationInputs[r.id]=target;destinations[r.id]=grid.SafeLand(target,.25f);}
                 target=destinations[r.id];var delta=target-root.position;delta.y=0;

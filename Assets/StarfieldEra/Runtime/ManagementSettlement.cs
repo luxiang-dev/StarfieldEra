@@ -25,7 +25,7 @@ namespace StarfieldEra
             residentPage=Mathf.Clamp(residentPage,0,(village.residents.Count-1)/6);
             for(int i=residentPage*6;i<Math.Min(residentPage*6+6,village.residents.Count);i++)
             {
-                var r=village.residents[i];int id=r.id;string job=places.Find(p=>p.site.workplaceId==r.workplace)?.name??"自由活动";
+                var r=village.residents[i];int id=r.id;string job=places.Find(p=>p.site.workplaceId==r.workplace)?.name??VillageState.Roles[r.role];
                 var button=Button(content,"",0,94+(i%6)*54,620,48,()=>{residentSelection=id;Rebuild();});UITheme.Icon(button.transform,r.specialty==0?0:r.specialty==1?1:17,8,4,38,38);
                 Text(button.transform,VillageState.Names[id]+" · "+VillageState.Specialties[r.specialty]+"专长",58,3,280,30,18,cream);Text(button.transform,job+(r.hunger>0?" · 饥饿":" · 已用餐")+(r.id>=beds?" · 缺床位":""),58,27,540,20,13,gold);
             }
@@ -34,12 +34,14 @@ namespace StarfieldEra
             string[] foods={"胡萝卜3 → 口粮3","鲜鱼2 → 口粮4","浆果3 → 口粮2","料理1 → 口粮6"};for(int i=0;i<4;i++){int food=i;var foodButton=Button(content,foods[i],i*157,503,149,40,()=>game.Settlement.Donate(food));foodButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().fontSize=15;}
             Button(content,"招募村民 · 金币20、口粮6，需空床位",0,552,620,42,game.Settlement.Recruit,village.residents.Count<beds&&village.pantry>=6&&game.State.coins>=20);
             residentSelection=Mathf.Clamp(residentSelection,0,village.residents.Count-1);var person=village.residents[residentSelection];var assigned=places.Find(p=>p.site.workplaceId==person.workplace);
-            var detail=Details(VillageState.Names[person.id],VillageState.Specialties[person.specialty]+"专长 · 熟练工作 "+person.workedDays+" 天","当前岗位："+(assigned?.name??"自由活动")+"\n用餐："+(person.hunger==0?"已经吃饱":"饥饿 "+person.hunger+" 天")+" · 心情 "+person.morale+" / 100\n住房："+(person.id<beds?"已有床位":"缺少床位，请建居民房屋")+"\n\n匹配专长每工作一天提高5%效率，最高30%。\n饥饿效率降低30%，缺床位再降低20%。\n休息后消耗口粮，并完成一天工作。");
+            var detail=Details(VillageState.Names[person.id],VillageState.Specialties[person.specialty]+"专长 · 熟练工作 "+person.workedDays+" 天","当前岗位："+(assigned?.name??VillageState.Roles[person.role])+"\n用餐："+(person.hunger==0?"已经吃饱":"饥饿 "+person.hunger+" 天")+" · 心情 "+person.morale+" / 100\n住房："+(person.id<beds?"已有床位":"缺少床位，请建居民房屋")+"\n\n匹配专长每工作一天提高5%效率，最高30%。\n饥饿效率降低30%，缺床位再降低20%。\n自动岗位状态："+game.Settlement.DutyStatus(person.id)+"。");
+            detail.sizeDelta=new Vector2(506,600);
             var available=places.Where(p=>p.site.level>0).ToList();workplaceSelection=available.Count==0?0:Mathf.Clamp(workplaceSelection,0,available.Count-1);var target=available.Count==0?null:available[workplaceSelection];
             Text(detail,target==null?"请先修复资源点或建造工坊":"准备派往："+target.name+" · "+target.site.workers+" / 2",22,342,462,32,16,ink);
             Button(detail,"上一岗位",22,376,224,38,()=>{workplaceSelection=(workplaceSelection-1+available.Count)%available.Count;Rebuild();},available.Count>1);Button(detail,"下一岗位",258,376,226,38,()=>{workplaceSelection=(workplaceSelection+1)%available.Count;Rebuild();},available.Count>1);
             DetailAction(detail,"确认派驻这个岗位",0,()=>game.Settlement.Assign(person.id,target.site.workplaceId),target!=null&&target.site.workers<2&&person.workplace!=target.site.workplaceId);
-            DetailAction(detail,"召回村民 · 自由活动",1,()=>game.Settlement.Assign(person.id,0),person.workplace>0);
+            DetailAction(detail,"召回村民 · 自由活动",1,()=>game.Settlement.Assign(person.id,0),person.workplace>0||person.role>0);
+            for(int role=1;role<=3;role++){int job=role;Button(detail,VillageState.Roles[role],22+(role-1)*156,540,150,42,()=>game.Settlement.AssignDuty(person.id,job),person.role!=role);}
         }
         void OrdersPage()
         {

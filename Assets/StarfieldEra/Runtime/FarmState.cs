@@ -37,6 +37,7 @@ namespace StarfieldEra
         public SurvivalState survival=new SurvivalState();
         public WorldClockState clock=new WorldClockState();
         public GardenDefenseState garden=new GardenDefenseState();
+        public CaveState cave=new CaveState();
         public int selectedCrop;
         public int wheatSeeds, berrySeeds, starSeeds;
         public StormWaterState storm=new StormWaterState();
@@ -68,6 +69,7 @@ namespace StarfieldEra
             if(survival==null)survival=new SurvivalState();
             if(clock==null)clock=new WorldClockState();
             if(garden==null)garden=new GardenDefenseState();garden.Upgrade();
+            if(cave==null)cave=new CaveState();cave.Upgrade();
             if(storm==null)storm=new StormWaterState();
             if(weather==null)weather=new WeatherState();weather.Ensure(day,true);
             if(schema<2){schema=2;energy=MaxEnergy;}
@@ -155,6 +157,7 @@ namespace StarfieldEra
         public bool IsValid()
         {
             if(survival==null||!survival.Valid()||clock==null||!clock.Valid()||garden==null||!garden.Valid())return false;
+            if(cave==null||!cave.Valid())return false;
             if(storm==null||!storm.Valid()||weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid()||mining==null||!mining.Valid())return false;
             if(float.IsNaN(energyRecoverySeconds)||float.IsInfinity(energyRecoverySeconds)||energyRecoverySeconds<0||energyRecoverySeconds>=EnergyRecoveryInterval)return false;
             if(land!=null&&!land.Valid())return false;

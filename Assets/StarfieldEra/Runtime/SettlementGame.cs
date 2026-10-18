@@ -51,7 +51,7 @@ namespace StarfieldEra
         }
         public void Travel(int route)
         {
-            if(!SafeAction||route<0||route>1||!Frontier.unlocked[route]||!Frontier.visited[route])return;
+            if(Game.InCave||!SafeAction||route<0||route>1||!Frontier.unlocked[route]||!Frontier.visited[route])return;
             var controller=Game.World.Controller;controller.enabled=false;Game.World.Player.position=Game.World.HexGrid.SafeLand(FrontierState.Centers[route]+Vector3.back*3,controller.radius);controller.enabled=true;Game.Management.Close();Game.Inspection.Clear();Game.Adventure.Commit("抵达："+FrontierState.Names[route]);
         }
         public void PlaceBanner()
@@ -81,7 +81,7 @@ namespace StarfieldEra
         float nextVisit;
         void Update()
         {
-            if(!Game)return;UpdateResidents();UpdateDrainage();if(Time.unscaledTime<nextVisit)return;nextVisit=Time.unscaledTime+1;
+            if(!Game||Game.SimulationPaused)return;UpdateDuties();UpdateResidents();UpdateDrainage();if(Time.unscaledTime<nextVisit)return;nextVisit=Time.unscaledTime+1;
             int region=FrontierState.Region(Game.World.Player.position);if(region>=0&&Frontier.unlocked[region]&&!Frontier.visited[region]){Frontier.visited[region]=true;Game.Adventure.Commit("发现新区域："+FrontierState.Names[region]+"，已解锁快速旅行。");}
         }
     }

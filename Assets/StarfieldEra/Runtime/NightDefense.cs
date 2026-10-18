@@ -67,6 +67,7 @@ namespace StarfieldEra
         }
         void Update()
         {
+            if(Game&&Game.InCave)return;
             if(TrapPlacing)
             {
                 if(WorldPointer.Cancel||Keyboard.current!=null&&Keyboard.current.escapeKey.wasPressedThisFrame){CancelTrap();return;}
@@ -133,6 +134,15 @@ namespace StarfieldEra
             var movement=Game.World.HexGrid.ConstrainMovement(root.position,direction*step,.25f);var next=Game.World.HexGrid.SurfacePoint(root.position+movement);
             if(Physics.OverlapSphere(next+Vector3.up*.45f,.2f,~0,QueryTriggerInteraction.Ignore).Any(c=>!Game.World.HexGrid.IsGroundCollider(c)&&!(c is CharacterController)))return;
             root.position=next;root.rotation=Quaternion.Slerp(root.rotation,Quaternion.LookRotation(direction),dt*7);
+        }
+        public Transform GuardTarget(Vector3 p)
+        {return enemies.Values.Where(t=>t&&WorldRelief.PlanarDistance(p,t.position)<12).OrderBy(t=>WorldRelief.PlanarDistance(p,t.position)).FirstOrDefault();}
+        public bool GuardAttack(Vector3 p)
+        {
+            var target=GuardTarget(p);if(!target||WorldRelief.PlanarDistance(p,target.position)>3)return false;
+            if(Physics.Linecast(p+Vector3.up*.8f,target.position+Vector3.up*.8f,out _,~0,QueryTriggerInteraction.Ignore))return false;
+            var threat=State.threats.FirstOrDefault(t=>t.hp>0&&enemies.TryGetValue(t.id,out var root)&&root==target);if(threat==null)return false;
+            threat.hp--;if(threat.hp==0)Defeat(threat);Game.Persist();return true;
         }
         public void Attack(RaidThreat requested=null)
         {

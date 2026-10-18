@@ -74,7 +74,7 @@ namespace StarfieldEra
         }
         public void BeginPlacement(int kind)
         {
-            if(kind<0||kind>6||kind==2||!art||!art.Unit(kind)||Game.Night.Active||Game.Adventure.InBattle)return;
+            if(Game.InCave||kind<0||kind>6||kind==2||!art||!art.Unit(kind)||Game.Night.Active||Game.Adventure.InBattle)return;
             if(!EquipmentCatalog.Require(Game,"hammer"))return;
             Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();Game.Night.CancelTrap();Game.Inspection.Clear();Cancel();placing=kind;
             preview=Instantiate(art.Unit(kind));preview.name="Garden defense placement";
@@ -112,7 +112,7 @@ namespace StarfieldEra
         }
         void Update()
         {
-            if(!Game)return;if(Placing)PlacementUpdate();if(Game.SimulationPaused)return;
+            if(!Game||Game.InCave)return;if(Placing)PlacementUpdate();if(Game.SimulationPaused)return;
             float dt=Mathf.Min(Time.deltaTime,.1f);playerCooldown=Mathf.Max(0,playerCooldown-dt);
             if(Game.State.clock.IsNight)
             {
@@ -149,6 +149,9 @@ namespace StarfieldEra
             var d=to-from;int count=Physics.RaycastNonAlloc(from,d.normalized,hits,d.magnitude,~0,QueryTriggerInteraction.Ignore);
             for(int i=0;i<count;i++){var c=hits[i].collider;if(c.transform.IsChildOf(source.transform)||c.transform.IsChildOf(Game.World.Player))continue;return false;}return count<hits.Length;
         }
+        public GardenActor NearestEnemy(Vector3 p,float range)
+        {GardenActor target=null;foreach(var a in actors.Values)if(a&&a.zombie!=null&&a.Health>0){float d=WorldRelief.PlanarDistance(p,a.transform.position);if(d<range){range=d;target=a;}}return target;}
+        public bool CanGuardAttack(Vector3 p,GardenActor enemy)=>enemy&&navigation.Clear(p,enemy.transform.position,null,out _,.1f);
         public void Raise(GardenUnit tomb,int count=WaveSize)
         {
             if(tomb==null||tomb.kind!=2||!State.units.Contains(tomb))return;
@@ -256,6 +259,7 @@ namespace StarfieldEra
         public void Damage(GardenActor actor,int amount,Vector3? from=null)
         {
             if(!actor||actor.dying||actor.Health<=0||amount<=0)return;
+            if(actor.caveEnemy){Game.Cave.Damage(actor,amount);return;}
             actor.HitFlash();feedback.Emit(actor.transform.position+Vector3.up*.9f);
             if(actor.zombie!=null)
             {actor.stunnedUntil=Time.time+.18f;var away=actor.transform.position-(from??Game.World.Player.position);away.y=0;var step=Game.World.HexGrid.ConstrainMovement(actor.transform.position,away.normalized*.55f,.28f);var target=Game.World.HexGrid.SurfacePoint(actor.transform.position+step);if(navigation.Clear(actor.transform.position,target,actor.transform,out _))actor.transform.position=target;actor.zombie.x=actor.transform.position.x;actor.zombie.z=actor.transform.position.z;actor.repathAt=0;}
@@ -277,6 +281,7 @@ namespace StarfieldEra
         public void Interact(GardenActor actor)
         {
             if(!actor)return;
+            if(actor.caveEnemy){Game.Cave.Melee(actor);return;}
             if(actor.zombie!=null){if(playerCooldown>0)return;if(!GardenDefenseState.InRange(Game.World.Player.position,actor.transform.position,3)){Game.ShowMessage("走近这只僵尸三米以内攻击。");return;}if(!navigation.Clear(Game.World.Player.position,actor.transform.position,Game.World.Player,out _,.1f)){Game.ShowMessage("攻击被障碍挡住。");return;}if(!Game.State.SpendEnergy(1)){Game.ShowMessage("体力不足。");return;}playerCooldown=.6f;Damage(actor,20);Game.Persist();return;}
             if(actor.unit.kind==2)
             {

@@ -26,11 +26,12 @@ namespace StarfieldEra
         void LateUpdate()
         {
             if(!subject||!rect)return;var target=subject.position+Vector3.up*(threat!=null?1.3f:actor.unit!=null&&actor.unit.kind==1?2.5f:2.1f);
-            var point=game.World.View.WorldToScreenPoint(target);bool visible=point.z>0&&Vector3.Distance(game.World.Player.position,subject.position)<30&&!game.Management.IsOpen;
+            var point=game.World.View.WorldToScreenPoint(target);bool visible=(!game.InCave||actor&&actor.caveEnemy)&&point.z>0&&Vector3.Distance(game.World.Player.position,subject.position)<30&&!game.Management.IsOpen;
             rect.gameObject.SetActive(visible);if(!visible)return;
             RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)rect.parent,point,null,out var position);rect.anchoredPosition=position;
             int health=threat!=null?threat.hp:actor.Health,max=threat!=null?3:actor.MaxHealth;fill.fillAmount=health/(float)max;label.text=(actor&&actor.zombie!=null&&Time.time<actor.alertUntil?"! 发现玩家 · ":"")+displayName+" "+health+"/"+max;label.color=actor&&actor.zombie!=null&&Time.time<actor.alertUntil?new Color(1,.48f,.22f):new Color(1,.95f,.8f);
         }
+        void OnDisable(){if(rect)rect.gameObject.SetActive(false);}
         void OnDestroy(){if(rect)Destroy(rect.gameObject);}
     }
 }

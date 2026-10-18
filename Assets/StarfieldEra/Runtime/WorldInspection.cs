@@ -51,7 +51,7 @@ namespace StarfieldEra
         public static bool InRange(Vector3 player,Vector3 target,float range)=>range>=0&&WorldRelief.PlanarDistance(player,target)<=range;
         Vector3 Position(WorldChoice choice)=>choice.plot>=0?game.World.PlotPositions[choice.plot]:choice.Position;
         float Range()
-        {if(selected.garden)return selected.garden.zombie!=null||selected.garden.unit.kind==2?3:6;if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
+        {if(selected.encounter!=null&&CaveGame.CaveKind(selected.encounter.kind))return 3;if(selected.garden)return selected.garden.zombie!=null||selected.garden.unit.kind==2?3:6;if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
         public bool CanInteract=>Ready&&Range()>=0&&(!game.Night.Active||selected.threat!=null||selected.garden);
         bool Ready=>HasSelection&&selected.Alive&&(Range()==0||InRange(game.World.Player.position,Position(selected),Range()));
         void Update()
@@ -95,6 +95,7 @@ namespace StarfieldEra
             var expedition=t.GetComponentInParent<ExpeditionTarget>();if(expedition)return new WorldChoice{root=expedition.transform,encounter=expedition.encounter};return null;
         }
         static string ChoiceKey(WorldChoice choice)=>choice.land?"land:"+choice.cell:choice.plot>=0?"plot:"+choice.plot:choice.root.GetInstanceID().ToString();
+        bool SameLayer(Transform root)=>root&&(game.InCave?root.position.y<-25:root.position.y>-25);
         public void Pick(Ray ray)
         {
             choices.Clear();var seen=new HashSet<string>();var candidates=new List<KeyValuePair<float,WorldChoice>>();float limit=150;
@@ -103,7 +104,7 @@ namespace StarfieldEra
             foreach(var hit in Physics.RaycastAll(ray,limit,~0,QueryTriggerInteraction.Collide).OrderBy(h=>h.distance))
             {
                 if(hit.transform.IsChildOf(game.World.Player)||hit.collider.GetComponentInParent<LineRenderer>())continue;
-                var choice=Resolve(hit.transform);if(choice!=null&&(choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(hit.distance,choice));
+                var choice=Resolve(hit.transform);if(choice!=null&&SameLayer(choice.root)&&(choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(hit.distance,choice));
             }
             // Decorative art can have no collider. Include its visible bounds as an observation target,
             // sorted with gameplay targets so foreground objects can also be inspected.
@@ -113,7 +114,7 @@ namespace StarfieldEra
                 if(renderer.bounds.size.x>30&&renderer.bounds.size.z>30)continue;
                 if(!renderer.bounds.IntersectRay(ray,out float d)||d>limit)continue;
                 var choice=Resolve(renderer.transform)??new WorldChoice{root=renderer.transform};
-                if((choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(d,choice));
+                if(SameLayer(choice.root)&&(choice.plot<0||choice.plot==groundPlot)&&choice.Alive&&seen.Add(ChoiceKey(choice)))candidates.Add(new KeyValuePair<float,WorldChoice>(d,choice));
             }
             // Farm targets follow the actual ground hex, never a rectangular proxy or the
             // bounds of the combined field mesh. Locked expansion cells remain ordinary land.
@@ -134,6 +135,7 @@ namespace StarfieldEra
         }
         string ActionName()
         {
+            if(selected.encounter!=null&&CaveGame.CaveKind(selected.encounter.kind))return selected.encounter.kind==EncounterKind.CaveOre?"开采矿脉 · 体力3":selected.encounter.kind==EncounterKind.CaveEntrance?"进入矿洞":selected.encounter.kind==EncounterKind.CaveExit?"返回营地":"开启宝箱";
             if(selected.garden)return selected.garden.zombie!=null?"攻击僵尸":selected.garden.unit.kind==2?"攻击墓碑 · 体力1":"查看 / 修复";
             if(selected.tree)return selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3?"照料树苗":"砍树";
             if(selected.rock)return "开采";if(selected.building||selected.site)return "建筑管理";if(selected.fence)return selected.fence.record.gate?"开关门":"围栏管理";
@@ -143,6 +145,8 @@ namespace StarfieldEra
         }
         string Description()
         {
+            if(selected.encounter!=null&&CaveGame.CaveKind(selected.encounter.kind))return game.Cave.Describe(selected.encounter);
+            if(selected.garden&&selected.garden.caveEnemy)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n矿洞敌人 · 近战伤害 "+(selected.garden.caveEnemy.index==4?22:12)+"\nE攻击，消耗体力1。矿镐升级提高矿洞伤害。";
             if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\n攻击伤害 "+selected.garden.zombie.AttackDamage+"。\nE近战攻击，消耗体力1。":selected.garden.unit.kind!=2?GardenDefenseState.Details[selected.garden.unit.kind]+"\n受损修复需要木2石1。":"守卫等级 "+(selected.garden.unit.tier+1)+" / 3\nE攻击墓碑，每次伤害25、消耗体力1。\n摧毁后停止生成并清除关联僵尸，\n奖励工具图纸、晶石与星石。" );
             if(selected.tree&&selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3){var c=game.State.land.Find(selected.tree.cell);return "树苗 · 成长 "+c.treeGrowth+" / 3\n"+(c.treeWatered?"今天已浇水":"今天尚未浇水")+"\n靠近后可为选中的树苗浇水，\n休息后继续生长，长成后可以砍伐。";}
             if(selected.tree)return "树木 · 挥斧 "+selected.tree.hits+" / 3\n需要伐木斧；每斧消耗体力1。\n第一人称需要面向选中的树木。";
@@ -167,10 +171,11 @@ namespace StarfieldEra
             selectionCount.text="目标 "+(Math.Max(0,choices.IndexOf(selected))+1)+" / "+Math.Max(1,choices.Count)+" · 距离 "+distance.ToString("0.0")+"米";
             description.text=Description()+"\n\n"+(Ready?"已选定目标，E或按钮交互。":"请靠近选中的目标，不会改选附近物件。");
             primary.GetComponentInChildren<TextMeshProUGUI>().text=ActionName();primary.interactable=CanInteract;
+            bool forge=selected.encounter!=null&&selected.encounter.kind==EncounterKind.CaveEntrance;
             bool water=selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true||selected.tree&&selected.tree.planted;
             bool dismantle=selected.garden&&selected.garden.unit!=null&&selected.garden.unit.kind!=2;
-            secondary.gameObject.SetActive(water||dismantle);secondary.GetComponentInChildren<TextMeshProUGUI>().text=dismantle?"拆除 · 返还一半材料":"为选中目标浇水 · R";secondary.interactable=Ready;
-            previous.interactable=next.interactable=choices.Count>1;FitActions(water||dismantle);
+            secondary.gameObject.SetActive(water||dismantle||forge);secondary.GetComponentInChildren<TextMeshProUGUI>().text=forge?"升级矿镐":dismantle?"拆除 · 返还一半材料":"为选中目标浇水 · R";secondary.interactable=Ready;
+            previous.interactable=next.interactable=choices.Count>1;FitActions(water||dismantle||forge);
 
         }
         void FitActions(bool water)
@@ -199,7 +204,7 @@ namespace StarfieldEra
             if(selected.land){if(game.State.land.Find(selected.cell)?.tilled==true)game.Land.InteractCell(selected.cell,false);else game.Management.Open("land");return;}
             game.ShowMessage("这个物件暂无交互动作。");
         }
-        void SecondaryAction(){if(selected?.garden&&selected.garden.unit!=null){if(Ready)game.Garden.Dismantle(selected.garden);return;}WaterSelected();}
+        void SecondaryAction(){if(selected?.encounter!=null&&selected.encounter.kind==EncounterKind.CaveEntrance){if(Ready)game.Cave.ImproveTool();return;}if(selected?.garden&&selected.garden.unit!=null){if(Ready)game.Garden.Dismantle(selected.garden);return;}WaterSelected();}
         public bool WaterSelected()
         {
             if(!HasSelection)return false;

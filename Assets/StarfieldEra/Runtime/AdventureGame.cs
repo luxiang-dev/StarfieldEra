@@ -28,6 +28,7 @@ namespace StarfieldEra
             {
                 if(!item.root||!item.root.gameObject.activeInHierarchy)continue;
                 if(item.kind==EncounterKind.Stone&&Game.Mining&&!Game.Mining.Reachable(item.root.GetComponentInChildren<HarvestableRock>()))continue;
+                if(Mathf.Abs(item.Position.y-Game.World.Player.position.y)>5)continue;
                 var delta=item.Position-Game.World.Player.position;delta.y=0;
                 float distance=delta.magnitude;
                 if(distance<best){best=distance;Target=item;}
@@ -56,8 +57,10 @@ namespace StarfieldEra
         }
         public void Interact(WorldEncounter requested=null)
         {
+            if(requested!=null&&CaveGame.CaveKind(requested.kind)){Game.Cave.Interact(requested);return;}
             if(InBattle)return;
-            var item=requested??Target;if(item==null)return;
+            var item=requested??Target;
+            if(item!=null&&CaveGame.CaveKind(item.kind)){Game.Cave.Interact(item);return;}if(item==null)return;
             if(requested!=null){if(!Game.World.Adventure.Encounters.Contains(item)||!item.root||!item.root.gameObject.activeInHierarchy||WorldRelief.PlanarDistance(Game.World.Player.position,item.Position)>2.75f){Game.ShowMessage("请靠近选中的目标。");return;}Target=item;}
             switch(item.kind)
             {
@@ -168,6 +171,7 @@ namespace StarfieldEra
         }
         public void Travel(int region)
         {
+            if(Game.InCave){Game.ShowMessage("请先从矿洞出口返回营地。");return;}
             if(Game.Night&&Game.Night.Active)return;
             Game.Night?.CancelTrap();
             if(InBattle||region<0||region>=8||!State.discovered[region])return;

@@ -28,15 +28,17 @@ namespace StarfieldEra
         public SettlementGame Settlement {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
-        public bool IsInWater=>World&&World.HexGrid.InWater(World.Player.position);
+        public CaveGame Cave {get;private set;}
+        public bool InCave=>Cave&&Cave.Inside;
+        public bool IsInWater=>!InCave&&World&&World.HexGrid.InWater(World.Player.position);
         bool jumpRequested;
-        public bool IsGrounded=>World&&World.Controller&&(World.Controller.isGrounded||(gravity<=0&&World.Player.position.y-World.HexGrid.GroundHeight(World.Player.position)<.12f));
+        public bool IsGrounded=>World&&World.Controller&&(World.Controller.isGrounded||(gravity<=0&&World.Player.position.y-(InCave?CaveGame.Floor:World.HexGrid.GroundHeight(World.Player.position))<.12f));
         public void RequestJump(){if(Management&&Management.IsOpen||Adventure.InBattle||Expedition.Fishing)return;jumpRequested=true;}
         public WeatherSystem Weather { get; private set; }
         public WeatherManager WeatherManager {get;private set;}
         public ManagementHud Management { get; private set; }
         public int SelectedPlot { get; private set; } = -1;
-        public bool NearHouse => World != null && (Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f || State.adventure.buildings.Exists(b=>(b.kind==4||b.kind==11)&&WorldRelief.PlanarDistance(World.Player.position,HexWorldGrid.Center(b.column,b.row))<4));
+        public bool NearHouse => !InCave && World != null && (Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f || State.adventure.buildings.Exists(b=>(b.kind==4||b.kind==11)&&WorldRelief.PlanarDistance(World.Player.position,HexWorldGrid.Center(b.column,b.row))<4));
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
         public bool SaveHealthy { get; private set; } = true;
         public string SavePath => Path.Combine(Application.persistentDataPath, "farm-v1.json");
@@ -84,6 +86,7 @@ namespace StarfieldEra
             World.RefreshCrops(State);
             Settlement=gameObject.AddComponent<SettlementGame>();Settlement.Initialize(this);
             Garden=gameObject.AddComponent<GardenDefense>();Garden.Initialize(this);
+            Cave=gameObject.AddComponent<CaveGame>();Cave.Initialize(this);
             gameObject.AddComponent<WorldClock>().Initialize(this);
             UpdateSelection();
             hud.Refresh();
@@ -92,6 +95,7 @@ namespace StarfieldEra
         // Terrain edits and old saves can leave the capsule in a trench. Recover before UI/input gates.
         void RecoverFromUnsafeGround()
         {
+            if(InCave){if(Construction.Active)Construction.Cancel();if(Fences.Active)Fences.Cancel();if(Land.Active)Land.Cancel();if(World.Player.position.y<CaveGame.Floor-2){World.Controller.enabled=false;World.Player.position=new Vector3(0,CaveGame.Floor+.1f,-8);World.Controller.enabled=true;}return;}
             var grid=World.HexGrid;var p=World.Player.position;
             if(grid.CanPlayerTraverse(p,World.Controller.radius)&&p.y>=grid.GroundHeight(p)-.35f)return;
             var safe=grid.SafeLand(p,World.Controller.radius);
@@ -152,12 +156,13 @@ namespace StarfieldEra
             gravity=Mathf.Max(-20,gravity-20*frameDelta);
             var grid=World.HexGrid;var before=World.Player.position;
             var terrain=grid.TerrainAt(before);
-            float speed=IsInWater?.5f:Expedition.MovementSpeed(terrain==TerrainKind.Water?TerrainKind.Meadow:terrain)*(State.storm.DepthAt(before)>.025f?.65f:1);
+            float speed=InCave?1:IsInWater?.5f:Expedition.MovementSpeed(terrain==TerrainKind.Water?TerrainKind.Meadow:terrain)*(State.storm.DepthAt(before)>.025f?.65f:1);
             IsSprinting=!IsInWater&&move.sqrMagnitude>.01f&&!Adventure.InBattle&&(SprintRequested||keyboard!=null&&(keyboard.leftShiftKey.isPressed||keyboard.rightShiftKey.isPressed));
-            var horizontal=grid.ConstrainMovement(before,move*(IsSprinting?6.6f:4)*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius,true);
+            var step=move*(IsSprinting?6.6f:4)*speed*frameDelta;
+            var horizontal=InCave?Cave.Constrain(before,step):grid.ConstrainMovement(before,step,World.Controller.radius,true);
             World.Controller.Move(horizontal+Vector3.up*verticalMove);
             // Keep region gates and world bounds while allowing airborne and submerged river crossings.
-            if(!grid.CanPlayerTraverse(World.Player.position,World.Controller.radius))
+            if(!InCave&&!grid.CanPlayerTraverse(World.Player.position,World.Controller.radius))
             {var safe=grid.SafeLand(before,World.Controller.radius,false);World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;}
             Vector3 position = World.Player.position;
             // Physical island edge is complemented by bounds so no input can walk off it.
@@ -165,6 +170,11 @@ namespace StarfieldEra
             position.z = Mathf.Clamp(position.z, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1);
             World.Player.position = position;
             UpdateSelection();
+            if(InCave)
+            {
+                if(keyboard!=null){if(keyboard.eKey.wasPressedThisFrame)Interact();if(keyboard.iKey.wasPressedThisFrame)Management.Open("inventory");if(keyboard.escapeKey.wasPressedThisFrame)Inspection.Clear();}
+                hud.Refresh();return;
+            }
             if (keyboard != null)
             {
                 if (keyboard.yKey.wasPressedThisFrame) Management.Toggle("weather");
@@ -200,6 +210,7 @@ namespace StarfieldEra
 
         public void UpdateSelection()
         {
+            if(InCave){SelectedPlot=-1;World.Select(-1);return;}
             int selected = -1;
             float nearest = 1.65f;
             for (int i = 0; i < State.AvailablePlotCount; i++)
@@ -222,6 +233,7 @@ namespace StarfieldEra
             if(Expedition.Fishing){Expedition.Reel();return;}
             if(Adventure.InBattle||Construction.Active||Fences.Active||Land.Active)return;
             if(Inspection&&Inspection.HasSelection){Inspection.InteractSelected();return;}
+            if(InCave){Cave.InteractNearest();return;}
             if(Homestead.InteractNearby())return;
             if(Land.InteractNearby(false))return;
             if(Animals.InteractNearby())return;
@@ -296,6 +308,7 @@ namespace StarfieldEra
 
         public void Respawn()
         {
+            if(InCave)Cave.Exit(false);
             State.survival.Rest();State.survival.invulnerable=.8f;
             var safe=World.HexGrid.SafeLand(World.Door+Vector3.back*3,World.Controller.radius);
             World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;

@@ -72,6 +72,7 @@ namespace StarfieldEra
         }
         public void Open()
         {
+            if(Game.InCave){Game.ShowMessage("请先返回营地再建造。");return;}
             if(Game.Adventure.InBattle||Game.Night&&Game.Night.Active)return;
             Game.Night?.CancelTrap();Game.Land?.Cancel();Game.Fences?.Cancel();Cancel();Menu.Show();
         }

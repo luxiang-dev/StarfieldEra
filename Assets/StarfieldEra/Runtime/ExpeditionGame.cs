@@ -88,6 +88,7 @@ namespace StarfieldEra
         }
         public void UseCamp()
         {
+            if(Game.InCave){Game.ShowMessage("请先从矿洞出口返回营地。");return;}
             if(Game.Adventure.InBattle||Fishing)return;
             if(State.campSupplies==0||Game.State.energy>=FarmState.MaxEnergy){Game.ShowMessage("没有野营补给，或体力已充足。");return;}
             if(!Game.World.HexGrid.TryCell(Game.World.Player.position,out var cell)||!Game.World.HexGrid.CanBuildOn(cell)){Game.ShowMessage("选择稳定陆地休整，水面和沼泽不适合野营。");return;}

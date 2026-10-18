@@ -59,11 +59,11 @@ namespace StarfieldEra
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             bool wet=state.storm.DepthAt(game.World.Player.position)>.025f;
-            string terrain=(wet?"积水 · ":"")+TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position))*(wet?.65f:1));
+            string terrain=game.InCave?"地下矿洞 · 开采与战利品":(wet?"积水 · ":"")+TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position))*(wet?.65f:1));
             string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.clock.MinuteOfDay+"/"+state.survival.health+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
-            location.text=AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
+            location.text=game.InCave?"旧矿洞":AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
             var today=WeatherCatalog.Get(state.Weather);weatherName.text=today.displayName;forecast.text="明日 · "+WeatherCatalog.Get(state.TomorrowWeather).displayName;weatherIcon.sprite=UITheme.WeatherIcon(state.Weather);
             healthValue.text="生命 "+state.survival.health+" / "+SurvivalState.MaxHealth;healthFill.fillAmount=state.survival.health/(float)SurvivalState.MaxHealth;clockValue.text=state.clock.Display+" · "+state.Season+" · "+(state.clock.IsNight?"夜间":"日间")+" · 20分钟/日";
             energyValue.text="体力 "+state.energy+" / "+FarmState.MaxEnergy;energyFill.fillAmount=state.energy/(float)FarmState.MaxEnergy;coins.text=state.coins.ToString();
@@ -89,6 +89,7 @@ namespace StarfieldEra
             if(game.Night&&game.Night.Active){context="夜间守卫 · E驱赶身旁野兽 · R修补设施";canInteract=true;actionLabel.text="驱赶";}
             if(game.Garden&&game.Garden.Placing){context=game.Garden.Hint;canInteract=false;}
             if(game.Night&&game.Night.TrapPlacing){context="陷阱布置 · 点击六步内空地 · 木2石1 · 右键取消";canInteract=false;}
+            if(game.InCave){context="矿洞探索 · E 开采、开箱或攻击 · 入口返回营地";canInteract=true;actionLabel.text="交互";}
             if(game.Inspection&&game.Inspection.HasSelection&&!game.Construction.Active&&!game.Fences.Active&&!game.Land.Active&&!game.Expedition.Fishing&&!game.Adventure.InBattle){context=game.Inspection.Hint;canInteract=game.Inspection.CanInteract;actionLabel.text="选中目标";}
             contextIcon.sprite=UITheme.GetIcon(game.Night&&game.Night.Active?22:game.Construction.Active||game.Fences.Active?17:game.Land.Active?8:game.Expedition.Fishing?21:crop!=null?20:game.Forestry.HasNearby?18:game.Animals.HasNearby?11:15);
             target.text=context+" · "+terrain;actionButton.interactable=canInteract&&!managed;

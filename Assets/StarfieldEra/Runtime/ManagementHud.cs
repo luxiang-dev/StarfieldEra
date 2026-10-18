@@ -179,6 +179,7 @@ namespace StarfieldEra
             new Item("carrots","胡萝卜","材料",A.homestead.carrots,3,"收获金萝卜时保留2份；小屋或商人处可6金币买3份。用于引诱、饲养兔子。"),new Item("planks","木板","材料",A.homestead.planks,1,"二级林场安排村民并开启加工后生产，用于三级资源点升级。"),new Item("bricks","石砖","材料",A.homestead.bricks,2,"二级采石场安排村民并开启加工后生产，用于三级资源点升级。"),
             new Item("wood","木材","材料",A.wood,1,"采集倒木获得，用于建造、围栏和制作。"),new Item("stone","石料","材料",A.stone,2,"开采矿石获得，用于建筑与城镇发展。"),
             new Item("berries","浆果","材料",A.berries,3,"采摘或种植获得，可招募伙伴、喂食野猪、制作鱼饵和料理。"),new Item("fish","鲜鱼","材料",A.fish,4,"在湖岸钓鱼获得，可交易、招募伙伴或制作补给。"),
+            new Item("copperOre","赤铜矿","材料",game.State.cave.copperOre,0,"矿洞专属矿物，用于在矿洞入口升级矿镐。"),new Item("starIron","星铁矿","材料",game.State.cave.starIron,0,"矿洞深处获得，用于矿镐升级。"),new Item("bossShard","矿主碎片","材料",game.State.cave.bossShards,0,"击败矿主获得，二级矿镐需要一份。"),
             new Item("crystals","晶石","材料",A.crystals,5,"矿脉、宝箱与守卫奖励，用于研究和制作护符。"),new Item("fiber","纤维","材料",X.fiber,3,"采集野生草束或开启补给箱获得，用于远行装备。"),
             new Item("shards","遗迹碎片","材料",X.shards,5,"解读石碑或完美收线获得，星辉护符需要三份。"),new Item("truffles","松露","材料",A.truffles,3,"喂食牧场野猪后次日获得，可在动物详情中出售。"),
             new Item("seed0","金萝卜种子","种子",game.State.seeds,3,"两天成熟，收获后售出。选为当前种子，再回农田种植。"),new Item("seed1","小麦种子","种子",game.State.wheatSeeds,3,"三天成熟，每次收获售24金币。"),new Item("seed2","浆果种子","种子",game.State.berrySeeds,3,"四天成熟，可重复收获，产出金币和浆果。"),

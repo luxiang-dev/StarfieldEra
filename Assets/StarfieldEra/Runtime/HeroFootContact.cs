@@ -23,6 +23,7 @@ namespace StarfieldEra
         }
         Vector3 Ground(Vector3 p)
         {
+            if(game.InCave)return new Vector3(p.x,CaveGame.Floor+.008f,p.z);
             var grid=game.World.HexGrid;
             return grid.RaycastGround(new Ray(p+Vector3.up*2,Vector3.down),out var hit)?hit+Vector3.up*.008f:grid.SurfacePoint(p,.008f);
         }
@@ -60,7 +61,7 @@ namespace StarfieldEra
             leg.upper.rotation=Quaternion.FromToRotation(b-a,knee-a)*leg.upper.rotation;
             leg.knee.rotation=Quaternion.FromToRotation(leg.foot.position-leg.knee.position,target-leg.knee.position)*leg.knee.rotation;
             var grid=game.World.HexGrid;float e=.10f;var normal=new Vector3(grid.GroundHeight(sole-Vector3.right*e)-grid.GroundHeight(sole+Vector3.right*e),2*e,grid.GroundHeight(sole-Vector3.forward*e)-grid.GroundHeight(sole+Vector3.forward*e)).normalized;
-            leg.foot.rotation=Quaternion.FromToRotation(Vector3.up,Vector3.Slerp(Vector3.up,normal,.65f))*footRotation;
+            leg.foot.rotation=Quaternion.FromToRotation(Vector3.up,game.InCave?Vector3.up:Vector3.Slerp(Vector3.up,normal,.65f))*footRotation;
         }
         void CreateDust()
         {

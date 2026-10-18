@@ -79,7 +79,7 @@ namespace StarfieldEra
             var target=game.World.Player.position+Vector3.up*.85f;
             if(!Finite(target))return;
             if(!Finite(pivot)||!Finite(velocity)||!Finite(verticalVelocity)){pivot=target;velocity=Vector3.zero;verticalVelocity=0;}
-            if((new Vector2(target.x-pivot.x,target.z-pivot.z)).sqrMagnitude>100){pivot=target;velocity=Vector3.zero;verticalVelocity=0;}
+            if((new Vector2(target.x-pivot.x,target.z-pivot.z)).sqrMagnitude>100||Mathf.Abs(target.y-pivot.y)>10){pivot=target;velocity=Vector3.zero;verticalVelocity=0;}
             // Horizontal damping remains quick; height uses a dead zone and slower response.
             var horizontal=Vector3.SmoothDamp(new Vector3(pivot.x,0,pivot.z),new Vector3(target.x,0,target.z),ref velocity,.13f,Mathf.Infinity,dt);
             pivot.x=horizontal.x;pivot.z=horizontal.z;
@@ -113,7 +113,7 @@ namespace StarfieldEra
             distance=snap?desired:Mathf.Lerp(distance,desired,1-Mathf.Exp(-10*Time.unscaledDeltaTime));
             // Ground clearance prevents the low view going through a hillside with no physics collider nearby.
             var position=pivot-rotation*Vector3.forward*distance;
-            if(Mode==2&&game.World.HexGrid)position.y=Mathf.Max(position.y,game.World.HexGrid.GroundHeight(position)+.45f);
+            if(Mode==2&&game.World.HexGrid)position.y=Mathf.Max(position.y,(game.InCave?CaveGame.Floor:game.World.HexGrid.GroundHeight(position))+.45f);
             view.transform.SetPositionAndRotation(position,rotation);
         }
     }

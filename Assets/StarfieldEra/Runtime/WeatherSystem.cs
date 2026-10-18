@@ -105,6 +105,7 @@ namespace StarfieldEra
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = Color.Lerp(sky, new Color(.72f,.78f,.77f), fog);
             RenderSettings.fogDensity = .002f + cloud * .004f + fog * .025f;
+            if(game.InCave){if(sun)sun.intensity=0;RenderSettings.ambientLight=new Color(.2f,.23f,.27f);game.World.View.backgroundColor=new Color(.025f,.04f,.055f);RenderSettings.fogColor=game.World.View.backgroundColor;RenderSettings.fogDensity=.025f;}
             Color linearFog = RenderSettings.fogColor.linear;
             Shader.SetGlobalVector(FogProperty, new Vector4(linearFog.r, linearFog.g, linearFog.b, RenderSettings.fogDensity));
             // Cover the viewed area, including when the player changes camera direction or fast travels.
@@ -116,8 +117,9 @@ namespace StarfieldEra
             if ((rain.transform.position-position).sqrMagnitude > 45*45)
             { rain.Clear(); snow.Clear(); }
             rain.transform.position = snow.transform.position = position;
-            SetEmission(rain, rainAmount * 900);
-            SetEmission(snow, snowAmount * 80);
+            SetEmission(rain, game.InCave?0:rainAmount * 900);
+            SetEmission(snow, game.InCave?0:snowAmount * 80);
+            if(game.InCave){if(rain.isPlaying)rain.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);if(snow.isPlaying)snow.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);}
         }
 
         static void SetEmission(ParticleSystem system, float rate)
