@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/铁桶僵尸-网页版/model.glb",
+  "name": "BucketZombie",
+  "animated": true,
+  "originalFaces": 50004,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.002",
+      "texture": "BucketZombie_BaseColor0.png"
+    }
+  ]
+}

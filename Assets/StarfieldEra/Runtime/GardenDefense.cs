@@ -18,12 +18,12 @@ namespace StarfieldEra
         readonly List<GardenActor> tickActors=new List<GardenActor>();
         readonly List<Shot> shots=new List<Shot>();readonly Stack<GameObject> pool=new Stack<GameObject>();
         readonly RaycastHit[] hits=new RaycastHit[32];
-        GardenArtLibrary art;Material peaMaterial,previewMaterial;Transform bars;GameObject preview;int placing=-1;float yaw,playerCooldown;Vector3 placement;
-        sealed class Shot {public GameObject root;public int target;public float age;}
+        GardenArtLibrary art;Material peaMaterial,iceMaterial,previewMaterial;Transform bars;GameObject preview;int placing=-1;float yaw,playerCooldown;Vector3 placement;
+        sealed class Shot {public GameObject root;public int target,source,damage;public float age;public bool ice;}
         public void Initialize(FarmGame owner)
         {
             Game=owner;navigation=new GardenNavigation(owner);var effects=new GameObject("Garden combat feedback");effects.transform.SetParent(transform,false);feedback=effects.AddComponent<GardenCombatFeedback>();feedback.Initialize(owner);art=Resources.Load<GardenArtLibrary>("GardenDefenseArt");
-            peaMaterial=Game.World.Mat("Flying garden peas","81C928");previewMaterial=Game.World.Mat("Garden build preview","80B58A");
+            peaMaterial=Game.World.Mat("Flying garden peas","81C928");iceMaterial=Game.World.Mat("Flying ice peas","83DEFF");previewMaterial=Game.World.Mat("Garden build preview","80B58A");
             var canvas=new GameObject("Garden health bars",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler));canvas.transform.SetParent(transform,false);canvas.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;canvas.GetComponent<Canvas>().sortingOrder=2;
             var scaler=canvas.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;bars=canvas.transform;
             if(!State.initialized)SeedOutpost();
@@ -59,27 +59,28 @@ namespace StarfieldEra
         }
         GardenActor Spawn(GardenUnit unit,GardenZombie zombie)
         {
-            var root=new GameObject(zombie!=null?"Garden zombie "+zombie.id:unit.kind==0?"Peashooter "+unit.id:unit.kind==1?"Garden wall "+unit.id:"Zombie tomb "+unit.id);root.transform.SetParent(transform,false);
+            var root=new GameObject(zombie!=null?"Garden zombie "+zombie.id:GardenDefenseState.Names[unit.kind]+" "+unit.id);root.transform.SetParent(transform,false);
             root.transform.position=Game.World.HexGrid.SurfacePoint(unit!=null?unit.Position:zombie.Position);root.transform.rotation=Quaternion.Euler(0,unit?.yaw??0,0);
             var actor=root.AddComponent<GardenActor>();actor.owner=this;actor.unit=unit;actor.zombie=zombie;
-            var prefab=zombie!=null?art?.zombie:unit.kind==0?art?.peashooter:unit.kind==1?art?.wall:art?.tomb;
+            var prefab=zombie!=null?art?.Zombie(zombie.variant):art?.Unit(unit.kind);
             if(prefab)Instantiate(prefab,root.transform,false);
             else Debug.LogError("Missing supplied garden art: "+root.name);
             var facing=root.transform.rotation;root.transform.rotation=Quaternion.identity;
             var bounds=new Bounds(root.transform.position+Vector3.up*.8f,Vector3.one);foreach(var r in root.GetComponentsInChildren<Renderer>())bounds.Encapsulate(r.bounds);
             var box=root.AddComponent<BoxCollider>();box.center=root.transform.InverseTransformPoint(bounds.center);box.size=bounds.size;box.isTrigger=zombie!=null;root.transform.rotation=facing;
-            if(zombie!=null)actor.SetAnimation(root.GetComponentInChildren<Animator>(),art?.walk,art?.dismay);
+            if(zombie!=null)actor.SetAnimation(root.GetComponentInChildren<Animator>(),art?.Walk(zombie.variant),art?.Dismay(zombie.variant));
+            if(unit!=null&&unit.kind==6){var glow=new GameObject("Warm lantern light");glow.transform.SetParent(root.transform,false);glow.transform.localPosition=Vector3.up*2.2f;var light=glow.AddComponent<Light>();light.type=LightType.Point;light.color=new Color(1,.73f,.35f);light.range=8;light.intensity=2;light.shadows=LightShadows.None;light.enabled=Game.State.clock.IsNight;}
             root.AddComponent<HealthBars>().Initialize(Game,actor,bars);actors[unit?.id??zombie.id]=actor;return actor;
         }
         public void BeginPlacement(int kind)
         {
-            if(kind<0||kind>1||Game.Night.Active||Game.Adventure.InBattle)return;
+            if(kind<0||kind>6||kind==2||!art||!art.Unit(kind)||Game.Night.Active||Game.Adventure.InBattle)return;
             if(!EquipmentCatalog.Require(Game,"hammer"))return;
             Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();Game.Night.CancelTrap();Game.Inspection.Clear();Cancel();placing=kind;
-            preview=Instantiate(kind==0?art.peashooter:art.wall);preview.name="Garden defense placement";
+            preview=Instantiate(art.Unit(kind));preview.name="Garden defense placement";
             foreach(var collider in preview.GetComponentsInChildren<Collider>())collider.enabled=false;
             foreach(var r in preview.GetComponentsInChildren<Renderer>())r.sharedMaterial=previewMaterial;
-            Game.ShowMessage("选择"+(kind==0?"豌豆射手":"防御城墙")+"位置 · R旋转 · 左键放置 · 右键取消。");
+            Game.ShowMessage("选择"+GardenDefenseState.Names[kind]+"位置 · R旋转 · 左键放置 · 右键取消。");
         }
         public void Cancel(){placing=-1;Hint="";if(preview)Destroy(preview);preview=null;}
         public bool PlaceAllowed(Vector3 p,int kind,out string reason,bool playerRange=true)
@@ -103,11 +104,11 @@ namespace StarfieldEra
             if(Keyboard.current?.rKey.wasPressedThisFrame==true)yaw=(yaw+60)%360;
             if(!WorldPointer.Available||WorldPointer.Blocked||!Game.World.HexGrid.RaycastGround(Game.World.View.ScreenPointToRay(WorldPointer.Position),out placement)){preview.SetActive(false);return;}
             bool allowed=PlaceAllowed(placement,placing,out var reason);preview.SetActive(true);preview.transform.position=Game.World.HexGrid.SurfacePoint(placement);preview.transform.rotation=Quaternion.Euler(0,yaw,0);previewMaterial.SetColor("_BaseColor",allowed?new Color(.5f,.8f,.4f):new Color(.9f,.25f,.2f));
-            Hint=(placing==0?"豌豆射手 · 索敌12米":"防御城墙 · 300耐久")+" · "+(allowed?"R旋转 · 左键放置":reason);
+            Hint=GardenDefenseState.Names[placing]+" · "+(allowed?"R旋转 · 左键放置":reason);
             if(!WorldPointer.Pressed)return;
             if(!allowed){Game.ShowMessage(reason);return;}
             var unit=State.Build(Game.State,placing,placement,yaw);if(unit==null){Game.ShowMessage("材料不足，或防御设施已达64个。需要木"+GardenDefenseState.WoodCost[placing]+" 石"+GardenDefenseState.StoneCost[placing]+" 金"+GardenDefenseState.GoldCost[placing]);return;}
-            Spawn(unit,null);Game.Adventure.Commit("已建成"+(placing==0?"豌豆射手：自动攻击12米内可见僵尸。":"防御城墙：阻挡僵尸，受损后可选中修复。"));
+            Spawn(unit,null);Game.Adventure.Commit("已建成"+GardenDefenseState.Names[placing]+"："+GardenDefenseState.Details[placing]);
         }
         void Update()
         {
@@ -132,12 +133,14 @@ namespace StarfieldEra
                 }
                 if(a.unit.kind==2)
                 {if(a.unit.tier>0&&!a.unit.guardsAwake&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,24)){a.unit.guardsAwake=true;Raise(a.unit,3+a.unit.tier*2);Game.Persist();}continue;}
-                if(a.unit.kind!=0||cd>0)continue;
-                GardenZombie target=null;float nearest=ShootRange*ShootRange;
+                if(a.unit.kind==6){var glow=a.GetComponentInChildren<Light>();if(glow)glow.enabled=Game.State.clock.IsNight&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,30);continue;}
+                if((a.unit.kind!=0&&a.unit.kind!=3&&a.unit.kind!=4&&a.unit.kind!=5)||cd>0)continue;
+                GardenZombie target=null;float nearest=a.unit.kind==5?2.8f*2.8f:ShootRange*ShootRange;
                 foreach(var candidate in State.zombies)
                 {float distance=(candidate.Position-new Vector3(a.transform.position.x,0,a.transform.position.z)).sqrMagnitude;if(distance>nearest||!actors.TryGetValue(candidate.id,out var enemy))continue;if(!ClearShot(a.transform.position+Vector3.up*1.1f,enemy.transform.position+Vector3.up,a))continue;nearest=distance;target=candidate;}
                 if(target==null)continue;var towards=actors[target.id].transform.position-a.transform.position;towards.y=0;if(towards.sqrMagnitude>.01f)a.transform.rotation=Quaternion.LookRotation(towards);
-                Fire(a,target);cooldowns[a.unit.id]=1.15f;
+                if(a.unit.kind==5){Damage(actors[target.id],150,a.transform.position);cooldowns[a.unit.id]=6;}
+                else{Fire(a,target,a.unit.kind==3?-.22f:0);if(a.unit.kind==3)Fire(a,target,.22f);cooldowns[a.unit.id]=a.unit.kind==4?1.5f:1.15f;}
             }
             UpdateShots(dt);
         }
@@ -158,13 +161,13 @@ namespace StarfieldEra
                 }
             }
             for(int i=0;i<count&&State.zombies.Count<GardenDefenseState.MaxZombies;i++)
-            {float angle=(i*137.508f+State.nextId*17)*Mathf.Deg2Rad;float radius=1.8f+(i%3)*.35f;if(!navigation.SpawnPoint(tomb.Position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius),out var p))continue;var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z,tier=tomb.tier,sourceTomb=tomb.id};z.health=z.MaxHealth;State.zombies.Add(z);Spawn(null,z);}
+            {float angle=(i*137.508f+State.nextId*17)*Mathf.Deg2Rad;float radius=1.8f+(i%3)*.35f;if(!navigation.SpawnPoint(tomb.Position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius),out var p))continue;var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z,tier=tomb.tier,sourceTomb=tomb.id};int roll=z.id%10;z.variant=roll<4?0:roll<7?1:roll<9?2:3;if(!art||!art.Zombie(z.variant))z.variant=0;z.health=z.MaxHealth;State.zombies.Add(z);Spawn(null,z);}
         }
-        void Fire(GardenActor source,GardenZombie target)
+        void Fire(GardenActor source,GardenZombie target,float offset=0)
         {
             if(shots.Count>=96)return;GameObject pea;
-            if(pool.Count>0){pea=pool.Pop();pea.SetActive(true);}else{pea=GameObject.CreatePrimitive(PrimitiveType.Sphere);pea.name="Flying pea";Destroy(pea.GetComponent<Collider>());pea.GetComponent<Renderer>().sharedMaterial=peaMaterial;pea.transform.SetParent(transform,false);pea.transform.localScale=Vector3.one*.22f;}
-            pea.transform.position=source.transform.position+Vector3.up*1.1f+source.transform.forward*.65f;shots.Add(new Shot{root=pea,target=target.id});
+            if(pool.Count>0){pea=pool.Pop();pea.SetActive(true);}else{pea=GameObject.CreatePrimitive(PrimitiveType.Sphere);pea.name="Flying pea";pea.GetComponent<Collider>().enabled=false;Destroy(pea.GetComponent<Collider>());pea.GetComponent<Renderer>().sharedMaterial=peaMaterial;pea.transform.SetParent(transform,false);pea.transform.localScale=Vector3.one*.22f;}
+            bool ice=source.unit.kind==4;pea.GetComponent<Renderer>().sharedMaterial=ice?iceMaterial:peaMaterial;pea.transform.position=source.transform.position+Vector3.up*1.1f+source.transform.forward*.65f+source.transform.right*offset;shots.Add(new Shot{root=pea,target=target.id,source=source.unit.id,damage=ice?12:15,ice=ice});
         }
         void UpdateShots(float dt)
         {
@@ -175,8 +178,10 @@ namespace StarfieldEra
                 if(!done)
                 {
                     var delta=target.transform.position+Vector3.up-s.root.transform.position;float step=dt*14;
-                    if(Physics.SphereCast(s.root.transform.position,.08f,delta.normalized,out var hit,Mathf.Min(step,delta.magnitude),~0,QueryTriggerInteraction.Ignore))done=true;
-                    else if(delta.magnitude<=step+.15f){Damage(target,15,s.root.transform.position);done=true;}
+                    int count=Physics.SphereCastNonAlloc(s.root.transform.position,.08f,delta.normalized,hits,Mathf.Min(step,delta.magnitude),~0,QueryTriggerInteraction.Ignore);bool blocked=count==hits.Length;
+                    for(int h=0;h<count;h++){var collider=hits[h].collider;var owner=collider.GetComponentInParent<GardenActor>();if((owner&&owner.unit!=null&&owner.unit.id==s.source)||collider.transform.IsChildOf(Game.World.Player))continue;blocked=true;break;}
+                    if(blocked)done=true;
+                    else if(delta.magnitude<=step+.15f){if(s.ice)target.slowedUntil=Time.time+2.5f;Damage(target,s.damage,s.root.transform.position);done=true;}
                     else s.root.transform.position+=delta.normalized*step;
                 }
                 if(done){s.root.SetActive(false);pool.Push(s.root);shots.RemoveAt(i);}
@@ -203,9 +208,9 @@ namespace StarfieldEra
             {actor.lostSight=seesPlayer?0:actor.lostSight+dt;if(playerDistance>26||actor.lostSight>6){actor.chasing=false;actor.lostSight=0;actor.path.Clear();}}
             else if(playerDistance<=ChaseRange&&seesPlayer)
             {actor.chasing=true;actor.alertUntil=Time.time+1.5f;feedback.Sound(p,true);actor.repathAt=0;}
-            float speed=(actor.chasing?ChaseSpeed:WanderSpeed)*(1+z.tier*.12f);
+            float speed=(actor.chasing?ChaseSpeed:WanderSpeed)*(1+z.tier*.12f)*(z.variant==3?.75f:1)*(Time.time<actor.slowedUntil?.55f:1);
             GardenUnit goal=null;float nearest=float.MaxValue;
-            if(!actor.chasing)foreach(var unit in State.units)if(unit.kind==0){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
+            if(!actor.chasing)foreach(var unit in State.units)if(unit.kind==0||unit.kind==3||unit.kind==4||unit.kind==5){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
             Vector3 target=actor.chasing?player:goal!=null?actors[goal.id].transform.position:p;GardenActor victim=goal!=null?actors[goal.id]:null;
             float distance=WorldRelief.PlanarDistance(p,target);bool playerNear=actor.chasing&&playerDistance<1.4f&&MeleeClear(actor,player);
             bool stopped=Time.time<actor.stunnedUntil||playerNear||!actor.chasing&&(goal==null||distance<1.2f&&MeleeClear(actor,target,victim));
@@ -280,13 +285,13 @@ namespace StarfieldEra
                 if(!Game.State.SpendEnergy(1)){Game.ShowMessage("体力不足。");return;}
                 playerCooldown=.6f;if(!actor.unit.guardsAwake){actor.unit.guardsAwake=true;Raise(actor.unit,3+actor.unit.tier*2);Game.ShowMessage("墓地守卫被惊动了！击碎墓碑可清除威胁并获得奖励。");}Damage(actor,25);Game.Persist();return;
             }
-            if(actor.Health>=actor.MaxHealth){Game.ShowMessage(actor.DisplayName+"状态良好。豌豆射手自动攻击12米内可见的僵尸，城墙可以阻挡它们。");return;}
+            if(actor.Health>=actor.MaxHealth){Game.ShowMessage(actor.DisplayName+"状态良好。"+GardenDefenseState.Details[actor.unit.kind]);return;}
             if(Game.State.adventure.wood<2||Game.State.adventure.stone<1){Game.ShowMessage("修复需要木材2、石料1。");return;}Game.State.adventure.wood-=2;Game.State.adventure.stone--;actor.unit.health=actor.unit.MaxHealth;Game.ShowMessage("已修复"+actor.DisplayName);Game.Persist();
         }
         public void Dismantle(GardenActor actor)
         {
             if(!actor||actor.unit==null||actor.unit.kind==2)return;int kind=actor.unit.kind;State.units.Remove(actor.unit);Game.State.adventure.wood+=GardenDefenseState.WoodCost[kind]/2;Game.State.adventure.stone+=GardenDefenseState.StoneCost[kind]/2;Remove(actor);Game.Persist();Game.Inspection.Clear();Game.ShowMessage("防御设施已拆除，返还一半木材与石料。");
         }
-        void OnDestroy(){if(peaMaterial)Destroy(peaMaterial);if(previewMaterial)Destroy(previewMaterial);if(preview)Destroy(preview);}
+        void OnDestroy(){if(peaMaterial)Destroy(peaMaterial);if(iceMaterial)Destroy(iceMaterial);if(previewMaterial)Destroy(previewMaterial);if(preview)Destroy(preview);}
     }
 }

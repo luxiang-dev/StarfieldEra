@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/路障僵尸/model-02.glb",
+  "name": "ConeZombie",
+  "animated": true,
+  "originalFaces": 18000,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.002",
+      "texture": "ConeZombie_BaseColor0.png"
+    }
+  ]
+}

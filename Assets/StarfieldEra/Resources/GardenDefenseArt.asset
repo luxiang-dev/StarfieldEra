@@ -16,5 +16,20 @@ MonoBehaviour:
   wall: {fileID: 6294641462012014960, guid: c41ee15bdaddc704ca692f45b8a675fa, type: 3}
   tomb: {fileID: 6972837065814293269, guid: 760a8f41ed40874898b3275807c4ef0a, type: 3}
   zombie: {fileID: 7531750065656595560, guid: 49d7d2ee594b133b3ae13d0f60d34592, type: 3}
+  twinPea: {fileID: 6609684289224311501, guid: b3d94d2cdff20aee6bb563105485ead5, type: 3}
+  icePea: {fileID: 2283465484066989130, guid: 5e959f3223e70ce9993571101e16a5af, type: 3}
+  coneZombie: {fileID: 5123456276254923544, guid: 8416951f3eb68179d8968664245813ea, type: 3}
+  bucketZombie: {fileID: 6082075301772050801, guid: c23a1f783ea6d17e5807302ba0e0eb57, type: 3}
+  bruteZombie: {fileID: 2299641809699954344, guid: 408ddc5e4dc452398880f01d005b8f01, type: 3}
+  chomper: {fileID: 1498220056160375504, guid: 5704ef7e11c5f21c490af8f09622a44a, type: 3}
+  lantern: {fileID: 1706210400038825303, guid: 02627de323f79f28c8e4d7211ec90698, type: 3}
   walk: {fileID: -790715479446320866, guid: 0d8c4dc89e214346cb09e096e5e8575d, type: 3}
   dismay: {fileID: -6442539533736019575, guid: 0d8c4dc89e214346cb09e096e5e8575d, type: 3}
+  variantWalk:
+  - {fileID: 7400000, guid: 53bccdd2b5a6b6b06a1c92008e6af5f5, type: 2}
+  - {fileID: 7400000, guid: 1d6e6258120bd8af0977a278ac4c24cc, type: 2}
+  - {fileID: 7400000, guid: 6e294805bb1a80676ade25a1f5892dd7, type: 2}
+  variantDismay:
+  - {fileID: 7400000, guid: 2e4d877a5299c76f9a57bab8a10e2a4d, type: 2}
+  - {fileID: 7400000, guid: 75f95f6d2206c75f186947057b87851a, type: 2}
+  - {fileID: 7400000, guid: 943ccba9492972964add50c5e4305c6e, type: 2}

@@ -143,7 +143,7 @@ namespace StarfieldEra
         }
         string Description()
         {
-            if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\nE近战攻击，消耗体力1。":selected.garden.unit.kind==0?"每1.15秒发射豌豆，射程12米。\n每发伤害15，需要视线畅通。\n受损修复需要木2石1。":selected.garden.unit.kind==1?"城墙可以阻挡僵尸与豌豆。\n受损修复需要木2石1。":"守卫等级 "+(selected.garden.unit.tier+1)+" / 3\nE攻击墓碑，每次伤害25、消耗体力1。\n摧毁后停止生成并清除关联僵尸，\n奖励工具图纸、晶石与星石。" );
+            if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\n攻击伤害 "+selected.garden.zombie.AttackDamage+"。\nE近战攻击，消耗体力1。":selected.garden.unit.kind!=2?GardenDefenseState.Details[selected.garden.unit.kind]+"\n受损修复需要木2石1。":"守卫等级 "+(selected.garden.unit.tier+1)+" / 3\nE攻击墓碑，每次伤害25、消耗体力1。\n摧毁后停止生成并清除关联僵尸，\n奖励工具图纸、晶石与星石。" );
             if(selected.tree&&selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3){var c=game.State.land.Find(selected.tree.cell);return "树苗 · 成长 "+c.treeGrowth+" / 3\n"+(c.treeWatered?"今天已浇水":"今天尚未浇水")+"\n靠近后可为选中的树苗浇水，\n休息后继续生长，长成后可以砍伐。";}
             if(selected.tree)return "树木 · 挥斧 "+selected.tree.hits+" / 3\n需要伐木斧；每斧消耗体力1。\n第一人称需要面向选中的树木。";
             if(selected.rock)return "石料资源 · 需要采矿镐\n开采消耗体力2，采完碎裂消失。\n第一人称需要面向选中的石头。";

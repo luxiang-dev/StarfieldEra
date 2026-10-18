@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/寒冰射手/model-02.glb",
+  "name": "IcePea",
+  "animated": false,
+  "originalFaces": 18000,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "IcePea_BaseColor0.png"
+    }
+  ]
+}

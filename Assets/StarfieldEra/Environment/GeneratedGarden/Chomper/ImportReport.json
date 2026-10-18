@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/食人花-网页版/model.glb",
+  "name": "Chomper",
+  "animated": false,
+  "originalFaces": 50000,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "Chomper_BaseColor0.png"
+    }
+  ]
+}

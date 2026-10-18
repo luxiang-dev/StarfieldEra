@@ -5,14 +5,14 @@ namespace StarfieldEra
 {
     public sealed class GardenActor:MonoBehaviour
     {
-        public bool chasing,dying;public float alertUntil,lostSight,thinkAt,thinkTime,repathAt,stunnedUntil;
+        public bool chasing,dying;public float alertUntil,lostSight,thinkAt,thinkTime,repathAt,stunnedUntil,slowedUntil;
         public Vector3 pathGoal;public int pathIndex;public readonly System.Collections.Generic.List<Vector3> path=new System.Collections.Generic.List<Vector3>();
         Renderer[] surfaces;MaterialPropertyBlock tint;float flashUntil,fallTime;Quaternion fallRotation;
         public GardenUnit unit;public GardenZombie zombie;public GardenDefense owner;
         PlayableGraph graph;AnimationMixerPlayable mixer;AnimationClipPlayable walk,sad;
         public int Health=>unit!=null?unit.health:zombie!=null?zombie.health:0;
         public int MaxHealth=>unit!=null?unit.MaxHealth:zombie!=null?zombie.MaxHealth:60;
-        public string DisplayName=>zombie!=null?(zombie.tier==0?"僵尸":zombie.tier==1?"荒野守卫":"远岭守卫"):unit.kind==0?"豌豆射手":unit.kind==1?"防御城墙":unit.tier==0?"营地墓碑":unit.tier==1?"荒野墓碑":"远岭墓碑";
+        public string DisplayName=>zombie!=null?(zombie.variant==1?"路障僵尸":zombie.variant==2?"铁桶僵尸":zombie.variant==3?"壮汉僵尸":zombie.tier==0?"僵尸":zombie.tier==1?"荒野守卫":"远岭守卫"):unit.kind==2?(unit.tier==0?"营地墓碑":unit.tier==1?"荒野墓碑":"远岭墓碑"):GardenDefenseState.Names[unit.kind];
         public void SetAnimation(Animator animator,AnimationClip walkClip,AnimationClip sadClip)
         {
             if(!animator||!walkClip||!sadClip)return;

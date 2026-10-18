@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/路灯-网页版/0db20093d99dcb7d97360e176c0e2e4b.glb",
+  "name": "CampLantern",
+  "animated": false,
+  "originalFaces": 50000,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "CampLantern_BaseColor0.png"
+    }
+  ]
+}
