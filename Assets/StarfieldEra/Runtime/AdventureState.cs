@@ -10,7 +10,8 @@ namespace StarfieldEra
         public VillageState village=new VillageState();
         public VillageTradeState trade=new VillageTradeState();
         public FrontierState frontier=new FrontierState();
-        public int wood, stone, berries, fish, crystals, science;
+        public int wood=1000, stone=1000;
+        public int berries, fish, crystals, science;
         public int quest;
         public int truffles;
         public CampDefenseState defense=new CampDefenseState();

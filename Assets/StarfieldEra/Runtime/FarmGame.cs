@@ -28,6 +28,7 @@ namespace StarfieldEra
         public SettlementGame Settlement {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
+        public bool IsInWater=>World&&World.HexGrid.InWater(World.Player.position);
         bool jumpRequested;
         public bool IsGrounded=>World&&World.Controller&&(World.Controller.isGrounded||(gravity<=0&&World.Player.position.y-World.HexGrid.GroundHeight(World.Player.position)<.12f));
         public void RequestJump(){if(Management&&Management.IsOpen||Adventure.InBattle||Expedition.Fishing)return;jumpRequested=true;}
@@ -54,7 +55,9 @@ namespace StarfieldEra
             World.Generate();
             World.HexGrid.CompleteTerrain(World,State);
             Physics.SyncTransforms();
-            World.Player.position = World.HexGrid.SafeLand(new Vector3(Mathf.Clamp(State.playerX, -HexWorldGrid.HalfWidth+1, HexWorldGrid.HalfWidth-1), .25f, Mathf.Clamp(State.playerZ, -HexWorldGrid.HalfDepth+1, HexWorldGrid.HalfDepth-1)),World.Controller.radius);
+            var savedPosition=new Vector3(Mathf.Clamp(State.playerX,-HexWorldGrid.HalfWidth+1,HexWorldGrid.HalfWidth-1),0,Mathf.Clamp(State.playerZ,-HexWorldGrid.HalfDepth+1,HexWorldGrid.HalfDepth-1));
+            var savedBed=World.HexGrid.SurfacePoint(savedPosition,.08f);
+            World.Player.position=World.HexGrid.InWater(savedBed)&&World.HexGrid.CanPlayerTraverse(savedBed,World.Controller.radius)?savedBed:World.HexGrid.SafeLand(savedPosition+Vector3.up*.25f,World.Controller.radius);
             if(State.adventure==null) State.adventure=new AdventureState();
             Adventure=gameObject.AddComponent<AdventureGame>();
             Adventure.Initialize(this);
@@ -90,7 +93,7 @@ namespace StarfieldEra
         void RecoverFromUnsafeGround()
         {
             var grid=World.HexGrid;var p=World.Player.position;
-            if(grid.CanStand(p,World.Controller.radius)&&p.y>=grid.GroundHeight(p)-.35f)return;
+            if(grid.CanPlayerTraverse(p,World.Controller.radius)&&p.y>=grid.GroundHeight(p)-.35f)return;
             var safe=grid.SafeLand(p,World.Controller.radius);
             World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;gravity=-2;
         }
@@ -143,17 +146,18 @@ namespace StarfieldEra
                 World.Player.rotation = Quaternion.Slerp(World.Player.rotation, Quaternion.LookRotation(move), Time.deltaTime * 14);
             if(IsGrounded&&gravity<0)gravity=-2;
             bool jump=jumpRequested||keyboard!=null&&keyboard.spaceKey.wasPressedThisFrame;jumpRequested=false;
-            if(jump&&IsGrounded&&!Adventure.InBattle)gravity=Mathf.Sqrt(2*20*1.25f);
+            if(jump&&IsGrounded&&!Adventure.InBattle)gravity=Mathf.Sqrt(2*20*1.6f);
             float frameDelta=Mathf.Min(Time.deltaTime,.1f);
             float verticalMove=gravity*frameDelta-10*frameDelta*frameDelta;
             gravity=Mathf.Max(-20,gravity-20*frameDelta);
             var grid=World.HexGrid;var before=World.Player.position;
-            float speed=Expedition.MovementSpeed(grid.TerrainAt(before))*(State.storm.DepthAt(before)>.025f?.65f:1);
-            IsSprinting=move.sqrMagnitude>.01f&&!Adventure.InBattle&&(SprintRequested||keyboard!=null&&(keyboard.leftShiftKey.isPressed||keyboard.rightShiftKey.isPressed));
-            var horizontal=grid.ConstrainMovement(before,move*(IsSprinting?6.6f:4)*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius);
+            var terrain=grid.TerrainAt(before);
+            float speed=IsInWater?.5f:Expedition.MovementSpeed(terrain==TerrainKind.Water?TerrainKind.Meadow:terrain)*(State.storm.DepthAt(before)>.025f?.65f:1);
+            IsSprinting=!IsInWater&&move.sqrMagnitude>.01f&&!Adventure.InBattle&&(SprintRequested||keyboard!=null&&(keyboard.leftShiftKey.isPressed||keyboard.rightShiftKey.isPressed));
+            var horizontal=grid.ConstrainMovement(before,move*(IsSprinting?6.6f:4)*speed*Mathf.Min(Time.deltaTime,.1f),World.Controller.radius,true);
             World.Controller.Move(horizontal+Vector3.up*verticalMove);
-            // Collision sliding must also respect the shoreline, including the character radius.
-            if(!grid.CanStand(World.Player.position,World.Controller.radius))
+            // Keep region gates and world bounds while allowing airborne and submerged river crossings.
+            if(!grid.CanPlayerTraverse(World.Player.position,World.Controller.radius))
             {var safe=grid.SafeLand(before,World.Controller.radius,false);World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;}
             Vector3 position = World.Player.position;
             // Physical island edge is complemented by bounds so no input can walk off it.

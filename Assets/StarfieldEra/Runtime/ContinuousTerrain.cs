@@ -50,6 +50,7 @@ namespace StarfieldEra
             if(WaterDistance(p)<-.8f)return true;
             return HeightAt(p)>=WaterLevelAt(p)+.12f;
         }
+        public bool HasWaterAt(Vector3 p)=>WaterDistance(p)>=0&&HeightAt(p)<WaterLevelAt(p);
         public float WaterLevelAt(Vector3 p)
         {
             float nearest=float.MaxValue,level=.015f;p.y=0;

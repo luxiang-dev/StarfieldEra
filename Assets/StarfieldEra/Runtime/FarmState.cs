@@ -26,7 +26,7 @@ namespace StarfieldEra
         public const int HarvestPrice = 12;
         public int version = 1;
         public int day = 1;
-        public int coins = 20;
+        public int coins = 1000;
         public int seeds = 12;
         public int harvests;
         public int schema = 2;

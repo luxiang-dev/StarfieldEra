@@ -73,17 +73,27 @@ namespace StarfieldEra
                 if(!WalkableAt(position+StandOffsets[i]*radius))return false;
             return true;
         }
-        public Vector3 ConstrainMovement(Vector3 start,Vector3 displacement,float radius=.3f)
+        // Player traversal allows riverbeds and flooded ground. NPCs and building checks stay dry.
+        bool PlayerTraversableAt(Vector3 p)=>TryCell(p,out _)&&(!Owner||!Owner.Settlement||Owner.Settlement.CanEnter(p));
+        public bool CanPlayerTraverse(Vector3 p,float radius=.3f)
         {
+            if(!PlayerTraversableAt(p))return false;
+            foreach(var offset in StandOffsets)if(!PlayerTraversableAt(p+offset*radius))return false;
+            return true;
+        }
+        public bool InWater(Vector3 p)=>Surface&&Surface.HasWaterAt(p)&&p.y<Surface.WaterLevelAt(p)+.12f;
+        public Vector3 ConstrainMovement(Vector3 start,Vector3 displacement,float radius=.3f,bool player=false)
+        {
+            bool Allowed(Vector3 p)=>player?CanPlayerTraverse(p,radius):CanStand(p,radius);
             displacement.y=0;if(displacement.sqrMagnitude==0)return Vector3.zero;int steps=Mathf.Max(1,Mathf.CeilToInt(displacement.magnitude/.12f));var step=displacement/steps;var position=start;
             for(int i=0;i<steps;i++)
             {
-                if(CanStand(position+step,radius))position+=step;
+                if(Allowed(position+step))position+=step;
                 else
                 {
                     var x=new Vector3(step.x,0,0);var z=new Vector3(0,0,step.z);
-                    if(CanStand(position+x,radius))position+=x;
-                    if(CanStand(position+z,radius))position+=z;
+                    if(Allowed(position+x))position+=x;
+                    if(Allowed(position+z))position+=z;
                 }
             }
             return position-start;

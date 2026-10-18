@@ -8,6 +8,6 @@ namespace StarfieldEra
         public static readonly string[] Colors={"87A653","557B48","496B67","C7B780","A2ACA2","D8E5DC","C7B997","4597A8"};
         public static bool Walkable(TerrainKind kind)=>kind!=TerrainKind.Water;
         public static bool Buildable(TerrainKind kind)=>kind!=TerrainKind.Water&&kind!=TerrainKind.Marsh;
-        public static string Hint(TerrainKind kind,float? speed=null)=>Names[(int)kind]+" · "+(kind==TerrainKind.Water?"不可通行、不可建造":"移动 "+UnityEngine.Mathf.RoundToInt((speed??Speed[(int)kind])*100)+"%"+(kind==TerrainKind.Marsh?" · 不可建造":""));
+        public static string Hint(TerrainKind kind,float? speed=null)=>Names[(int)kind]+" · "+(kind==TerrainKind.Water?"可下水 · 不可建造":"移动 "+UnityEngine.Mathf.RoundToInt((speed??Speed[(int)kind])*100)+"%"+(kind==TerrainKind.Marsh?" · 不可建造":""));
     }
 }
