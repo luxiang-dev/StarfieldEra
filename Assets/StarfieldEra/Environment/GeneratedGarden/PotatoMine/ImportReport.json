@@ -1,0 +1,11 @@
+{
+  "source": "PotatoMine.glb",
+  "originalFaces": 50002,
+  "gameFaces": 12000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "PotatoMine_BaseColor0.png"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/壮汉僵尸-网页版/model.glb",
+  "name": "BruteZombie",
+  "animated": true,
+  "originalFaces": 50004,
+  "gameFaces": 17999,
+  "materials": [
+    {
+      "name": "Material.002",
+      "texture": "BruteZombie_BaseColor0.png"
+    }
+  ]
+}

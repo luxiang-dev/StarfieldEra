@@ -1,0 +1,11 @@
+{
+  "source": "/home/lx/模型/建筑/营地.glb",
+  "originalFaces": 499376,
+  "gameFaces": 24000,
+  "materials": [
+    {
+      "name": "Material.002",
+      "texture": "Camp_BaseColor0.png"
+    }
+  ]
+}

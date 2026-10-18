@@ -1,0 +1,15 @@
+{
+  "sourceDirectory": "/home/lx/模型/植物大战僵尸",
+  "originalFaces": 499692,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "Zombie_BaseColor0.png"
+    }
+  ],
+  "actions": [
+    "ZombieDismay",
+    "ZombieWalk"
+  ]
+}

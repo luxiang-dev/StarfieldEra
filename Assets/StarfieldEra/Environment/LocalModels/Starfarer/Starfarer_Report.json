@@ -1,0 +1,28 @@
+{
+  "source": "Hunyuan 3.0 LowPoly quad / PBR",
+  "height": 1.8,
+  "vertices": 6406,
+  "faces": 12816,
+  "bones": 22,
+  "unweighted": 0,
+  "actions": [
+    {
+      "name": "Idle",
+      "frames": 61,
+      "fps": 30,
+      "nominalSpeed": 0
+    },
+    {
+      "name": "Walk",
+      "frames": 25,
+      "fps": 30,
+      "nominalSpeed": 1.4
+    },
+    {
+      "name": "Run",
+      "frames": 19,
+      "fps": 30,
+      "nominalSpeed": 3.8
+    }
+  ]
+}

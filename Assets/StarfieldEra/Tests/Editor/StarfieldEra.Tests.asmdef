@@ -1,0 +1,6 @@
+{
+    "name": "StarfieldEra.Tests",
+    "references": ["StarfieldEra.Runtime"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"]
+}

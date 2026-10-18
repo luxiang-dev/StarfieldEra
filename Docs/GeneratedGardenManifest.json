@@ -1,0 +1,72 @@
+[
+  {
+    "name": "TwinPea",
+    "sourceFolder": "双发射手",
+    "file": "model-02.glb",
+    "bytes": 13529684,
+    "sha256": "47928add315df5d71e7699825ee89ab1c55eba94da2069415956cb835bc52a72",
+    "channel": "API",
+    "credits": 30,
+    "freeUses": 0
+  },
+  {
+    "name": "IcePea",
+    "sourceFolder": "寒冰射手",
+    "file": "model-02.glb",
+    "bytes": 14855320,
+    "sha256": "36c780699ac4ed7c8c225a9b4756692c0c55aaa559100891c63bf0b957141587",
+    "channel": "API",
+    "credits": 30,
+    "freeUses": 0
+  },
+  {
+    "name": "ConeZombie",
+    "sourceFolder": "路障僵尸",
+    "file": "model-02.glb",
+    "bytes": 16199472,
+    "sha256": "780e86c816aa79b75f7ba0e3e151f8c4304d797d052cb6a4d047dccfba8790dd",
+    "channel": "API",
+    "credits": 30,
+    "freeUses": 0
+  },
+  {
+    "name": "BucketZombie",
+    "sourceFolder": "铁桶僵尸-网页版",
+    "file": "model.glb",
+    "bytes": 37247976,
+    "sha256": "aaecf1d33ec0c9a4dac288f087eb9a35a4f4e0c62580fe4e6d925393059ae425",
+    "channel": "WEB",
+    "credits": 0,
+    "freeUses": 1
+  },
+  {
+    "name": "BruteZombie",
+    "sourceFolder": "壮汉僵尸-网页版",
+    "file": "model.glb",
+    "bytes": 33146392,
+    "sha256": "d1d5353f5f9ea391196808fbc7617b19a967cfe4aed4e1507d353482a1ea8086",
+    "channel": "WEB",
+    "credits": 0,
+    "freeUses": 1
+  },
+  {
+    "name": "Chomper",
+    "sourceFolder": "食人花-网页版",
+    "file": "model.glb",
+    "bytes": 33214724,
+    "sha256": "c691ef8e22c8510700334a2fff70d443e97d9e50d2af6fe3007cfae44cfa6832",
+    "channel": "WEB",
+    "credits": 0,
+    "freeUses": 1
+  },
+  {
+    "name": "CampLantern",
+    "sourceFolder": "路灯-网页版",
+    "file": "0db20093d99dcb7d97360e176c0e2e4b.glb",
+    "bytes": 36783916,
+    "sha256": "d68b4f6c46e81aafda14bdf54f933726ecb56f1f5224fb1fc22c5332ecfd3ac9",
+    "channel": "WEB",
+    "credits": 0,
+    "freeUses": 1
+  }
+]

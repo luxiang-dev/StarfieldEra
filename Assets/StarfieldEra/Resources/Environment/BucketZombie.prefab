@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6082075301772050801
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6170136358934761607}
+  m_Layer: 0
+  m_Name: BucketZombie
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6170136358934761607
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6082075301772050801}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 699490824930852229}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1026730896555285102
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6170136358934761607}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.9796669
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.9796669
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.9796669
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.027870309
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.263112
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.03941037
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7676612043611361953, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: e55ef0a795fdf9073934064467995617, type: 2}
+    - target: {fileID: 919132149155446097, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+      propertyPath: m_Name
+      value: BucketZombie supplied model
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+--- !u!4 &699490824930852229 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3fb258036ad4a781f8aa914ac588926e, type: 3}
+  m_PrefabInstance: {fileID: 1026730896555285102}
+  m_PrefabAsset: {fileID: 0}

@@ -1,0 +1,13 @@
+{
+  "source": "/home/lx/模型/混元生成/2026-10-18/双发射手/model-02.glb",
+  "name": "TwinPea",
+  "animated": false,
+  "originalFaces": 17996,
+  "gameFaces": 17996,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "TwinPea_BaseColor0.png"
+    }
+  ]
+}

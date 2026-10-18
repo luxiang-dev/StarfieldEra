@@ -1,0 +1,14 @@
+{
+  "source": "/home/lx/模型/资源/捕兽夹.glb",
+  "originalFaces": 499678,
+  "gameFaces": 24000,
+  "parts": {
+    "node_0": 24000
+  },
+  "materials": [
+    {
+      "name": "Material.003",
+      "texture": "AnimalTrap_BaseColor0.png"
+    }
+  ]
+}
