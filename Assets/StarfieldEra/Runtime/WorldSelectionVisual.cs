@@ -90,7 +90,8 @@ namespace StarfieldEra
                 if(!hasBounds){bounds=surface.renderer.bounds;hasBounds=true;}else bounds.Encapsulate(surface.renderer.bounds);
                 if(!outline)continue;
                 var mesh=surface.mesh;
-                if(surface.skin){surface.skin.BakeMesh(surface.baked);mesh=surface.baked;}
+                if(surface.skin){// Bake into renderer-local units before applying the draw matrix (imported rigs use 100x scale).
+                    surface.skin.BakeMesh(surface.baked,true);mesh=surface.baked;}
                 if(!mesh)continue;
                 for(int submesh=0;submesh<mesh.subMeshCount;submesh++)Graphics.DrawMesh(mesh,surface.renderer.localToWorldMatrix,outline,surface.renderer.gameObject.layer,camera,submesh,null,ShadowCastingMode.Off,false,null,LightProbeUsage.Off);
             }

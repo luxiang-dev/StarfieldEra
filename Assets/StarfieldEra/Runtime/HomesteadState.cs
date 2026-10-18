@@ -14,14 +14,14 @@ namespace StarfieldEra
         public int workplaceId;
         public int level, workers, stock, goods, damage, downtime;
         public bool processing;
-        public bool Valid()=>level>=0&&level<=3&&workers>=0&&workers<=2&&stock>=0&&stock<=120&&goods>=0&&goods<=120&&damage>=0&&damage<=100&&downtime>=0&&downtime<=1&&(level>0||workers==0)&&(!processing||level>=2);
-        public void NewDay(int capacity=30,float productivity=1)
+        public bool Valid()=>level>=0&&level<=3&&workers>=0&&workers<=2&&stock>=0&&stock<=1200&&goods>=0&&goods<=1200&&damage>=0&&damage<=100&&downtime>=0&&downtime<=1&&(level>0||workers==0)&&(!processing||level>=2);
+        public void NewDay(int capacity=300,float productivity=1)
         {
             if(downtime>0){downtime--;return;}
             if(level==0||workers==0||damage>=100)return;
-            int raw=(int)Math.Floor(workers*(level+1)*2*productivity+.0001f);
+            int raw=(int)Math.Floor(workers*(level+1)*20*productivity+.0001f);
             stock+=Math.Min(raw,Math.Max(0,capacity-stock));
-            if(processing){int amount=Math.Min(workers*2,Math.Min(stock/2,Math.Max(0,capacity-goods)));stock-=amount*2;goods+=amount;}
+            if(processing){int amount=Math.Min(workers*20,Math.Min(stock/2,Math.Max(0,capacity-goods)));stock-=amount*2;goods+=amount;}
         }
     }
     [Serializable] public sealed class HomesteadState
@@ -48,7 +48,7 @@ namespace StarfieldEra
             if(a.buildings!=null)foreach(var b in a.buildings)if(b!=null&&b.kind==6)yield return b.operation??new ResourceSiteState{level=1};
         }
         public int WorkerCapacity(AdventureState adventure)=>Math.Min(9,3+2*(adventure.buildings?.Count(b=>b!=null&&b.kind==4)??0));
-        public int StorageCapacity(AdventureState adventure)=>Math.Min(120,30+30*(adventure.buildings?.Count(b=>b!=null&&b.kind==5)??0));
+        public int StorageCapacity(AdventureState adventure)=>Math.Min(1200,300+300*(adventure.buildings?.Count(b=>b!=null&&b.kind==5)??0));
         public int UsedWorkers(AdventureState adventure)=>Sites(adventure).Sum(s=>s.workers)+Workshops(adventure).Sum(s=>s.workers);
         public bool Valid(AdventureState adventure)=>carrots>=0&&planks>=0&&bricks>=0&&rabbitQuest>=0&&rabbitQuest<=2&&rabbits!=null&&rabbits.Count<=5&&rabbits.All(r=>r!=null&&r.id>=0&&r.id<5&&r.status>=1&&r.status<=3&&r.fedDay>=-1&&r.care>=0)&&rabbits.Select(r=>r.id).Distinct().Count()==rabbits.Count&&rabbits.Count(r=>r.status==1)<=1&&rabbits.Count(r=>r.status==2)<=3&&lumber!=null&&quarry!=null&&workshop!=null&&workshop.Valid()&&Workshops(adventure).All(s=>s.Valid())&&Sites(adventure).All(s=>s.Valid())&&UsedWorkers(adventure)<=WorkerCapacity(adventure);
         public void NewDay(FarmState farm)
