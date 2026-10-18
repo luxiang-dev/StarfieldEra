@@ -1,0 +1,12 @@
+{
+  "sourceDirectory": "/home/lx/模型/植物大战僵尸",
+  "originalFaces": 500000,
+  "gameFaces": 18000,
+  "materials": [
+    {
+      "name": "Material.001",
+      "texture": "Peashooter_BaseColor0.png"
+    }
+  ],
+  "actions": []
+}

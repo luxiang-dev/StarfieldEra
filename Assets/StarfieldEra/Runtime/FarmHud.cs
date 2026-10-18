@@ -8,9 +8,9 @@ namespace StarfieldEra
     public sealed class FarmHud : MonoBehaviour
     {
         FarmGame game;TMP_FontAsset font;
-        RectTransform header,bottom;
-        TextMeshProUGUI location,date,weatherName,forecast,energyValue,coins,target,message,actionLabel;
-        UnityEngine.UI.Image weatherIcon,contextIcon,energyFill;
+        RectTransform header,bottom,vital;
+        TextMeshProUGUI location,date,weatherName,forecast,energyValue,healthValue,clockValue,coins,target,message,actionLabel;
+        UnityEngine.UI.Image weatherIcon,contextIcon,energyFill,healthFill;
         UnityEngine.UI.Button actionButton;
         string previous="",lastMessage="";float messageUntil;
         readonly Color ink=new Color(.24f,.19f,.13f),cream=new Color(.98f,.88f,.68f);
@@ -30,6 +30,11 @@ namespace StarfieldEra
             energyValue=Label(stamina,"",new Vector2(62,-7),new Vector2(172,28),19,cream);
             var track=StatusCard(stamina,"Stamina track",62,43,164,6);track.GetComponent<UnityEngine.UI.Image>().color=new Color(.07f,.16f,.13f,.8f);
             var fill=StatusCard(track,"Stamina fill",0,0,164,6);energyFill=fill.GetComponent<UnityEngine.UI.Image>();energyFill.color=new Color(.67f,.77f,.39f);energyFill.type=UnityEngine.UI.Image.Type.Filled;energyFill.fillMethod=UnityEngine.UI.Image.FillMethod.Horizontal;
+            vital=StatusCard(transform,"Player health status",20,102,300,78);
+            healthValue=Label(vital,"",new Vector2(14,-8),new Vector2(272,28),21,cream);
+            var healthTrack=StatusCard(vital,"Health track",14,43,272,10);healthTrack.GetComponent<UnityEngine.UI.Image>().color=new Color(.18f,.07f,.07f,.9f);
+            var healthBar=StatusCard(healthTrack,"Health fill",0,0,272,10);healthFill=healthBar.GetComponent<UnityEngine.UI.Image>();healthFill.color=new Color(.83f,.25f,.24f);healthFill.type=UnityEngine.UI.Image.Type.Filled;healthFill.fillMethod=UnityEngine.UI.Image.FillMethod.Horizontal;
+            clockValue=Label(vital,"",new Vector2(14,-56),new Vector2(272,22),13,UITheme.Gold);
             var purse=StatusCard(header,"Coin status",864,12,190,64);UITheme.Icon(purse,14,9,6,48,48);coins=Label(purse,"",new Vector2(66,-17),new Vector2(118,34),24,UITheme.Gold);
             var weatherButton=Button(header,"天气",new Vector2(-298,-15),new Vector2(150,58),()=>game.Management.Toggle("weather"));Right(weatherButton.GetComponent<RectTransform>());DecorateButton(weatherButton,1);
             var handbook=Button(header,"旅人手册",new Vector2(-20,-15),new Vector2(264,58),()=>game.Management.Toggle("inventory"));Right(handbook.GetComponent<RectTransform>());DecorateButton(handbook,9);
@@ -49,17 +54,18 @@ namespace StarfieldEra
             if(game.Message!=lastMessage){lastMessage=game.Message;messageUntil=Time.unscaledTime+7;}
             if(message)message.gameObject.SetActive(!game.SaveHealthy||Time.unscaledTime<messageUntil);
         }
-        public void SetWorldVisible(bool visible){header.gameObject.SetActive(visible);bottom.gameObject.SetActive(visible);}
+        public void SetWorldVisible(bool visible){header.gameObject.SetActive(visible);bottom.gameObject.SetActive(visible);vital.gameObject.SetActive(visible);}
         public void Refresh()
         {
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             bool wet=state.storm.DepthAt(game.World.Player.position)>.025f;
             string terrain=(wet?"积水 · ":"")+TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position))*(wet?.65f:1));
-            string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.clock.MinuteOfDay+"/"+state.survival.health+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
             location.text=AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
             var today=WeatherCatalog.Get(state.Weather);weatherName.text=today.displayName;forecast.text="明日 · "+WeatherCatalog.Get(state.TomorrowWeather).displayName;weatherIcon.sprite=UITheme.WeatherIcon(state.Weather);
+            healthValue.text="生命 "+state.survival.health+" / "+SurvivalState.MaxHealth;healthFill.fillAmount=state.survival.health/(float)SurvivalState.MaxHealth;clockValue.text=state.clock.Display+" · "+state.Season+" · "+(state.clock.IsNight?"夜间":"日间")+" · 20分钟/日";
             energyValue.text="体力 "+state.energy+" / "+FarmState.MaxEnergy;energyFill.fillAmount=state.energy/(float)FarmState.MaxEnergy;coins.text=state.coins.ToString();
             message.text=game.Message+(game.SaveHealthy?"":" · 保存失败，请检查磁盘权限。");
             string context="探索世界";
@@ -81,6 +87,7 @@ namespace StarfieldEra
             if(game.Land.Active){context=game.Land.Hint;canInteract=false;}
             if(game.Construction.Active){context=game.Construction.Hint;canInteract=false;}if(game.Fences.Active){context=game.Fences.Hint;canInteract=false;}
             if(game.Night&&game.Night.Active){context="夜间守卫 · E驱赶身旁野兽 · R修补设施";canInteract=true;actionLabel.text="驱赶";}
+            if(game.Garden&&game.Garden.Placing){context=game.Garden.Hint;canInteract=false;}
             if(game.Night&&game.Night.TrapPlacing){context="陷阱布置 · 点击六步内空地 · 木2石1 · 右键取消";canInteract=false;}
             if(game.Inspection&&game.Inspection.HasSelection&&!game.Construction.Active&&!game.Fences.Active&&!game.Land.Active&&!game.Expedition.Fishing&&!game.Adventure.InBattle){context=game.Inspection.Hint;canInteract=game.Inspection.CanInteract;actionLabel.text="选中目标";}
             contextIcon.sprite=UITheme.GetIcon(game.Night&&game.Night.Active?22:game.Construction.Active||game.Fences.Active?17:game.Land.Active?8:game.Expedition.Fishing?21:crop!=null?20:game.Forestry.HasNearby?18:game.Animals.HasNearby?11:15);

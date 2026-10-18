@@ -17,27 +17,27 @@ namespace StarfieldEra
         Material trapMaterial,spentMaterial;float saveClock;
         public string Forecast
         {
-            get{int target=State.Target(Game.State);return target<0?"今夜平静，下次警戒日为第"+(Game.State.day+(3-Game.State.day%3))+"天":"今夜野兽将袭击："+Game.Homestead.SiteName(target)+"。休息前布置围栏与陷阱。";}
+            get{int target=State.Target(Game.State);return target<0?"今夜平静，下次警戒日为第"+(Game.State.day+(3-Game.State.day%3))+"天":"今夜野兽将袭击："+Game.Homestead.SiteName(target)+"。傍晚18:00自动开始；提前布置围栏与陷阱。";}
         }
         public void Initialize(FarmGame game)
         {
             Game=game;trapMaterial=game.World.Mat("Camp trap timber","B48C51");spentMaterial=game.World.Mat("Spent trap","5D5548");
             RefreshTraps();CreateHud();if(Active)foreach(var threat in State.threats)if(threat.hp>0)SpawnVisual(threat);
         }
-        public bool TryBegin()
+        public bool TryBegin(bool sleepAfter=true)
         {
             if(Active){Game.ShowMessage("先完成夜间守卫。");return true;}
             if(!State.Begin(Game.State))return false;
-            State.returnX=Game.World.Player.position.x;State.returnZ=Game.World.Player.position.z;
-            Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();CancelTrap();Game.Adventure.Hud.Hide();
-            MovePlayer(Game.Homestead.SitePosition(State.siteIndex)+new Vector3(-4,0,-3));
+            State.sleepAfterRaid=sleepAfter;State.returnX=Game.World.Player.position.x;State.returnZ=Game.World.Player.position.z;
+            Game.Garden?.Cancel();Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();CancelTrap();Game.Adventure.Hud.Hide();
+            if(sleepAfter)MovePlayer(Game.Homestead.SitePosition(State.siteIndex)+new Vector3(-4,0,-3));
             Game.Adventure.Commit("夜袭开始！E或驱赶按钮攻击身旁野兽，R或修补按钮修复设施。守住三波袭击。");return true;
         }
         void MovePlayer(Vector3 position)
         {var p=Game.World.HexGrid.SafeLand(position,Game.World.Controller.radius);Game.World.Controller.enabled=false;Game.World.Player.position=p;Game.World.Controller.enabled=true;}
         public void ChooseTrap()
         {
-            if(Active)return;Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();Game.Adventure.Hud.Hide();
+            if(Active)return;Game.Garden?.Cancel();Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();Game.Adventure.Hud.Hide();
             TrapPlacing=true;Game.ShowMessage("陷阱：点击六步内、资源点八步内的空地放置。费用木2石1。右键或Esc取消。");
         }
         public void CancelTrap(){TrapPlacing=false;if(trapPreview)Destroy(trapPreview);trapPreview=null;}
@@ -80,6 +80,7 @@ namespace StarfieldEra
                 }
             }
             raidHud.SetActive(Active);if(!Active)return;
+            if(Game.SimulationPaused)return;
             float dt=Mathf.Min(Time.deltaTime,.1f);State.elapsed=Mathf.Min(60,State.elapsed+dt);State.attackCooldown=Mathf.Max(0,State.attackCooldown-dt);State.repairCooldown=Mathf.Max(0,State.repairCooldown-dt);
             int desired=State.elapsed<18?2:State.elapsed<36?4:6;
             while(State.spawned<desired)SpawnThreat(State.spawned++);
@@ -91,15 +92,15 @@ namespace StarfieldEra
                 var trap=State.traps.Find(t=>!t.spent&&Vector2.Distance(new Vector2(t.x,t.z),new Vector2(threat.x,threat.z))<.85f);
                 if(trap!=null){trap.spent=true;Defeat(threat);RefreshTraps();continue;}
                 bool playerNear=Game.Homestead.Near(root.position,1.15f);
-                if(playerNear&&threat.cooldown<=0){State.playerHP=Mathf.Max(0,State.playerHP-1);threat.cooldown=2;}
+                if(playerNear&&threat.cooldown<=0){Game.DamagePlayer(12);threat.cooldown=2;}
                 else if(WorldRelief.PlanarDistance(root.position,target)<2.65f)
                 {if(threat.cooldown<=0){site.damage=Mathf.Min(100,site.damage+5);threat.cooldown=2;}}
                 else MoveThreat(threat,root,target,dt);
                 threat.x=root.position.x;threat.z=root.position.z;
             }
-            status.text="夜间守卫 · "+Game.Homestead.SiteName(State.siteIndex)+"\n设施 "+(100-site.damage)+" / 100    守卫体力 "+State.playerHP+" / 8    波次 "+Mathf.Min(3,1+(int)(State.elapsed/18))+" / 3    剩余 "+Mathf.CeilToInt(60-State.elapsed)+"秒\nE 驱赶身旁野兽 · R 修补设施（木2石1） · 陷阱与围栏自动防御";
+            status.text="夜间守卫 · "+Game.Homestead.SiteName(State.siteIndex)+"\n设施 "+(100-site.damage)+" / 100    生命 "+Game.State.survival.health+" / 100    波次 "+Mathf.Min(3,1+(int)(State.elapsed/18))+" / 3    剩余 "+Mathf.CeilToInt(60-State.elapsed)+"秒\nE 驱赶身旁野兽 · R 修补设施（木2石1） · 陷阱与围栏自动防御";
             saveClock+=dt;if(saveClock>=5){saveClock=0;Game.Persist();}
-            if(site.damage>=100||State.playerHP<=0)Finish(false);
+            if(site.damage>=100||Game.State.survival.health<=0)Finish(false);
             else if(State.elapsed>=60||State.spawned==6&&State.threats.All(t=>t.hp<=0))Finish(true);
         }
         void SpawnThreat(int id)
@@ -114,6 +115,7 @@ namespace StarfieldEra
             if(LocalEnvironment.Wolf(root,root.position)){}
             else{var body=Game.World.Shape("Wild beast",PrimitiveType.Capsule,root.position+Vector3.up*.4f,new Vector3(.6f,.5f,1),spentMaterial);body.SetParent(root,true);}
             var selectable=root.gameObject.AddComponent<WorldPickTarget>();selectable.threat=threat;WorldInspection.Volume(root);
+            root.gameObject.AddComponent<HealthBars>().InitializeWolf(Game,threat,root,raidHud.transform);
             enemies[threat.id]=root;
         }
         void MoveThreat(RaidThreat threat,Transform root,Vector3 target,float dt)
@@ -148,11 +150,12 @@ namespace StarfieldEra
             if(!State.Repair(Game.State,Game.Homestead.Sites()[chosen])){Game.ShowMessage("修补需要木2石1，设施有损伤；守卫中间隔3秒。");return;}
             Game.Adventure.Commit("设施已修补25点耐久。");
         }
+        public void PlayerDefeated(){if(Active)Finish(false);}
         void Finish(bool won)
         {
             var returnPoint=new Vector3(State.returnX,0,State.returnZ);if(!State.Finish(Game.State,won))return;
-            foreach(var root in enemies.Values)if(root)Destroy(root.gameObject);enemies.Clear();raidHud.SetActive(false);MovePlayer(returnPoint);
-            Game.CompleteSleep();Game.Adventure.Commit(won?"守卫成功！获得15金币，设施完成生产，新的一天开始。":"野兽撤走了。受袭库存损失一半，停产一天；可用木石修复设施。");
+            foreach(var root in enemies.Values)if(root)Destroy(root.gameObject);enemies.Clear();raidHud.SetActive(false);if(State.sleepAfterRaid)MovePlayer(returnPoint);
+            if(State.sleepAfterRaid)Game.CompleteSleep();Game.Adventure.Commit(won?"守卫成功！获得15金币。":"野兽撤走了。受袭库存损失一半，停产一天；可用木石修复设施。");
         }
         void CreateHud()
         {

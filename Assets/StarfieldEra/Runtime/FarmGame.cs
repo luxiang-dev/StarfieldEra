@@ -18,6 +18,8 @@ namespace StarfieldEra
         public FarmAnimals Animals { get; private set; }
         public HomesteadGame Homestead {get;private set;}
         public NightDefense Night {get;private set;}
+        public GardenDefense Garden {get;private set;}
+        public bool SimulationPaused=>Management&&Management.IsOpen||Construction&&Construction.Menu&&Construction.Menu.IsOpen||Adventure&&Adventure.InBattle;
         public ExpeditionGame Expedition { get; private set; }
         public LandStewardship Land {get;private set;}
         public TreeChopping Forestry {get;private set;}
@@ -78,6 +80,8 @@ namespace StarfieldEra
             World.Controller.slopeLimit=50;
             World.RefreshCrops(State);
             Settlement=gameObject.AddComponent<SettlementGame>();Settlement.Initialize(this);
+            Garden=gameObject.AddComponent<GardenDefense>();Garden.Initialize(this);
+            gameObject.AddComponent<WorldClock>().Initialize(this);
             UpdateSelection();
             hud.Refresh();
         }
@@ -180,10 +184,10 @@ namespace StarfieldEra
                 }
                 if (keyboard.eKey.wasPressedThisFrame) Interact();
                 if (keyboard.xKey.wasPressedThisFrame) Forestry.Chop();
-                if (keyboard.rKey.wasPressedThisFrame) {if(Construction.Active)Construction.Rotate();else Water();}
+                if (keyboard.rKey.wasPressedThisFrame&&!(Garden&&Garden.Placing)) {if(Construction.Active)Construction.Rotate();else Water();}
                 if (keyboard.fKey.wasPressedThisFrame) Sleep();
                 if (keyboard.bKey.wasPressedThisFrame) BuySeed();
-                if (keyboard.escapeKey.wasPressedThisFrame) { Inspection.Clear(); Night.CancelTrap(); Construction.Cancel(); Fences.Cancel(); Land.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
+                if (keyboard.escapeKey.wasPressedThisFrame) { Garden?.Cancel(); Inspection.Clear(); Night.CancelTrap(); Construction.Cancel(); Fences.Cancel(); Land.Cancel(); if(!Adventure.InBattle) Adventure.Hud.Hide(); Persist(); }
             }
             hud.Refresh();
         }
@@ -208,6 +212,7 @@ namespace StarfieldEra
 
         public void Interact()
         {
+            if(Garden&&Garden.Placing)return;
             if(Night&&Night.Active){if(Inspection&&Inspection.HasSelection)Inspection.InteractSelected();else Night.Attack();return;}
             if(Night&&Night.TrapPlacing)return;
             if(Expedition.Fishing){Expedition.Reel();return;}
@@ -267,15 +272,31 @@ namespace StarfieldEra
             CompleteSleep();
         }
 
-        public void CompleteSleep()
+        public void CompleteSleep()=>AdvanceNewDay(true);
+
+        public void AdvanceNewDay(bool rested)
         {
             Land.BeforeSleep();
-            State.Sleep();
+            State.AdvanceDay(rested);
             Settlement.AdvanceWeather();
             Land.NewDay();
             Settlement.NewDay();
             Adventure.Commit("新的一天！设施完成了生产。"+Settlement.DaySummary+(Night&&Night.State.Target(State)>=0?Night.Forecast:""));
             World.RefreshCrops(State);
+        }
+
+        public void DamagePlayer(int damage)
+        {
+            if(State.survival.Damage(damage))Persist();
+        }
+
+        public void Respawn()
+        {
+            State.survival.Rest();State.survival.invulnerable=.8f;
+            var safe=World.HexGrid.SafeLand(World.Door+Vector3.back*3,World.Controller.radius);
+            World.Controller.enabled=false;World.Player.position=safe;World.Controller.enabled=true;
+            if(Night&&Night.Active)Night.PlayerDefeated();
+            ShowMessage("你受伤倒下，被带回小屋休整。资源保留；可修复防线后再出发。");Persist();
         }
 
         public void BuySeed()

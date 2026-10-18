@@ -10,11 +10,11 @@ namespace StarfieldEra
     public sealed class WorldChoice
     {
         public Transform root;public HarvestableTree tree;public HarvestableRock rock;public RabbitActor rabbit;public AnimalActor animal;
-        public BuildingInspectable building;public ResourceSiteTarget site;public FenceTarget fence;public WorldEncounter encounter;public RaidThreat threat;public CampTrap trap;
+        public GardenActor garden;public BuildingInspectable building;public ResourceSiteTarget site;public FenceTarget fence;public WorldEncounter encounter;public RaidThreat threat;public CampTrap trap;
         public int plot=-1;public bool land;public Vector2Int cell;
-        public bool Alive=>root&&root.gameObject.activeInHierarchy&&(!tree||!tree.Felled)&&(!rock||!rock.Depleted)&&(threat==null||threat.hp>0);
+        public bool Alive=>(!garden||garden.Health>0)&&root&&root.gameObject.activeInHierarchy&&(!tree||!tree.Felled)&&(!rock||!rock.Depleted)&&(threat==null||threat.hp>0);
         public Vector3 Position=>land?HexWorldGrid.Center(cell.x,cell.y):root?root.position:Vector3.zero;
-        public string Name=>tree?tree.planted?"种植的树木":"野外树木":rock?"石头":rabbit?"兔子 "+(rabbit.id+1):animal?"野猪":building?building.displayName:site?site.index==0?"青苔林场":"白岩采石场":fence?fence.record.gate?"牧场门":"木围栏":encounter!=null?encounter.name:threat!=null?"野狼":trap!=null?"捕兽陷阱":plot>=0?"农田 "+(plot+1):land?"土地 ["+cell.x+","+cell.y+"]":"环境物件";
+        public string Name=>garden?garden.DisplayName:tree?tree.planted?"种植的树木":"野外树木":rock?"石头":rabbit?"兔子 "+(rabbit.id+1):animal?"野猪":building?building.displayName:site?site.index==0?"青苔林场":"白岩采石场":fence?fence.record.gate?"牧场门":"木围栏":encounter!=null?encounter.name:threat!=null?"野狼":trap!=null?"捕兽陷阱":plot>=0?"农田 "+(plot+1):land?"土地 ["+cell.x+","+cell.y+"]":"环境物件";
     }
     public sealed class WorldInspection:MonoBehaviour
     {
@@ -51,13 +51,13 @@ namespace StarfieldEra
         public static bool InRange(Vector3 player,Vector3 target,float range)=>range>=0&&WorldRelief.PlanarDistance(player,target)<=range;
         Vector3 Position(WorldChoice choice)=>choice.plot>=0?game.World.PlotPositions[choice.plot]:choice.Position;
         float Range()
-        {if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
-        public bool CanInteract=>Ready&&Range()>=0&&(!game.Night.Active||selected.threat!=null);
+        {if(selected.garden)return selected.garden.zombie!=null?3:6;if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
+        public bool CanInteract=>Ready&&Range()>=0&&(!game.Night.Active||selected.threat!=null||selected.garden);
         bool Ready=>HasSelection&&selected.Alive&&(Range()==0||InRange(game.World.Player.position,Position(selected),Range()));
         void Update()
         {
             if(Time.unscaledTime>=refreshAt){refreshAt=Time.unscaledTime+1;RefreshPickVolumes();}
-            bool busy=game.Management.IsOpen||game.Construction.Menu.IsOpen||game.Construction.Active||game.Fences.Active||game.Land.Active||game.Night.TrapPlacing||game.Adventure.InBattle||game.Expedition.Fishing||game.Adventure.Hud.IsContextOpen;
+            bool busy=game.Management.IsOpen||game.Construction.Menu.IsOpen||game.Construction.Active||game.Fences.Active||game.Land.Active||game.Night.TrapPlacing||game.Garden&&game.Garden.Placing||game.Adventure.InBattle||game.Expedition.Fishing||game.Adventure.Hud.IsContextOpen;
             if(!busy&&WorldPointer.Available&&!WorldPointer.Blocked&&WorldPointer.Clicked)Pick(game.World.View.ScreenPointToRay(WorldPointer.Position));
             if(panel)panel.gameObject.SetActive(!busy&&HasSelection);
             if(!busy&&HasSelection)RefreshPanel();
@@ -83,6 +83,7 @@ namespace StarfieldEra
         }
         WorldChoice Resolve(Transform t)
         {
+            var garden=t.GetComponentInParent<GardenActor>();if(garden)return new WorldChoice{root=garden.transform,garden=garden};
             var tree=t.GetComponentInParent<HarvestableTree>();if(tree)return new WorldChoice{root=tree.transform,tree=tree};
             var rock=t.GetComponentInParent<HarvestableRock>();if(rock)return new WorldChoice{root=rock.transform,rock=rock};
             var rabbit=t.GetComponentInParent<RabbitActor>();if(rabbit)return new WorldChoice{root=rabbit.transform,rabbit=rabbit};
@@ -133,6 +134,7 @@ namespace StarfieldEra
         }
         string ActionName()
         {
+            if(selected.garden)return selected.garden.zombie!=null?"攻击僵尸":selected.garden.unit.kind==2?"惊动墓碑":"查看 / 修复";
             if(selected.tree)return selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3?"照料树苗":"砍树";
             if(selected.rock)return "开采";if(selected.building||selected.site)return "建筑管理";if(selected.fence)return selected.fence.record.gate?"开关门":"围栏管理";
             if(selected.rabbit)return "兔子操作";if(selected.animal)return "动物操作";if(selected.threat!=null)return "驱赶野狼";
@@ -141,6 +143,7 @@ namespace StarfieldEra
         }
         string Description()
         {
+            if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\nE近战攻击，消耗体力1。":selected.garden.unit.kind==0?"每1.15秒发射豌豆，射程12米。\n每发伤害15，需要视线畅通。\n受损修复需要木2石1。":selected.garden.unit.kind==1?"城墙可以阻挡僵尸与豌豆。\n受损修复需要木2石1。":"夜间唤起僵尸；E可以主动惊动。\n请先在附近布置豌豆射手。" );
             if(selected.tree&&selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3){var c=game.State.land.Find(selected.tree.cell);return "树苗 · 成长 "+c.treeGrowth+" / 3\n"+(c.treeWatered?"今天已浇水":"今天尚未浇水")+"\n靠近后可为选中的树苗浇水，\n休息后继续生长，长成后可以砍伐。";}
             if(selected.tree)return "树木 · 挥斧 "+selected.tree.hits+" / 3\n需要伐木斧；每斧消耗体力1。\n第一人称需要面向选中的树木。";
             if(selected.rock)return "石料资源 · 需要采矿镐\n开采消耗体力2，采完碎裂消失。\n第一人称需要面向选中的石头。";
@@ -165,8 +168,9 @@ namespace StarfieldEra
             description.text=Description()+"\n\n"+(Ready?"已选定目标，E或按钮交互。":"请靠近选中的目标，不会改选附近物件。");
             primary.GetComponentInChildren<TextMeshProUGUI>().text=ActionName();primary.interactable=CanInteract;
             bool water=selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true||selected.tree&&selected.tree.planted;
-            secondary.gameObject.SetActive(water);secondary.GetComponentInChildren<TextMeshProUGUI>().text="为选中目标浇水 · R";secondary.interactable=Ready;
-            previous.interactable=next.interactable=choices.Count>1;FitActions(water);
+            bool dismantle=selected.garden&&selected.garden.unit!=null&&selected.garden.unit.kind!=2;
+            secondary.gameObject.SetActive(water||dismantle);secondary.GetComponentInChildren<TextMeshProUGUI>().text=dismantle?"拆除 · 返还一半材料":"为选中目标浇水 · R";secondary.interactable=Ready;
+            previous.interactable=next.interactable=choices.Count>1;FitActions(water||dismantle);
 
         }
         void FitActions(bool water)
@@ -180,6 +184,7 @@ namespace StarfieldEra
             if(game.Management.IsOpen||game.Construction.Active||game.Fences.Active||game.Land.Active||game.Adventure.InBattle||game.Expedition.Fishing||game.Night.TrapPlacing)return;
             if(!selected.Alive){game.ShowMessage("选中的目标已消失，请重新选择。");return;}
             if(!Ready){game.ShowMessage("请靠近选中的"+selected.Name+"再交互。");return;}
+            if(selected.garden){game.Garden.Interact(selected.garden);return;}
             if(selected.threat!=null){game.Night.Attack(selected.threat);return;}
             if(game.Night.Active){game.ShowMessage("先完成夜间守卫。");return;}
             if(selected.tree){if(selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3)game.Land.InteractCell(selected.tree.cell,true);else game.Forestry.Chop(selected.tree);return;}
@@ -194,7 +199,7 @@ namespace StarfieldEra
             if(selected.land){if(game.State.land.Find(selected.cell)?.tilled==true)game.Land.InteractCell(selected.cell,false);else game.Management.Open("land");return;}
             game.ShowMessage("这个物件暂无交互动作。");
         }
-        void SecondaryAction(){WaterSelected();}
+        void SecondaryAction(){if(selected?.garden&&selected.garden.unit!=null){if(Ready)game.Garden.Dismantle(selected.garden);return;}WaterSelected();}
         public bool WaterSelected()
         {
             if(!HasSelection)return false;

@@ -80,7 +80,8 @@ namespace StarfieldEra
 
         void Apply(bool instant)
         {
-            Shader.SetGlobalFloat("_StarfieldNight",game.Night&&game.Night.Active?1:0);
+            float minute=game.State.clock.MinuteOfDay;float darkness=1-Mathf.SmoothStep(0,1,Mathf.Min(Mathf.InverseLerp(300,420,minute),1-Mathf.InverseLerp(1020,1140,minute)));if(game.Night&&game.Night.Active)darkness=1;
+            Shader.SetGlobalFloat("_StarfieldNight",darkness);
             var kind = Current;
             float blend = instant ? 1 : 1 - Mathf.Exp(-Time.deltaTime / 2);
             float cloudTarget = kind == WeatherType.Sunny ? 0 : kind == WeatherType.Cloudy ? .45f : kind==WeatherType.LightRain?.65f:1;
@@ -93,12 +94,12 @@ namespace StarfieldEra
             if (sun)
             {
                 sun.color = Color.Lerp(clearSun, new Color(.76f,.84f,.94f), cloud * .6f);
-                sun.intensity = clearIntensity * (Mathf.Lerp(1,.40f,cloud)*(game.Night&&game.Night.Active?.3f:1)+flash);
+                sun.intensity = clearIntensity * (Mathf.Lerp(1,.40f,cloud)*Mathf.Lerp(1,.22f,darkness)+flash);
                 sun.shadowStrength = clearShadow * Mathf.Lerp(1,.35f,cloud);
             }
             RenderSettings.ambientLight = Color.Lerp(clearAmbient, new Color(.40f,.47f,.53f), cloud * .7f);
-            if(game.Night&&game.Night.Active)RenderSettings.ambientLight=Color.Lerp(RenderSettings.ambientLight,new Color(.18f,.22f,.34f),.65f);
-            var sky = game.Night&&game.Night.Active?new Color(.08f,.12f,.23f):Color.Lerp(clearSky, new Color(.48f,.57f,.65f), cloud);
+            RenderSettings.ambientLight=Color.Lerp(RenderSettings.ambientLight,new Color(.18f,.22f,.34f),.65f*darkness);
+            var sky=Color.Lerp(Color.Lerp(clearSky,new Color(.48f,.57f,.65f),cloud),new Color(.08f,.12f,.23f),darkness);
             game.World.View.backgroundColor = sky;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;

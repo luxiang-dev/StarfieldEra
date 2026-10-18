@@ -34,6 +34,9 @@ namespace StarfieldEra
         public const float EnergyRecoveryInterval=5;
         public int energy = MaxEnergy;
         public float energyRecoverySeconds;
+        public SurvivalState survival=new SurvivalState();
+        public WorldClockState clock=new WorldClockState();
+        public GardenDefenseState garden=new GardenDefenseState();
         public int selectedCrop;
         public int wheatSeeds, berrySeeds, starSeeds;
         public StormWaterState storm=new StormWaterState();
@@ -62,6 +65,9 @@ namespace StarfieldEra
         }
         public void Upgrade()
         {
+            if(survival==null)survival=new SurvivalState();
+            if(clock==null)clock=new WorldClockState();
+            if(garden==null)garden=new GardenDefenseState();garden.Upgrade();
             if(storm==null)storm=new StormWaterState();
             if(weather==null)weather=new WeatherState();weather.Ensure(day,true);
             if(schema<2){schema=2;energy=MaxEnergy;}
@@ -131,14 +137,15 @@ namespace StarfieldEra
             return true;
         }
 
-        public void Sleep()
+        public void Sleep()=>AdvanceDay(true);
+        public void AdvanceDay(bool rested)
         {
             foreach (var crop in plots)
             {
                 crop.Advance(WeatherCatalog.Get(Weather).cropGrowthMultiplier);
                 crop.watered = false;
             }
-            day++; energy=MaxEnergy;energyRecoverySeconds=0;weather.Ensure(day);weather.survivalExperience++;
+            day++;if(rested){energy=MaxEnergy;energyRecoverySeconds=0;clock.elapsed=0;survival.Rest();}weather.Ensure(day);weather.survivalExperience++;
             adventure?.NewDay(this);
             if(Rainy)foreach(var crop in plots)if(crop.planted&&!crop.Ready)crop.watered=true;
         }
@@ -147,6 +154,7 @@ namespace StarfieldEra
 
         public bool IsValid()
         {
+            if(survival==null||!survival.Valid()||clock==null||!clock.Valid()||garden==null||!garden.Valid())return false;
             if(storm==null||!storm.Valid()||weather==null||!weather.Valid(day)||forestry==null||!forestry.Valid()||mining==null||!mining.Valid())return false;
             if(float.IsNaN(energyRecoverySeconds)||float.IsInfinity(energyRecoverySeconds)||energyRecoverySeconds<0||energyRecoverySeconds>=EnergyRecoveryInterval)return false;
             if(land!=null&&!land.Valid())return false;

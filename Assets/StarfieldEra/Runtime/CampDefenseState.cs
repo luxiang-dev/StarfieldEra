@@ -17,7 +17,7 @@ namespace StarfieldEra
     [Serializable] public sealed class CampDefenseState
     {
         public int lastNight=-1,victories,losses,siteIndex,spawned,playerHP=8;
-        public bool active;
+        public bool active,sleepAfterRaid;
         public float elapsed,attackCooldown,repairCooldown,returnX,returnZ;
         public List<CampTrap> traps=new List<CampTrap>();
         public List<RaidThreat> threats=new List<RaidThreat>();
