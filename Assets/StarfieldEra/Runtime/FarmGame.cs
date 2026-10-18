@@ -19,7 +19,7 @@ namespace StarfieldEra
         public HomesteadGame Homestead {get;private set;}
         public NightDefense Night {get;private set;}
         public GardenDefense Garden {get;private set;}
-        public bool SimulationPaused=>Management&&Management.IsOpen||Construction&&Construction.Menu&&Construction.Menu.IsOpen||Adventure&&Adventure.InBattle;
+        public bool SimulationPaused=>!Ready||SaveMenu&&SaveMenu.IsOpen||Management&&Management.IsOpen||Construction&&Construction.Menu&&Construction.Menu.IsOpen||Adventure&&Adventure.InBattle;
         public ExpeditionGame Expedition { get; private set; }
         public LandStewardship Land {get;private set;}
         public TreeChopping Forestry {get;private set;}
@@ -41,11 +41,29 @@ namespace StarfieldEra
         public bool NearHouse => !InCave && World != null && (Vector3.Distance(Flat(World.Player.position), World.Door) < 2.5f || State.adventure.buildings.Exists(b=>(b.kind==4||b.kind==11)&&WorldRelief.PlanarDistance(World.Player.position,HexWorldGrid.Center(b.column,b.row))<4));
         public string Message { get; private set; } = "欢迎来到星野纪元！走近农田，种下第一颗种子。";
         public bool SaveHealthy { get; private set; } = true;
-        public string SavePath => Path.Combine(Application.persistentDataPath, "farm-v1.json");
+        public string SavePath => SaveSlots.PathFor(activeSlot);
+        int activeSlot; bool dirty; float saveAt;
+        public bool Ready {get;private set;}
+        public SaveMenu SaveMenu {get;private set;}
         FarmHud hud;
-        float gravity;
+        float gravity; float nextTargetScan;
 
         void Awake()
+        {
+            activeSlot=SaveSlots.Active;
+            SaveMenu=gameObject.AddComponent<SaveMenu>();SaveMenu.Initialize(this);
+        }
+
+        public void PrepareReload(){Ready=false;}
+        public void BeginWorld(){activeSlot=SaveSlots.Active;StartCoroutine(LoadWorld());}
+        System.Collections.IEnumerator LoadWorld()
+        {
+            yield return null; yield return new WaitForEndOfFrame();
+            InitializeWorld();
+            Ready=true;SaveMenu.Loaded();
+        }
+
+        void InitializeWorld()
         {
             State = FarmSave.TryLoad(SavePath, out var loaded) ? loaded : new FarmState();
             State.Upgrade();
@@ -104,6 +122,8 @@ namespace StarfieldEra
 
         void Update()
         {
+            if(!Ready||SaveMenu.IsOpen)return;
+            if(dirty&&Time.unscaledTime>=saveAt)FlushSave();
             if(State.RecoverEnergy(Time.deltaTime))Persist();
             RecoverFromUnsafeGround();IsSprinting=false;
             var keyboard = Keyboard.current;
@@ -220,13 +240,14 @@ namespace StarfieldEra
             }
             SelectedPlot = selected;
             World.Select(selected);
-            Adventure?.UpdateTarget();
-            Forestry?.UpdateTarget();
-            Mining?.UpdateTarget();
+            if(Time.unscaledTime>=nextTargetScan){nextTargetScan=Time.unscaledTime+.1f;RefreshTargets();}
         }
+
+        void RefreshTargets(){Adventure?.UpdateTarget();Forestry?.UpdateTarget();Mining?.UpdateTarget();}
 
         public void Interact()
         {
+            RefreshTargets();
             if(Garden&&Garden.Placing)return;
             if(Night&&Night.Active){if(Inspection&&Inspection.HasSelection)Inspection.InteractSelected();else Night.Attack();return;}
             if(Night&&Night.TrapPlacing)return;
@@ -349,20 +370,27 @@ namespace StarfieldEra
 
         public void Persist()
         {
-            if (State == null || World == null) return;
+            if(!Ready)return;
+            if(!dirty)saveAt=Time.unscaledTime+2;
+            dirty=true;
+        }
+
+        public void FlushSave()
+        {
+            if (!Ready || State == null || World == null) return;
             Animals?.SavePositions();
             State.playerX = World.Player.position.x;
             State.playerZ = World.Player.position.z;
-            try { FarmSave.Save(SavePath, State); SaveHealthy = true; }
+            try { FarmSave.Save(SavePath, State); SaveHealthy = true; dirty=false; }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
-                SaveHealthy = false;
+                SaveHealthy = false; saveAt=Time.unscaledTime+10;
                 Debug.LogWarning("Farm progress could not be saved: " + e.Message);
             }
         }
 
-        void OnApplicationPause(bool paused) { if (paused) Persist(); }
-        void OnApplicationQuit() => Persist();
-        void OnDisable() { if (Application.isPlaying) Persist(); }
+        void OnApplicationPause(bool paused) { if (paused) FlushSave(); }
+        void OnApplicationQuit() => FlushSave();
+        void OnDisable() { if (Application.isPlaying) FlushSave(); }
     }
 }

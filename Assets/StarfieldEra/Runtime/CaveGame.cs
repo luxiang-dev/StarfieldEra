@@ -13,8 +13,9 @@ namespace StarfieldEra
         public void Initialize(FarmGame owner)
         {
             game=owner;entrance=game.World.HexGrid.SafeLand(game.World.Door+new Vector3(-18,0,13),1,true);
-            var entry=Target("旧矿洞入口",entrance,EncounterKind.CaveEntrance,0,transform);Portal(entry.root,entrance);Build();
-            interior.gameObject.SetActive(Inside);if(Inside)Teleport(new Vector3(Mathf.Clamp(game.State.playerX,-12,12),Floor+.1f,Mathf.Clamp(game.State.playerZ,-10,24)));
+            var entry=Target("旧矿洞入口",entrance,EncounterKind.CaveEntrance,0,transform);Portal(entry.root,entrance);
+            if(Inside)Build();
+            if(Inside)Teleport(new Vector3(Mathf.Clamp(game.State.playerX,-12,12),Floor+.1f,Mathf.Clamp(game.State.playerZ,-10,24)));
         }
         WorldEncounter Target(string name,Vector3 p,EncounterKind kind,int id,Transform parent)
         {
@@ -71,7 +72,7 @@ namespace StarfieldEra
         public void Enter()
         {
             if(Inside||game.Night.Active||game.Adventure.InBattle)return;bool reset=State.clearedDay>=0&&game.State.day>=State.clearedDay+3;State.Refresh(game.State.day);if(reset){foreach(var enemy in enemies)if(enemy)Destroy(enemy.gameObject);enemies.Clear();}
-            var p=game.World.Player.position;State.returnX=p.x;State.returnZ=p.z;State.inside=true;interior.gameObject.SetActive(true);
+            var p=game.World.Player.position;State.returnX=p.x;State.returnZ=p.z;State.inside=true;if(!interior)Build();interior.gameObject.SetActive(true);
             foreach(var e in targets)if(e.kind==EncounterKind.CaveOre)e.root.gameObject.SetActive(!State.mined[e.id]);else if(e.kind==EncounterKind.CaveChest)e.root.gameObject.SetActive(!State.opened[e.id]);
             for(int i=0;i<5;i++)if(State.enemyHealth[i]>0&&!enemies.Any(e=>e&&e.index==i&&e.actor.Health>0))SpawnEnemy(i);
             Teleport(new Vector3(0,Floor+.1f,-8));game.ShowMessage("进入旧矿洞。点击矿脉、宝箱或守卫，再按E交互。入口可返回营地。");game.Persist();

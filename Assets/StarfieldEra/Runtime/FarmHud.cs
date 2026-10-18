@@ -20,7 +20,7 @@ namespace StarfieldEra
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;
             var scaler=gameObject.AddComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;
             gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-            var events=new GameObject("Farm EventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));events.transform.SetParent(transform);events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
+            if(!FindFirstObjectByType<EventSystem>()){var events=new GameObject("Farm EventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));events.transform.SetParent(transform);events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();}
             header=Panel("World status",new Vector2(0,1),new Vector2(1,1),new Vector2(0,1),Vector2.zero,new Vector2(0,90),new Color(.025f,.075f,.065f,.58f));
             var place=StatusCard(header,"Location status",20,12,250,64);UITheme.Icon(place,15,8,6,48,48);
             location=Label(place,"",new Vector2(64,-7),new Vector2(178,30),22,cream);date=Label(place,"",new Vector2(64,-40),new Vector2(178,25),15,UITheme.Gold);
