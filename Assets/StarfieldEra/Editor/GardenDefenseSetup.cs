@@ -10,14 +10,19 @@ namespace StarfieldEra.Editor
         {
             const string path="Assets/StarfieldEra/Art/GardenChinese.asset";
             var fallback=AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(path);
+            AssetDatabase.ImportAsset("Assets/StarfieldEra/Art/FarmChinese.otf",ImportAssetOptions.ForceUpdate);
+            var primary=AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>("Assets/StarfieldEra/Art/FarmChinese.asset");
+            string extra=new string(System.IO.File.ReadAllText("Assets/StarfieldEra/Art/Glyphs.txt").Where(c=>!primary.characterLookupTable.ContainsKey(c)).ToArray());
             if(!fallback)
             {
                 fallback=TMPro.TMP_FontAsset.CreateFontAsset(AssetDatabase.LoadAssetAtPath<Font>("Assets/StarfieldEra/Art/FarmChinese.otf"),48,5,UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA,512,512,TMPro.AtlasPopulationMode.Dynamic);
-                fallback.name="GardenChinese";
-                if(!fallback.TryAddCharacters("傍僵唤墓墙射尸惊敌畅良豆豌钟闲",out var missing))throw new InvalidOperationException("Missing garden glyphs: "+missing);
-                fallback.atlasPopulationMode=TMPro.AtlasPopulationMode.Static;AssetDatabase.CreateAsset(fallback,path);AssetDatabase.AddObjectToAsset(fallback.material,fallback);
-                foreach(var texture in fallback.atlasTextures)AssetDatabase.AddObjectToAsset(texture,fallback);
+                fallback.name="GardenChinese";AssetDatabase.CreateAsset(fallback,path);AssetDatabase.AddObjectToAsset(fallback.material,fallback);
             }
+            fallback.atlasPopulationMode=TMPro.AtlasPopulationMode.Dynamic;fallback.ClearFontAssetData();
+            if(!fallback.TryAddCharacters(extra,out var missing))throw new InvalidOperationException("Missing garden glyphs: "+missing);
+            fallback.atlasPopulationMode=TMPro.AtlasPopulationMode.Static;
+            foreach(var texture in fallback.atlasTextures)if(!AssetDatabase.Contains(texture))AssetDatabase.AddObjectToAsset(texture,fallback);
+            EditorUtility.SetDirty(fallback);
             var main=AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>("Assets/StarfieldEra/Art/FarmChinese.asset");
             if(main.fallbackFontAssetTable==null)main.fallbackFontAssetTable=new System.Collections.Generic.List<TMPro.TMP_FontAsset>();
             if(!main.fallbackFontAssetTable.Contains(fallback)){main.fallbackFontAssetTable.Add(fallback);EditorUtility.SetDirty(main);}

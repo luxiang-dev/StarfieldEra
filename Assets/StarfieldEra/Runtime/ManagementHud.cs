@@ -330,6 +330,10 @@ namespace StarfieldEra
                 button.GetComponentInChildren<TextMeshProUGUI>().fontSize=10;
             }
             FrontierMapPins(map);
+            foreach(var tomb in game.State.garden.units.Where(u=>u.kind==2))
+            {
+                var site=tomb;var tombMarker=Button(map,(site.tier==0?"营地":site.tier==1?"荒野":"远岭")+"墓碑",0,0,88,30,()=>game.ShowMessage("墓碑坐标 "+site.x.ToString("0")+"，"+site.z.ToString("0")+"；守卫等级 "+(site.tier+1)+"，摧毁可获得工具图纸、晶石与星石。"));var r=tombMarker.GetComponent<RectTransform>();r.anchorMin=r.anchorMax=r.pivot=new Vector2(.5f,.5f);r.anchoredPosition=new Vector2(site.x/(HexWorldGrid.HalfWidth*2)*620,site.z/(HexWorldGrid.HalfDepth*2)*510);tombMarker.GetComponentInChildren<TextMeshProUGUI>().fontSize=12;
+            }
             var den=ExpandedWilderness.DenPosition;var denButton=Button(map,"北岭狼窟",0,0,90,32,()=>game.ShowMessage("狼窟在东北山岭，坐标 58，39。向东北方向探索可抵达。"));var denRect=denButton.GetComponent<RectTransform>();denRect.anchorMin=denRect.anchorMax=denRect.pivot=new Vector2(.5f,.5f);denRect.anchoredPosition=new Vector2(den.x/(HexWorldGrid.HalfWidth*2)*620,den.z/(HexWorldGrid.HalfDepth*2)*510);denButton.GetComponentInChildren<TextMeshProUGUI>().fontSize=13;
             var player=game.World.Player.position;var marker=Box(map,"Player map marker",0,0,12,12,gold);marker.anchorMin=marker.anchorMax=marker.pivot=new Vector2(.5f,.5f);marker.anchoredPosition=new Vector2(player.x/(HexWorldGrid.HalfWidth*2)*620,player.z/(HexWorldGrid.HalfDepth*2)*510);
             Text(content,"草地 · 森林 · 沼泽 · 沙地 · 岩地 · 雪地 · 道路 · 水面",0,538,630,30,16,cream);

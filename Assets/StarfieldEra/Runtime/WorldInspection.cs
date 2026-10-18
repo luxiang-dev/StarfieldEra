@@ -51,7 +51,7 @@ namespace StarfieldEra
         public static bool InRange(Vector3 player,Vector3 target,float range)=>range>=0&&WorldRelief.PlanarDistance(player,target)<=range;
         Vector3 Position(WorldChoice choice)=>choice.plot>=0?game.World.PlotPositions[choice.plot]:choice.Position;
         float Range()
-        {if(selected.garden)return selected.garden.zombie!=null?3:6;if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
+        {if(selected.garden)return selected.garden.zombie!=null||selected.garden.unit.kind==2?3:6;if(selected.building||selected.site)return 0;if(selected.plot>=0||selected.land&&game.State.land.Find(selected.cell)?.tilled==true)return 1.7f;if(selected.tree||selected.rock)return 2.7f;if(selected.encounter!=null||selected.threat!=null)return selected.threat!=null?3:2.75f;if(selected.rabbit||selected.animal)return 6;if(selected.fence)return 6;return selected.land?0:-1;}
         public bool CanInteract=>Ready&&Range()>=0&&(!game.Night.Active||selected.threat!=null||selected.garden);
         bool Ready=>HasSelection&&selected.Alive&&(Range()==0||InRange(game.World.Player.position,Position(selected),Range()));
         void Update()
@@ -109,7 +109,7 @@ namespace StarfieldEra
             // sorted with gameplay targets so foreground objects can also be inspected.
             foreach(var renderer in game.GetComponentsInChildren<Renderer>())
             {
-                if(renderer.GetComponentInParent<DrainageArt>()||renderer.name=="Natural farm beds"||!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
+                if(renderer.GetComponentInParent<GardenCombatFeedback>()||renderer.GetComponentInParent<DrainageArt>()||renderer.name=="Natural farm beds"||!renderer.enabled||renderer is LineRenderer||renderer is ParticleSystemRenderer||renderer.GetComponent<TMP_Text>()||renderer.GetComponent<TMP_SubMesh>()||renderer.transform.IsChildOf(game.World.Player)||renderer.GetComponentInParent<ContinuousTerrain>()||renderer.transform.IsChildOf(game.World.HexGrid.transform))continue;
                 if(renderer.bounds.size.x>30&&renderer.bounds.size.z>30)continue;
                 if(!renderer.bounds.IntersectRay(ray,out float d)||d>limit)continue;
                 var choice=Resolve(renderer.transform)??new WorldChoice{root=renderer.transform};
@@ -134,7 +134,7 @@ namespace StarfieldEra
         }
         string ActionName()
         {
-            if(selected.garden)return selected.garden.zombie!=null?"攻击僵尸":selected.garden.unit.kind==2?"惊动墓碑":"查看 / 修复";
+            if(selected.garden)return selected.garden.zombie!=null?"攻击僵尸":selected.garden.unit.kind==2?"攻击墓碑 · 体力1":"查看 / 修复";
             if(selected.tree)return selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3?"照料树苗":"砍树";
             if(selected.rock)return "开采";if(selected.building||selected.site)return "建筑管理";if(selected.fence)return selected.fence.record.gate?"开关门":"围栏管理";
             if(selected.rabbit)return "兔子操作";if(selected.animal)return "动物操作";if(selected.threat!=null)return "驱赶野狼";
@@ -143,7 +143,7 @@ namespace StarfieldEra
         }
         string Description()
         {
-            if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\nE近战攻击，消耗体力1。":selected.garden.unit.kind==0?"每1.15秒发射豌豆，射程12米。\n每发伤害15，需要视线畅通。\n受损修复需要木2石1。":selected.garden.unit.kind==1?"城墙可以阻挡僵尸与豌豆。\n受损修复需要木2石1。":"夜间唤起僵尸；E可以主动惊动。\n请先在附近布置豌豆射手。" );
+            if(selected.garden)return "生命 "+selected.garden.Health+" / "+selected.garden.MaxHealth+"\n"+(selected.garden.zombie!=null?"僵尸会靠近并攻击射手、城墙和玩家。\nE近战攻击，消耗体力1。":selected.garden.unit.kind==0?"每1.15秒发射豌豆，射程12米。\n每发伤害15，需要视线畅通。\n受损修复需要木2石1。":selected.garden.unit.kind==1?"城墙可以阻挡僵尸与豌豆。\n受损修复需要木2石1。":"守卫等级 "+(selected.garden.unit.tier+1)+" / 3\nE攻击墓碑，每次伤害25、消耗体力1。\n摧毁后停止生成并清除关联僵尸，\n奖励工具图纸、晶石与星石。" );
             if(selected.tree&&selected.tree.planted&&game.State.land.Find(selected.tree.cell)?.treeGrowth<3){var c=game.State.land.Find(selected.tree.cell);return "树苗 · 成长 "+c.treeGrowth+" / 3\n"+(c.treeWatered?"今天已浇水":"今天尚未浇水")+"\n靠近后可为选中的树苗浇水，\n休息后继续生长，长成后可以砍伐。";}
             if(selected.tree)return "树木 · 挥斧 "+selected.tree.hits+" / 3\n需要伐木斧；每斧消耗体力1。\n第一人称需要面向选中的树木。";
             if(selected.rock)return "石料资源 · 需要采矿镐\n开采消耗体力2，采完碎裂消失。\n第一人称需要面向选中的石头。";

@@ -5,11 +5,14 @@ namespace StarfieldEra
 {
     public sealed class GardenActor:MonoBehaviour
     {
+        public bool chasing,dying;public float alertUntil,lostSight,thinkAt,thinkTime,repathAt,stunnedUntil;
+        public Vector3 pathGoal;public int pathIndex;public readonly System.Collections.Generic.List<Vector3> path=new System.Collections.Generic.List<Vector3>();
+        Renderer[] surfaces;MaterialPropertyBlock tint;float flashUntil,fallTime;Quaternion fallRotation;
         public GardenUnit unit;public GardenZombie zombie;public GardenDefense owner;
         PlayableGraph graph;AnimationMixerPlayable mixer;AnimationClipPlayable walk,sad;
         public int Health=>unit!=null?unit.health:zombie!=null?zombie.health:0;
-        public int MaxHealth=>unit!=null?unit.MaxHealth:60;
-        public string DisplayName=>zombie!=null?"僵尸":unit.kind==0?"豌豆射手":unit.kind==1?"防御城墙":"僵尸墓碑";
+        public int MaxHealth=>unit!=null?unit.MaxHealth:zombie!=null?zombie.MaxHealth:60;
+        public string DisplayName=>zombie!=null?(zombie.tier==0?"僵尸":zombie.tier==1?"荒野守卫":"远岭守卫"):unit.kind==0?"豌豆射手":unit.kind==1?"防御城墙":unit.tier==0?"营地墓碑":unit.tier==1?"荒野墓碑":"远岭墓碑";
         public void SetAnimation(Animator animator,AnimationClip walkClip,AnimationClip sadClip)
         {
             if(!animator||!walkClip||!sadClip)return;
@@ -23,6 +26,16 @@ namespace StarfieldEra
             if(walk.GetTime()>=walk.GetAnimationClip().length)walk.SetTime(walk.GetTime()%walk.GetAnimationClip().length);
             if(sad.GetTime()>=sad.GetAnimationClip().length)sad.SetTime(sad.GetTime()%sad.GetAnimationClip().length);
             float weight=Mathf.MoveTowards(mixer.GetInputWeight(0),moving?1:0,delta*5);mixer.SetInputWeight(0,weight);mixer.SetInputWeight(1,1-weight);graph.Evaluate(delta);
+        }
+        public void HitFlash(){if(surfaces==null)surfaces=GetComponentsInChildren<Renderer>();if(tint==null)tint=new MaterialPropertyBlock();flashUntil=Time.time+.14f;}
+        public void Fall()
+        {dying=true;fallTime=0;fallRotation=transform.rotation;foreach(var c in GetComponentsInChildren<Collider>())c.enabled=false;}
+        void LateUpdate()
+        {
+            if(dying){if(owner&&owner.Game.SimulationPaused)return;fallTime+=Time.deltaTime;transform.rotation=fallRotation*Quaternion.Euler(Mathf.SmoothStep(0,82,fallTime/.5f),0,0);if(fallTime>.65f)Destroy(gameObject);}
+            if(surfaces==null)return;
+            bool flashing=Time.time<flashUntil;foreach(var r in surfaces)if(r){if(flashing){r.GetPropertyBlock(tint);tint.SetColor("_BaseColor",new Color(2.2f,.65f,.5f,1));r.SetPropertyBlock(tint);}else r.SetPropertyBlock(null);}
+            if(!flashing)surfaces=null;
         }
         void OnDestroy(){if(graph.IsValid())graph.Destroy();}
     }

@@ -8,7 +8,7 @@ namespace StarfieldEra
     {
         public const float ShootRange=12,ChaseRange=18,ChaseSpeed=2.2f,WanderSpeed=1.3f;
         const int WaveSize=6;const float SpawnInterval=20;
-        float spawnClock;
+        float spawnClock;GardenNavigation navigation;GardenCombatFeedback feedback;
         public FarmGame Game {get;private set;}
         public GardenDefenseState State=>Game.State.garden;
         public bool Placing=>placing>=0;
@@ -22,11 +22,12 @@ namespace StarfieldEra
         sealed class Shot {public GameObject root;public int target;public float age;}
         public void Initialize(FarmGame owner)
         {
-            Game=owner;art=Resources.Load<GardenArtLibrary>("GardenDefenseArt");
+            Game=owner;navigation=new GardenNavigation(owner);var effects=new GameObject("Garden combat feedback");effects.transform.SetParent(transform,false);feedback=effects.AddComponent<GardenCombatFeedback>();feedback.Initialize(owner);art=Resources.Load<GardenArtLibrary>("GardenDefenseArt");
             peaMaterial=Game.World.Mat("Flying garden peas","81C928");previewMaterial=Game.World.Mat("Garden build preview","80B58A");
             var canvas=new GameObject("Garden health bars",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler));canvas.transform.SetParent(transform,false);canvas.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;canvas.GetComponent<Canvas>().sortingOrder=2;
             var scaler=canvas.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;bars=canvas.transform;
             if(!State.initialized)SeedOutpost();
+            EnsureCemeteries();
             foreach(var u in State.units)Spawn(u,null);foreach(var z in State.zombies)Spawn(null,z);
         }
         void SeedOutpost()
@@ -39,6 +40,22 @@ namespace StarfieldEra
                 foreach(var p in candidates){if(!PlaceAllowed(p,spec.kind,out _,false))continue;State.Add(spec.kind,p);break;}
             }
             State.initialized=true;
+        }
+        void EnsureCemeteries()
+        {
+            if(State.cemeteryVersion>=1)return;
+            var home=Game.World.Door;var grid=Game.World.HexGrid;
+            for(int tier=1;tier<=2&&State.units.Count<64;tier++)
+            {
+                var preferred=tier==1?new Vector3(-42,0,28):new Vector3(59,0,43);
+                foreach(var cell in grid.Cells.OrderBy(c=>(HexWorldGrid.Center(c.x,c.y)-preferred).sqrMagnitude))
+                {
+                    var p=HexWorldGrid.Center(cell.x,cell.y);if(!grid.IsDry(cell)||WorldRelief.PlanarDistance(p,home)<(tier==1?35:55)||State.units.Any(u=>WorldRelief.PlanarDistance(u.Position,p)<8))continue;
+                    bool blocked=false;foreach(var c in Physics.OverlapSphere(grid.SurfacePoint(p,.8f),.8f,~0,QueryTriggerInteraction.Ignore))if(!grid.IsGroundCollider(c)){blocked=true;break;}if(blocked)continue;
+                    var tomb=State.Add(2,p);tomb.tier=tier;tomb.health=tomb.MaxHealth;break;
+                }
+            }
+            State.cemeteryVersion=1;
         }
         GardenActor Spawn(GardenUnit unit,GardenZombie zombie)
         {
@@ -100,7 +117,7 @@ namespace StarfieldEra
             {
                 bool firstWave=State.lastWaveDay!=Game.State.day;spawnClock+=dt;
                 if(firstWave||spawnClock>=SpawnInterval)
-                {spawnClock=0;State.lastWaveDay=Game.State.day;foreach(var tomb in State.units.Where(u=>u.kind==2).ToArray())Raise(tomb,firstWave?WaveSize:2);Game.Persist();}
+                {spawnClock=0;State.lastWaveDay=Game.State.day;foreach(var tomb in State.units.Where(u=>u.kind==2).ToArray())Raise(tomb,(firstWave?WaveSize:2)+tomb.tier);Game.Persist();}
             }
             else spawnClock=0;
             tickActors.Clear();foreach(var current in actors.Values)tickActors.Add(current);
@@ -108,7 +125,13 @@ namespace StarfieldEra
             {
                 if(!a||a.Health<=0)continue;int id=a.unit?.id??a.zombie.id;
                 float cd=cooldowns.TryGetValue(id,out var t)?Mathf.Max(0,t-dt):0;cooldowns[id]=cd;
-                if(a.zombie!=null){MoveZombie(a,dt);continue;}
+                if(a.zombie!=null)
+                {
+                    a.thinkTime+=dt;float distance=WorldRelief.PlanarDistance(a.transform.position,Game.World.Player.position);
+                    if(Time.time>=a.thinkAt){float elapsed=Mathf.Min(a.thinkTime,.5f);a.thinkTime=0;a.thinkAt=Time.time+(distance<28?.04f:distance<45?.2f:.6f);MoveZombie(a,elapsed);}continue;
+                }
+                if(a.unit.kind==2)
+                {if(a.unit.tier>0&&!a.unit.guardsAwake&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,24)){a.unit.guardsAwake=true;Raise(a.unit,3+a.unit.tier*2);Game.Persist();}continue;}
                 if(a.unit.kind!=0||cd>0)continue;
                 GardenZombie target=null;float nearest=ShootRange*ShootRange;
                 foreach(var candidate in State.zombies)
@@ -126,8 +149,16 @@ namespace StarfieldEra
         public void Raise(GardenUnit tomb,int count=WaveSize)
         {
             if(tomb==null||tomb.kind!=2||!State.units.Contains(tomb))return;
+            if(GardenDefenseState.InRange(tomb.Position,Game.World.Player.position,35))
+            {
+                while(State.zombies.Count+count>GardenDefenseState.MaxZombies)
+                {
+                    GardenZombie distant=null;float far=40;foreach(var z in State.zombies){float d=WorldRelief.PlanarDistance(z.Position,Game.World.Player.position);if(d>far&&z.sourceTomb!=tomb.id){far=d;distant=z;}}if(distant==null)break;
+                    State.zombies.Remove(distant);if(actors.TryGetValue(distant.id,out var old)){actors.Remove(distant.id);cooldowns.Remove(distant.id);Destroy(old.gameObject);}
+                }
+            }
             for(int i=0;i<count&&State.zombies.Count<GardenDefenseState.MaxZombies;i++)
-            {float angle=(i*137.508f+State.nextId*17)*Mathf.Deg2Rad;float radius=1.8f+(i%3)*.35f;var p=Game.World.HexGrid.SafeLand(tomb.Position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius),.3f);var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z};State.zombies.Add(z);Spawn(null,z);}
+            {float angle=(i*137.508f+State.nextId*17)*Mathf.Deg2Rad;float radius=1.8f+(i%3)*.35f;if(!navigation.SpawnPoint(tomb.Position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius),out var p))continue;var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z,tier=tomb.tier,sourceTomb=tomb.id};z.health=z.MaxHealth;State.zombies.Add(z);Spawn(null,z);}
         }
         void Fire(GardenActor source,GardenZombie target)
         {
@@ -145,45 +176,110 @@ namespace StarfieldEra
                 {
                     var delta=target.transform.position+Vector3.up-s.root.transform.position;float step=dt*14;
                     if(Physics.SphereCast(s.root.transform.position,.08f,delta.normalized,out var hit,Mathf.Min(step,delta.magnitude),~0,QueryTriggerInteraction.Ignore))done=true;
-                    else if(delta.magnitude<=step+.15f){Damage(target,15);done=true;}
+                    else if(delta.magnitude<=step+.15f){Damage(target,15,s.root.transform.position);done=true;}
                     else s.root.transform.position+=delta.normalized*step;
                 }
                 if(done){s.root.SetActive(false);pool.Push(s.root);shots.RemoveAt(i);}
             }
         }
+        bool SpaceFree(GardenActor actor,Vector3 next)
+        {
+            foreach(var other in tickActors)if(other&&other!=actor&&other.zombie!=null&&other.Health>0)
+            {var delta=next-other.transform.position;delta.y=0;if(delta.sqrMagnitude<.25f&&WorldRelief.PlanarDistance(next,other.transform.position)<WorldRelief.PlanarDistance(actor.transform.position,other.transform.position))return false;}
+            return true;
+        }
+        bool MeleeClear(GardenActor attacker,Vector3 target,GardenActor victim=null)
+        {
+            if(Mathf.Abs(attacker.transform.position.y-target.y)>1.3f)return false;
+            bool clear=navigation.Clear(attacker.transform.position,target,attacker.transform,out var obstacle,.1f);
+            return clear||victim&&obstacle&&obstacle.GetComponentInParent<GardenActor>()==victim;
+        }
         void MoveZombie(GardenActor actor,float dt)
         {
-            var p=actor.transform.position;var z=actor.zombie;
-            bool chasing=GardenDefenseState.InRange(p,Game.World.Player.position,ChaseRange);
-            float speed=chasing?ChaseSpeed:WanderSpeed;
+            var p=actor.transform.position;var z=actor.zombie;var player=Game.World.Player.position;
+            float playerDistance=WorldRelief.PlanarDistance(p,player);
+            bool seesPlayer=playerDistance<=26&&navigation.Clear(p,player,actor.transform,out _,.08f);
+            if(actor.chasing)
+            {actor.lostSight=seesPlayer?0:actor.lostSight+dt;if(playerDistance>26||actor.lostSight>6){actor.chasing=false;actor.lostSight=0;actor.path.Clear();}}
+            else if(playerDistance<=ChaseRange&&seesPlayer)
+            {actor.chasing=true;actor.alertUntil=Time.time+1.5f;feedback.Sound(p,true);actor.repathAt=0;}
+            float speed=(actor.chasing?ChaseSpeed:WanderSpeed)*(1+z.tier*.12f);
             GardenUnit goal=null;float nearest=float.MaxValue;
-            foreach(var unit in State.units)if(!chasing&&unit.kind==0){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
-            Vector3 target=chasing?Game.World.Player.position:goal!=null?actors[goal.id].transform.position:p;GardenActor victim=goal!=null?actors[goal.id]:null;
-            bool playerNear=GardenDefenseState.InRange(p,Game.World.Player.position,1.4f);var direction=target-p;direction.y=0;float distance=direction.magnitude;direction=direction.normalized;
+            if(!actor.chasing)foreach(var unit in State.units)if(unit.kind==0){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
+            Vector3 target=actor.chasing?player:goal!=null?actors[goal.id].transform.position:p;GardenActor victim=goal!=null?actors[goal.id]:null;
+            float distance=WorldRelief.PlanarDistance(p,target);bool playerNear=actor.chasing&&playerDistance<1.4f&&MeleeClear(actor,player);
+            bool stopped=Time.time<actor.stunnedUntil||playerNear||!actor.chasing&&(goal==null||distance<1.2f&&MeleeClear(actor,target,victim));
+            Vector3 direction=target-p;direction.y=0;direction.Normalize();
+            if(!stopped&&distance>1.2f)
+            {
+                bool direct=navigation.Clear(p,target,actor.transform,out var obstacle);
+                if(!direct)
+                {
+                    if(Time.time>=actor.repathAt||(actor.pathGoal-target).sqrMagnitude>4)navigation.Route(actor,target);
+                    while(actor.pathIndex<actor.path.Count&&WorldRelief.PlanarDistance(p,actor.path[actor.pathIndex])<.4f)actor.pathIndex++;
+                    if(actor.pathIndex<actor.path.Count){direction=actor.path[actor.pathIndex]-p;direction.y=0;direction.Normalize();}
+                    else if(obstacle)
+                    {
+                        var barrier=obstacle.GetComponentInParent<GardenActor>();var fence=obstacle.GetComponentInParent<FenceTarget>();
+                        float reach=Vector3.Distance(obstacle.ClosestPoint(p+Vector3.up*.65f),p+Vector3.up*.65f);
+                        if(reach<1.1f&&barrier&&barrier.unit!=null&&barrier.unit.kind!=2){victim=barrier;stopped=true;}
+                        else if(reach<1.1f&&fence&&cooldowns[z.id]<=0){Game.Fences.Damage(fence.record);cooldowns[z.id]=1.5f;stopped=true;}
+                    }
+                }
+                // Local separation keeps bodies from converging on a single point.
+                Vector3 separation=Vector3.zero;
+                foreach(var other in tickActors)if(other&&other!=actor&&other.zombie!=null&&other.Health>0)
+                {var delta=p-other.transform.position;delta.y=0;float sq=delta.sqrMagnitude;if(sq<.64f){if(sq<.0001f)delta=new Vector3(z.id%2==0?1:-1,0,0);separation+=delta.normalized*(.8f-Mathf.Sqrt(sq));}}
+                if(separation.sqrMagnitude>.001f)direction=(direction+Vector3.ClampMagnitude(separation,1)*1.4f).normalized;
+            }
             var move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*speed),.28f);
-            bool stopped=distance<1.2f||playerNear;Collider obstacle=null;
-            int count=Physics.SphereCastNonAlloc(p+Vector3.up*.65f,.22f,direction,hits,.8f,~0,QueryTriggerInteraction.Ignore);
-            for(int i=0;i<count;i++){var c=hits[i].collider;if(Game.World.HexGrid.IsGroundCollider(c)||c.transform.IsChildOf(actor.transform)||c is CharacterController)continue;obstacle=c;break;}
-            if(obstacle){var other=obstacle.GetComponentInParent<GardenActor>();if(other&&other.unit!=null&&other.unit.kind!=2){victim=other;stopped=true;}
-                else{var fence=obstacle.GetComponentInParent<FenceTarget>();if(fence){stopped=true;if(cooldowns[z.id]<=0){Game.Fences.Damage(fence.record);cooldowns[z.id]=1.5f;}}
-                    else{direction=Quaternion.Euler(0,(z.id%2==0?65:-65),0)*direction;move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*speed),.28f);var ray=new Ray(p+Vector3.up*.65f,direction);if(Physics.SphereCast(ray,.22f,.65f,~0,QueryTriggerInteraction.Ignore))stopped=true;}}}
-            if(stopped&&cooldowns[z.id]<=0){if(playerNear)Game.DamagePlayer(10);else if(victim)Damage(victim,10);cooldowns[z.id]=1.5f;}
-            if(!stopped){var next=p+move;actor.transform.position=Game.World.HexGrid.SurfacePoint(next);}
+            if(!stopped&&move.sqrMagnitude>.000001f)
+            {
+                var next=Game.World.HexGrid.SurfacePoint(p+move);
+                if(navigation.Clear(p,next,actor.transform,out _)&&SpaceFree(actor,next))actor.transform.position=next;
+                else
+                {
+                    actor.repathAt=0;
+                    bool found=false;for(int i=0;i<4;i++){float angle=(i/2+1)*45*(i%2==0?1:-1);var side=Quaternion.Euler(0,angle,0)*direction;var step=Game.World.HexGrid.ConstrainMovement(p,side*(dt*speed),.28f);var q=Game.World.HexGrid.SurfacePoint(p+step);if(step.sqrMagnitude>.000001f&&navigation.Clear(p,q,actor.transform,out _)&&SpaceFree(actor,q)){actor.transform.position=q;direction=side;found=true;break;}}if(!found)stopped=true;
+                }
+            }
+            if(stopped&&Time.time>=actor.stunnedUntil&&cooldowns[z.id]<=0)
+            {if(playerNear&&MeleeClear(actor,player))Game.DamagePlayer(z.AttackDamage);else if(victim&&WorldRelief.PlanarDistance(p,victim.transform.position)<2.8f&&MeleeClear(actor,victim.transform.position,victim))Damage(victim,z.AttackDamage,p);cooldowns[z.id]=1.5f;}
             if(direction.sqrMagnitude>.01f)actor.transform.rotation=Quaternion.Slerp(actor.transform.rotation,Quaternion.LookRotation(direction),dt*6);
-            actor.Animate(dt*Mathf.Min(1.6f,speed/.85f),!stopped&&move.sqrMagnitude>.000001f);z.x=actor.transform.position.x;z.z=actor.transform.position.z;
+            actor.Animate(dt*Mathf.Min(1.6f,speed/.85f),!stopped&&(actor.transform.position-p).sqrMagnitude>.000001f);z.x=actor.transform.position.x;z.z=actor.transform.position.z;
         }
-        public void Damage(GardenActor actor,int amount)
+        public void Damage(GardenActor actor,int amount,Vector3? from=null)
         {
-            if(!actor||amount<=0)return;
+            if(!actor||actor.dying||actor.Health<=0||amount<=0)return;
+            actor.HitFlash();feedback.Emit(actor.transform.position+Vector3.up*.9f);
+            if(actor.zombie!=null)
+            {actor.stunnedUntil=Time.time+.18f;var away=actor.transform.position-(from??Game.World.Player.position);away.y=0;var step=Game.World.HexGrid.ConstrainMovement(actor.transform.position,away.normalized*.55f,.28f);var target=Game.World.HexGrid.SurfacePoint(actor.transform.position+step);if(navigation.Clear(actor.transform.position,target,actor.transform,out _))actor.transform.position=target;actor.zombie.x=actor.transform.position.x;actor.zombie.z=actor.transform.position.z;actor.repathAt=0;}
             if(actor.zombie!=null){actor.zombie.health=Mathf.Max(0,actor.zombie.health-amount);if(actor.zombie.health==0){State.zombies.Remove(actor.zombie);State.kills++;Game.State.coins+=2;Remove(actor);Game.Persist();}}
-            else{actor.unit.health=Mathf.Max(0,actor.unit.health-amount);if(actor.unit.health==0){State.units.Remove(actor.unit);Remove(actor);Game.Persist();}}
+            else{actor.unit.health=Mathf.Max(0,actor.unit.health-amount);if(actor.unit.health==0){if(actor.unit.kind==2){ClearTomb(actor);return;}State.units.Remove(actor.unit);Remove(actor);Game.Persist();}}
         }
-        void Remove(GardenActor actor){int id=actor.unit?.id??actor.zombie.id;actors.Remove(id);cooldowns.Remove(id);Destroy(actor.gameObject);}
+        void Remove(GardenActor actor){int id=actor.unit?.id??actor.zombie.id;actors.Remove(id);cooldowns.Remove(id);navigation.Invalidate();if(actor.zombie!=null){actor.zombie.health=0;feedback.Emit(actor.transform.position,true);actor.Fall();}else Destroy(actor.gameObject);}
+        void ClearTomb(GardenActor actor)
+        {
+            var tomb=actor.unit;State.units.Remove(tomb);
+            foreach(var z in State.zombies.ToArray())if(z.sourceTomb==tomb.id||GardenDefenseState.InRange(z.Position,tomb.Position,10))
+            {State.zombies.Remove(z);if(actors.TryGetValue(z.id,out var guard))Remove(guard);}
+            State.clearedTombs++;Game.State.adventure.crystals+=2+tomb.tier*2;Game.State.weather.starStones+=1+tomb.tier;Game.State.coins+=15+tomb.tier*15;
+            var equipment=Game.State.adventure.expedition.equipment;int recipe=-1;for(int i=6;i<equipment.blueprints.Length;i++)if(!equipment.blueprints[i]){equipment.blueprints[i]=true;recipe=i;break;}
+            if(recipe<0)Game.State.adventure.crystals+=2;
+            feedback.Emit(actor.transform.position,true);Remove(actor);Game.Persist();Game.Inspection.Clear();
+            Game.ShowMessage("墓地已清除，停止生成僵尸。获得晶石"+(2+tomb.tier*2)+"、星石"+(1+tomb.tier)+"、金币"+(15+tomb.tier*15)+(recipe>=0?"，工具图纸："+EquipmentCatalog.Recipes[recipe].name:"，图纸已齐，额外晶石2")+"。");
+        }
         public void Interact(GardenActor actor)
         {
             if(!actor)return;
-            if(actor.zombie!=null){if(playerCooldown>0)return;if(!GardenDefenseState.InRange(Game.World.Player.position,actor.transform.position,3)){Game.ShowMessage("走近这只僵尸三米以内攻击。");return;}if(!Game.State.SpendEnergy(1)){Game.ShowMessage("体力不足。");return;}playerCooldown=.6f;Damage(actor,20);Game.Persist();return;}
-            if(actor.unit.kind==2){if(!GardenDefenseState.InRange(Game.World.Player.position,actor.transform.position,6))return;Raise(actor.unit);Game.ShowMessage("墓碑被惊动了！僵尸正在靠近，退到豌豆射手身后。");Game.Persist();return;}
+            if(actor.zombie!=null){if(playerCooldown>0)return;if(!GardenDefenseState.InRange(Game.World.Player.position,actor.transform.position,3)){Game.ShowMessage("走近这只僵尸三米以内攻击。");return;}if(!navigation.Clear(Game.World.Player.position,actor.transform.position,Game.World.Player,out _,.1f)){Game.ShowMessage("攻击被障碍挡住。");return;}if(!Game.State.SpendEnergy(1)){Game.ShowMessage("体力不足。");return;}playerCooldown=.6f;Damage(actor,20);Game.Persist();return;}
+            if(actor.unit.kind==2)
+            {
+                if(playerCooldown>0||!GardenDefenseState.InRange(Game.World.Player.position,actor.transform.position,3))return;
+                if(!navigation.Clear(Game.World.Player.position,actor.transform.position,Game.World.Player,out var wall,.1f)&&(!wall||wall.GetComponentInParent<GardenActor>()!=actor)){Game.ShowMessage("攻击被障碍挡住，请绕到墓碑旁边。");return;}
+                if(!Game.State.SpendEnergy(1)){Game.ShowMessage("体力不足。");return;}
+                playerCooldown=.6f;if(!actor.unit.guardsAwake){actor.unit.guardsAwake=true;Raise(actor.unit,3+actor.unit.tier*2);Game.ShowMessage("墓地守卫被惊动了！击碎墓碑可清除威胁并获得奖励。");}Damage(actor,25);Game.Persist();return;
+            }
             if(actor.Health>=actor.MaxHealth){Game.ShowMessage(actor.DisplayName+"状态良好。豌豆射手自动攻击12米内可见的僵尸，城墙可以阻挡它们。");return;}
             if(Game.State.adventure.wood<2||Game.State.adventure.stone<1){Game.ShowMessage("修复需要木材2、石料1。");return;}Game.State.adventure.wood-=2;Game.State.adventure.stone--;actor.unit.health=actor.unit.MaxHealth;Game.ShowMessage("已修复"+actor.DisplayName);Game.Persist();
         }
