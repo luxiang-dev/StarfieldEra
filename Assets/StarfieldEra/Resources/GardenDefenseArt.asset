@@ -23,6 +23,18 @@ MonoBehaviour:
   bruteZombie: {fileID: 2299641809699954344, guid: 408ddc5e4dc452398880f01d005b8f01, type: 3}
   chomper: {fileID: 1498220056160375504, guid: 5704ef7e11c5f21c490af8f09622a44a, type: 3}
   lantern: {fileID: 1706210400038825303, guid: 02627de323f79f28c8e4d7211ec90698, type: 3}
+  potatoMine: {fileID: 7587763577719403794, guid: e94741d4e569856678c0006598982370, type: 3}
+  walnut: {fileID: 682666759887763521, guid: a561d88ef856e760d854889aeadcabe2, type: 3}
+  unitIcons:
+  - {fileID: 21300000, guid: 3723e5f6bbff2b08b98ad19529207e46, type: 3}
+  - {fileID: 21300000, guid: 995d4bc744d20cf7e972f64702de4ca7, type: 3}
+  - {fileID: 0}
+  - {fileID: 21300000, guid: 991831f1c611484c8aeb120f311f4bf6, type: 3}
+  - {fileID: 21300000, guid: cd21b7cec43e0f7c797af84d5d7b223d, type: 3}
+  - {fileID: 21300000, guid: 69fd62acb014bea0caa7d360d3c1a1d0, type: 3}
+  - {fileID: 21300000, guid: 6b8b70682710e3c1a8fd2d03e662b53f, type: 3}
+  - {fileID: 21300000, guid: 542ebd029e224ebc0a8303e4130750f7, type: 3}
+  - {fileID: 21300000, guid: 6f99f7e6ca5f17d11942432f1d983bfc, type: 3}
   walk: {fileID: -790715479446320866, guid: 0d8c4dc89e214346cb09e096e5e8575d, type: 3}
   dismay: {fileID: -6442539533736019575, guid: 0d8c4dc89e214346cb09e096e5e8575d, type: 3}
   variantWalk:

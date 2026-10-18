@@ -9,7 +9,7 @@ namespace StarfieldEra
     {
         FarmGame game;TMP_FontAsset font;
         RectTransform header,bottom,vital;
-        TextMeshProUGUI location,date,weatherName,forecast,energyValue,healthValue,clockValue,coins,target,message,actionLabel;
+        TextMeshProUGUI location,date,weatherName,forecast,energyValue,healthValue,clockValue,readinessValue,coins,target,message,actionLabel;
         UnityEngine.UI.Image weatherIcon,contextIcon,energyFill,healthFill;
         UnityEngine.UI.Button actionButton;
         string previous="",lastMessage="";float messageUntil;
@@ -30,11 +30,12 @@ namespace StarfieldEra
             energyValue=Label(stamina,"",new Vector2(62,-7),new Vector2(172,28),19,cream);
             var track=StatusCard(stamina,"Stamina track",62,43,164,6);track.GetComponent<UnityEngine.UI.Image>().color=new Color(.07f,.16f,.13f,.8f);
             var fill=StatusCard(track,"Stamina fill",0,0,164,6);energyFill=fill.GetComponent<UnityEngine.UI.Image>();energyFill.color=new Color(.67f,.77f,.39f);energyFill.type=UnityEngine.UI.Image.Type.Filled;energyFill.fillMethod=UnityEngine.UI.Image.FillMethod.Horizontal;
-            vital=StatusCard(transform,"Player health status",20,102,300,78);
+            vital=StatusCard(transform,"Player health status",20,102,300,124);
             healthValue=Label(vital,"",new Vector2(14,-8),new Vector2(272,28),21,cream);
             var healthTrack=StatusCard(vital,"Health track",14,43,272,10);healthTrack.GetComponent<UnityEngine.UI.Image>().color=new Color(.18f,.07f,.07f,.9f);
             var healthBar=StatusCard(healthTrack,"Health fill",0,0,272,10);healthFill=healthBar.GetComponent<UnityEngine.UI.Image>();healthFill.color=new Color(.83f,.25f,.24f);healthFill.type=UnityEngine.UI.Image.Type.Filled;healthFill.fillMethod=UnityEngine.UI.Image.FillMethod.Horizontal;
             clockValue=Label(vital,"",new Vector2(14,-56),new Vector2(272,22),13,UITheme.Gold);
+            readinessValue=Label(vital,"",new Vector2(14,-82),new Vector2(272,38),12,new Color(.78f,.84f,.74f));
             var purse=StatusCard(header,"Coin status",864,12,190,64);UITheme.Icon(purse,14,9,6,48,48);coins=Label(purse,"",new Vector2(66,-17),new Vector2(118,34),24,UITheme.Gold);
             var weatherButton=Button(header,"天气",new Vector2(-298,-15),new Vector2(150,58),()=>game.Management.Toggle("weather"));Right(weatherButton.GetComponent<RectTransform>());DecorateButton(weatherButton,1);
             var handbook=Button(header,"旅人手册",new Vector2(-20,-15),new Vector2(264,58),()=>game.Management.Toggle("inventory"));Right(handbook.GetComponent<RectTransform>());DecorateButton(handbook,9);
@@ -60,11 +61,12 @@ namespace StarfieldEra
             var state=game.State;int selected=game.SelectedPlot;var crop=selected<0?null:state.plots[selected];bool managed=game.Management&&game.Management.IsOpen;
             bool wet=state.storm.DepthAt(game.World.Player.position)>.025f;
             string terrain=game.InCave?"地下矿洞 · 开采与战利品":(wet?"积水 · ":"")+TerrainTraits.Hint(game.World.HexGrid.TerrainAt(game.World.Player.position),game.Expedition.MovementSpeed(game.World.HexGrid.TerrainAt(game.World.Player.position))*(wet?.65f:1));
-            string signature=game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.clock.MinuteOfDay+"/"+state.survival.health+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
+            string signature=game.Readiness?.Status+"/"+game.Inspection?.Hint+"/"+game.Mining?.Hint+"/"+game.Forestry?.Hint+"/"+game.IsSprinting+"/"+game.Night?.Active+"/"+game.Night?.TrapPlacing+"/"+managed+"/"+game.World.Adventure.Region+"/"+terrain+"/"+game.Land.NearNewPlot+"/"+game.Land.Hint+"/"+game.Construction.Hint+"/"+game.Fences.Hint+"/"+game.Adventure.Revision+"/"+game.Adventure.TargetHint+"/"+game.Animals.HasNearby+"/"+state.clock.MinuteOfDay+"/"+state.survival.health+"/"+state.day+"/"+state.coins+"/"+state.energy+"/"+selected+"/"+state.selectedCrop+"/"+crop?.planted+"/"+crop?.watered+"/"+crop?.growth+"/"+game.NearHouse+"/"+game.Message+"/"+game.SaveHealthy;
             if(signature==previous)return;previous=signature;
             SetWorldVisible(!managed);
             location.text=game.InCave?"旧矿洞":AdventureContent.Regions[game.World.Adventure.Region];date.text="第 "+state.day+" 天 · "+state.Season;
             var today=WeatherCatalog.Get(state.Weather);weatherName.text=today.displayName;forecast.text="明日 · "+WeatherCatalog.Get(state.TomorrowWeather).displayName;weatherIcon.sprite=UITheme.WeatherIcon(state.Weather);
+            readinessValue.text=game.Readiness?game.Readiness.Status:"准备出征";
             healthValue.text="生命 "+state.survival.health+" / "+SurvivalState.MaxHealth;healthFill.fillAmount=state.survival.health/(float)SurvivalState.MaxHealth;clockValue.text=state.clock.Display+" · "+state.Season+" · "+(state.clock.IsNight?"夜间":"日间")+" · 20分钟/日";
             energyValue.text="体力 "+state.energy+" / "+FarmState.MaxEnergy;energyFill.fillAmount=state.energy/(float)FarmState.MaxEnergy;coins.text=state.coins.ToString();
             message.text=game.Message+(game.SaveHealthy?"":" · 保存失败，请检查磁盘权限。");

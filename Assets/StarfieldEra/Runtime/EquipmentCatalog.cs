@@ -4,18 +4,18 @@ namespace StarfieldEra
 {
     [Serializable] public sealed class EquipmentState
     {
-        public bool[] owned=new bool[12],blueprints=new bool[12];
+        public bool[] owned=new bool[15],blueprints=new bool[15];
         public int version;
         public EquipmentState(){for(int i=0;i<6;i++)owned[i]=blueprints[i]=true;version=1;}
         public void Upgrade(ExpeditionState old)
         {
-            if(owned==null)owned=new bool[12];if(blueprints==null)blueprints=new bool[12];
-            Array.Resize(ref owned,12);Array.Resize(ref blueprints,12);
+            if(owned==null)owned=new bool[15];if(blueprints==null)blueprints=new bool[15];
+            Array.Resize(ref owned,15);Array.Resize(ref blueprints,15);
             if(version==0){for(int i=0;i<6;i++)owned[i]=blueprints[i]=true;version=1;}
             if(old.fishingRod){owned[7]=owned[9]=true;}if(old.marshBoots)owned[10]=true;if(old.starAmulet)owned[11]=true;
-            for(int i=0;i<12;i++)if(owned[i])blueprints[i]=true;
+            for(int i=0;i<15;i++)if(owned[i])blueprints[i]=true;
         }
-        public bool Valid()=>version==1&&owned!=null&&owned.Length==12&&blueprints!=null&&blueprints.Length==12&&Enumerable.Range(0,12).All(i=>!owned[i]||blueprints[i]);
+        public bool Valid()=>version==1&&owned!=null&&owned.Length==15&&blueprints!=null&&blueprints.Length==15&&Enumerable.Range(0,15).All(i=>!owned[i]||blueprints[i]);
     }
     public sealed class EquipmentRecipe
     {
@@ -38,7 +38,10 @@ namespace StarfieldEra
             new EquipmentRecipe("forester","育林手套","保护幼苗根系，与铁铲配合植树造林。",0,0,4,5,8),
             new EquipmentRecipe("rod","精制鱼竿","替代木制鱼竿并扩大收线窗口。",8,0,4,0,18,1,2),
             new EquipmentRecipe("boots","湿地长靴","沼泽速度80%，雪地85%。不能踏水。",4,0,8,20,20,1),
-            new EquipmentRecipe("amulet","星辉护符","伙伴体力+10，伤害+3。",0,0,0,0,30,2,6,3,2)};
+            new EquipmentRecipe("amulet","星辉护符","伙伴体力+10，伤害+3。",0,0,0,0,30,2,6,3,2),
+            new EquipmentRecipe("lantern","远行提灯","夜间或矿洞自动照明8米，解除缺光时25%的移动惩罚。",6,3,2,15,10,1),
+            new EquipmentRecipe("raincoat","防雨斗篷","阻止雨天淋湿积累。湿透会降低移动速度并消耗体力；下水仍会浸湿。",2,0,10,20,12,1),
+            new EquipmentRecipe("coat","保暖外套","雪地与夜间山地防寒，缓慢消除寒冷。寒冷会降低移动速度，极寒持续损失生命。",0,0,12,25,15,1)};
         public static EquipmentState State(FarmGame g)=>g.State.adventure.expedition.equipment;
         public static int Index(string key)=>Array.FindIndex(Recipes,r=>r.key==key);
         public static bool Has(FarmGame g,string key){int i=Index(key);return i<0||State(g).owned[i]||(key=="basicRod"&&g.Expedition.State.fishingRod);}

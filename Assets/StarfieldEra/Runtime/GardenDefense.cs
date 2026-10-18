@@ -67,14 +67,15 @@ namespace StarfieldEra
             else Debug.LogError("Missing supplied garden art: "+root.name);
             var facing=root.transform.rotation;root.transform.rotation=Quaternion.identity;
             var bounds=new Bounds(root.transform.position+Vector3.up*.8f,Vector3.one);foreach(var r in root.GetComponentsInChildren<Renderer>())bounds.Encapsulate(r.bounds);
-            var box=root.AddComponent<BoxCollider>();box.center=root.transform.InverseTransformPoint(bounds.center);box.size=bounds.size;box.isTrigger=zombie!=null;root.transform.rotation=facing;
+            var box=root.AddComponent<BoxCollider>();box.center=root.transform.InverseTransformPoint(bounds.center);box.size=bounds.size;box.isTrigger=zombie!=null||unit!=null&&unit.kind==7;root.transform.rotation=facing;
             if(zombie!=null)actor.SetAnimation(root.GetComponentInChildren<Animator>(),art?.Walk(zombie.variant),art?.Dismay(zombie.variant));
-            if(unit!=null&&unit.kind==6){var glow=new GameObject("Warm lantern light");glow.transform.SetParent(root.transform,false);glow.transform.localPosition=Vector3.up*2.2f;var light=glow.AddComponent<Light>();light.type=LightType.Point;light.color=new Color(1,.73f,.35f);light.range=8;light.intensity=2;light.shadows=LightShadows.None;light.enabled=Game.State.clock.IsNight;}
+            if(unit!=null&&unit.kind==6){var glow=new GameObject("Warm lantern light");glow.transform.SetParent(root.transform,false);glow.transform.localPosition=Vector3.up*2.2f;var light=glow.AddComponent<Light>();actor.lamp=light;light.type=LightType.Point;light.color=new Color(1,.73f,.35f);light.range=10;light.intensity=2;light.shadows=LightShadows.None;light.enabled=Game.State.clock.IsNight||Game.Night.Active;}
+            if(unit!=null&&unit.kind==7){var signal=GameObject.CreatePrimitive(PrimitiveType.Sphere);signal.name="Armed signal";actor.armedSignal=signal.transform;signal.transform.SetParent(root.transform,false);signal.transform.localPosition=Vector3.up*.95f;signal.transform.localScale=Vector3.one*.13f;var c=signal.GetComponent<Collider>();c.enabled=false;Destroy(c);signal.GetComponent<Renderer>().sharedMaterial=peaMaterial;signal.SetActive(unit.armSeconds>=12);}
             root.AddComponent<HealthBars>().Initialize(Game,actor,bars);actors[unit?.id??zombie.id]=actor;return actor;
         }
         public void BeginPlacement(int kind)
         {
-            if(Game.InCave||kind<0||kind>6||kind==2||!art||!art.Unit(kind)||Game.Night.Active||Game.Adventure.InBattle)return;
+            if(Game.InCave||kind<0||kind>8||kind==2||!art||!art.Unit(kind)||Game.Night.Active||Game.Adventure.InBattle)return;
             if(!EquipmentCatalog.Require(Game,"hammer"))return;
             Game.Management.Close();Game.Construction.Cancel();Game.Fences.Cancel();Game.Land.Cancel();Game.Night.CancelTrap();Game.Inspection.Clear();Cancel();placing=kind;
             preview=Instantiate(art.Unit(kind));preview.name="Garden defense placement";
@@ -131,9 +132,10 @@ namespace StarfieldEra
                     a.thinkTime+=dt;float distance=WorldRelief.PlanarDistance(a.transform.position,Game.World.Player.position);
                     if(Time.time>=a.thinkAt){float elapsed=Mathf.Min(a.thinkTime,.5f);a.thinkTime=0;a.thinkAt=Time.time+(distance<28?.04f:distance<45?.2f:.6f);MoveZombie(a,elapsed);}continue;
                 }
+                if(a.unit.kind==7){TickMine(a,dt);continue;}
                 if(a.unit.kind==2)
                 {if(a.unit.tier>0&&!a.unit.guardsAwake&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,24)){a.unit.guardsAwake=true;Raise(a.unit,3+a.unit.tier*2);Game.Persist();}continue;}
-                if(a.unit.kind==6){var glow=a.GetComponentInChildren<Light>();if(glow)glow.enabled=Game.State.clock.IsNight&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,30);continue;}
+                if(a.unit.kind==6){var glow=a.lamp;if(glow)glow.enabled=(Game.State.clock.IsNight||Game.Night.Active)&&GardenDefenseState.InRange(a.transform.position,Game.World.Player.position,30);continue;}
                 if((a.unit.kind!=0&&a.unit.kind!=3&&a.unit.kind!=4&&a.unit.kind!=5)||cd>0)continue;
                 GardenZombie target=null;float nearest=a.unit.kind==5?2.8f*2.8f:ShootRange*ShootRange;
                 foreach(var candidate in State.zombies)
@@ -144,10 +146,26 @@ namespace StarfieldEra
             }
             UpdateShots(dt);
         }
+        readonly List<GardenActor> blastTargets=new List<GardenActor>();
+        void TickMine(GardenActor mine,float dt)
+        {
+            var u=mine.unit;u.armSeconds=Mathf.Min(12,u.armSeconds+dt);
+            var signal=mine.armedSignal;if(signal)signal.gameObject.SetActive(u.armSeconds>=12);
+            if(u.armSeconds<12)return;
+            bool triggered=false;foreach(var z in State.zombies)if(GardenDefenseState.InRange(u.Position,z.Position,1.6f)&&actors.TryGetValue(z.id,out var enemy)&&navigation.Clear(mine.transform.position,enemy.transform.position,mine.transform,out _,.08f)){triggered=true;break;}
+            if(!triggered)return;
+            blastTargets.Clear();foreach(var enemy in actors.Values)if(enemy&&enemy.zombie!=null&&GardenDefenseState.InRange(u.Position,enemy.zombie.Position,3.4f)&&navigation.Clear(mine.transform.position,enemy.transform.position,mine.transform,out _,.08f))blastTargets.Add(enemy);
+            var origin=mine.transform.position;State.units.Remove(u);Remove(mine);feedback.Emit(origin+Vector3.up*.3f,true,2.5f);
+            foreach(var enemy in blastTargets)Damage(enemy,250,origin);
+            Game.Persist();Game.ShowMessage("土豆地雷爆炸！范围内僵尸受到250伤害。");
+        }
+        public bool Illuminated(Vector3 p)
+        {foreach(var u in State.units)if(u.kind==6&&u.health>0&&GardenDefenseState.InRange(u.Position,p,10))return true;return false;}
+        public string UnitDescription(GardenUnit u)=>GardenDefenseState.Details[u.kind]+(u.kind==7?(u.armSeconds>=12?"\n已就绪 · 等待敌人进入":"\n正在埋设 · 剩余"+Mathf.CeilToInt(12-u.armSeconds)+"秒"):"");
         bool ClearShot(Vector3 from,Vector3 to,GardenActor source)
         {
             var d=to-from;int count=Physics.RaycastNonAlloc(from,d.normalized,hits,d.magnitude,~0,QueryTriggerInteraction.Ignore);
-            for(int i=0;i<count;i++){var c=hits[i].collider;if(c.transform.IsChildOf(source.transform)||c.transform.IsChildOf(Game.World.Player))continue;return false;}return count<hits.Length;
+            for(int i=0;i<count;i++){var c=hits[i].collider;var friendly=c.GetComponentInParent<GardenActor>();if(c.transform.IsChildOf(source.transform)||c.transform.IsChildOf(Game.World.Player)||friendly&&friendly.unit!=null&&(friendly.unit.kind==8||friendly.unit.kind==7))continue;return false;}return count<hits.Length;
         }
         public GardenActor NearestEnemy(Vector3 p,float range)
         {GardenActor target=null;foreach(var a in actors.Values)if(a&&a.zombie!=null&&a.Health>0){float d=WorldRelief.PlanarDistance(p,a.transform.position);if(d<range){range=d;target=a;}}return target;}
@@ -182,7 +200,7 @@ namespace StarfieldEra
                 {
                     var delta=target.transform.position+Vector3.up-s.root.transform.position;float step=dt*14;
                     int count=Physics.SphereCastNonAlloc(s.root.transform.position,.08f,delta.normalized,hits,Mathf.Min(step,delta.magnitude),~0,QueryTriggerInteraction.Ignore);bool blocked=count==hits.Length;
-                    for(int h=0;h<count;h++){var collider=hits[h].collider;var owner=collider.GetComponentInParent<GardenActor>();if((owner&&owner.unit!=null&&owner.unit.id==s.source)||collider.transform.IsChildOf(Game.World.Player))continue;blocked=true;break;}
+                    for(int h=0;h<count;h++){var collider=hits[h].collider;var owner=collider.GetComponentInParent<GardenActor>();if((owner&&owner.unit!=null&&(owner.unit.id==s.source||owner.unit.kind==8||owner.unit.kind==7))||collider.transform.IsChildOf(Game.World.Player))continue;blocked=true;break;}
                     if(blocked)done=true;
                     else if(delta.magnitude<=step+.15f){if(s.ice)target.slowedUntil=Time.time+2.5f;Damage(target,s.damage,s.root.transform.position);done=true;}
                     else s.root.transform.position+=delta.normalized*step;
@@ -223,6 +241,8 @@ namespace StarfieldEra
                 bool direct=navigation.Clear(p,target,actor.transform,out var obstacle);
                 if(!direct)
                 {
+                    var front=obstacle?obstacle.GetComponentInParent<GardenActor>():null;
+                    if(front&&front.unit!=null&&front.unit.kind==8&&Vector3.Distance(obstacle.ClosestPoint(p+Vector3.up*.65f),p+Vector3.up*.65f)<1.1f){victim=front;stopped=true;}
                     if(Time.time>=actor.repathAt||(actor.pathGoal-target).sqrMagnitude>4)navigation.Route(actor,target);
                     while(actor.pathIndex<actor.path.Count&&WorldRelief.PlanarDistance(p,actor.path[actor.pathIndex])<.4f)actor.pathIndex++;
                     if(actor.pathIndex<actor.path.Count){direction=actor.path[actor.pathIndex]-p;direction.y=0;direction.Normalize();}

@@ -9,6 +9,7 @@ namespace StarfieldEra
         public Vector3 pathGoal;public int pathIndex;public readonly System.Collections.Generic.List<Vector3> path=new System.Collections.Generic.List<Vector3>();
         Renderer[] surfaces;MaterialPropertyBlock tint;float flashUntil,fallTime;Quaternion fallRotation;
         public CaveEnemy caveEnemy;
+        public Light lamp;public Transform armedSignal;
         public GardenUnit unit;public GardenZombie zombie;public GardenDefense owner;
         PlayableGraph graph;AnimationMixerPlayable mixer;AnimationClipPlayable walk,sad;
         public int Health=>unit!=null?unit.health:zombie!=null?zombie.health:0;

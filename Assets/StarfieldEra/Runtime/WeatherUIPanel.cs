@@ -28,7 +28,7 @@ namespace StarfieldEra
             {float x=24+i*237;var node=Box(right,"Forecast unlock node "+i,x,134,21,21,i<=state.weatherSkillLevel?gold:new Color(.28f,.36f,.31f));Text(right,i==0?"未解锁":"预判 "+i+" 天",Mathf.Min(x-12,654),165,126,25,14,i<=state.weatherSkillLevel?paper:muted);}
             for(int i=0;i<3;i++)ForecastSlot(right,i+3,i*258+8,207,250,258);
             var note=Box(right,"Farmer experience note",12,482,766,91,new Color(.91f,.85f,.67f));
-            Text(note,"经验分析 · 老农说",15,9,736,25,17,ink);Text(note,WeatherCatalog.Get(state.trueWeatherQueue[2]).experienceProverb,15,39,736,44,18,ink);
+            Text(note,"经验分析 · 老农说",15,9,736,25,17,ink);Text(note,WeatherCatalog.Get(state.trueWeatherQueue[2]).experienceProverb+"\n"+ExpeditionReadiness.ForecastAdvice(game.State.TomorrowWeather),15,36,736,52,14,ink);
         }
         void ForecastSlot(Transform parent,int nthDay,float x,float y,float width,float height)
         {

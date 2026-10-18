@@ -6,6 +6,7 @@ namespace StarfieldEra
     public sealed class CaveGame:MonoBehaviour
     {
         public const float Floor=-40;
+        Light[] lanternLights=System.Array.Empty<Light>();
         FarmGame game;Transform interior;Vector3 entrance;float meleeAt;
         readonly List<CaveEnemy> enemies=new List<CaveEnemy>();readonly List<WorldEncounter> targets=new List<WorldEncounter>();
         public CaveState State=>game.State.cave;public bool Inside=>State.inside;
@@ -59,6 +60,7 @@ namespace StarfieldEra
             for(int i=0;i<2;i++){var e=Target(i==0?"矿工遗留宝箱":"矿主密藏",new Vector3(i==0?-7:7,Floor,i==0?8:22),EncounterKind.CaveChest,i,interior);LocalEnvironment.Chest(e.root,e.Position);WorldInspection.Volume(e.root);e.root.gameObject.SetActive(!State.opened[i]);}
             for(int i=0;i<5;i++)SpawnEnemy(i);
             for(int i=0;i<6;i++){var go=new GameObject("Mine lantern");go.transform.SetParent(interior,false);go.transform.position=new Vector3(i%2==0?-8:8,Floor+3,-7+i*6);var art=Resources.Load<GardenArtLibrary>("GardenDefenseArt");if(art&&art.lantern)Instantiate(art.lantern,go.transform.position-Vector3.up*3,Quaternion.identity,interior);var light=go.AddComponent<Light>();light.type=LightType.Point;light.range=13;light.intensity=2.5f;light.color=i<4?new Color(1,.72f,.4f):new Color(.3f,.75f,1);light.shadows=LightShadows.None;}
+            lanternLights=interior.GetComponentsInChildren<Light>();
         }
         void SpawnEnemy(int i)
         {
@@ -79,6 +81,7 @@ namespace StarfieldEra
         }
         public void Exit(bool persist=true)
         {if(!Inside)return;State.inside=false;interior.gameObject.SetActive(false);Teleport(game.World.HexGrid.SafeLand(new Vector3(State.returnX,0,State.returnZ),game.World.Controller.radius));if(persist)game.Persist();}
+        public bool Illuminated(Vector3 p){if(!interior)return false;foreach(var light in lanternLights)if(light.enabled&&WorldRelief.PlanarDistance(p,light.transform.position)<7)return true;return false;}
         public Vector3 Constrain(Vector3 start,Vector3 step){var p=start+step;p.x=Mathf.Clamp(p.x,-12.7f,12.7f);p.z=Mathf.Clamp(p.z,-11.7f,25.7f);p.y=start.y;return p-start;}
         public void InteractNearest()
         {

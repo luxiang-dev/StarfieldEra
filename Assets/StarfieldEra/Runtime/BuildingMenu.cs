@@ -30,15 +30,15 @@ namespace StarfieldEra
             for(int i=cards.childCount-1;i>=0;i--){cards.GetChild(i).gameObject.SetActive(false);Destroy(cards.GetChild(i).gameObject);}
             for(int i=0;i<tabs.Length;i++)tabs[i].GetComponent<UnityEngine.UI.Image>().color=i==category?new Color(.31f,.36f,.22f,.95f):UITheme.Card;
             int slot=0;
-            for(int kind=0;kind<21;kind++)
+            for(int kind=0;kind<23;kind++)
             {
                 if(!InCategory(kind))continue;int choice=kind;int gardenKind=kind<=16?kind-15:kind-14;
                 string name=kind<12?HexConstruction.Names[kind]:kind==12?"木围栏":kind==13?"牧场门":kind==14?"捕兽陷阱":GardenDefenseState.Names[gardenKind];
                 string cost=kind<12?"木"+HexConstruction.WoodCost[kind]+" 石"+HexConstruction.StoneCost[kind]+" 金"+HexConstruction.GoldCost[kind]:kind==12?"木材 2":kind==13?"木材 4":kind==14?"木材 2 · 石料 1":"木"+GardenDefenseState.WoodCost[gardenKind]+" 石"+GardenDefenseState.StoneCost[gardenKind]+" 金"+GardenDefenseState.GoldCost[gardenKind];
                 var card=Button(cards,"",new Vector2(slot%4*174,-(slot/4)*112),new Vector2(164,102),()=>Choose(choice));card.name=name;
-                UITheme.Icon(card.transform,kind<14?kind:kind==15?20:22,6,8,58,58,false,kind<14);
+                var icon=UITheme.Icon(card.transform,kind<14?kind:kind==15?20:22,6,8,58,58,false,kind<14);if(kind>=15&&UITheme.GardenIcon(gardenKind)){icon.sprite=UITheme.GardenIcon(gardenKind);icon.color=Color.white;}
                 Label(card.transform,name,new Vector2(70,-12),new Vector2(88,30),18,UITheme.Paper);
-                Label(card.transform,kind<12?BuildingFootprints.Counts[kind]+"格建筑":kind==14?"资源点守卫":kind==15?"自动射击 · 12米":kind==16?"耐久300 · 阻挡":kind==17?"双发 · 12米":kind==18?"寒冰减速 · 12米":kind==19?"吞咬 · 2.8米":kind==20?"入夜自动照明":"拖动连续建造",new Vector2(70,-45),new Vector2(88,24),12,new Color(.72f,.82f,.73f));
+                Label(card.transform,kind<12?BuildingFootprints.Counts[kind]+"格建筑":kind==14?"资源点守卫":kind==15?"自动射击 · 12米":kind==16?"耐久300 · 阻挡":kind==17?"双发 · 12米":kind==18?"寒冰减速 · 12米":kind==19?"吞咬 · 2.8米":kind==20?"照亮10米 · 夜行":kind==21?"12秒就绪 · 范围爆炸":kind==22?"耐久800 · 护卫":"拖动连续建造",new Vector2(70,-45),new Vector2(88,24),12,new Color(.72f,.82f,.73f));
                 Label(card.transform,cost,new Vector2(12,-76),new Vector2(145,23),14,UITheme.Gold);slot++;
             }
             int rows=Mathf.Max(1,Mathf.CeilToInt(slot/4f));float body=rows*112;

@@ -28,6 +28,7 @@ namespace StarfieldEra
         public SettlementGame Settlement {get;private set;}
         public bool SprintRequested {get;set;}
         public bool IsSprinting {get;private set;}
+        public ExpeditionReadiness Readiness {get;private set;}
         public CaveGame Cave {get;private set;}
         public bool InCave=>Cave&&Cave.Inside;
         public bool IsInWater=>!InCave&&World&&World.HexGrid.InWater(World.Player.position);
@@ -105,6 +106,7 @@ namespace StarfieldEra
             Settlement=gameObject.AddComponent<SettlementGame>();Settlement.Initialize(this);
             Garden=gameObject.AddComponent<GardenDefense>();Garden.Initialize(this);
             Cave=gameObject.AddComponent<CaveGame>();Cave.Initialize(this);
+            Readiness=gameObject.AddComponent<ExpeditionReadiness>();Readiness.Initialize(this);
             gameObject.AddComponent<WorldClock>().Initialize(this);
             UpdateSelection();
             hud.Refresh();
@@ -177,6 +179,7 @@ namespace StarfieldEra
             var grid=World.HexGrid;var before=World.Player.position;
             var terrain=grid.TerrainAt(before);
             float speed=InCave?1:IsInWater?.5f:Expedition.MovementSpeed(terrain==TerrainKind.Water?TerrainKind.Meadow:terrain)*(State.storm.DepthAt(before)>.025f?.65f:1);
+            speed*=Readiness.SpeedMultiplier;
             IsSprinting=!IsInWater&&move.sqrMagnitude>.01f&&!Adventure.InBattle&&(SprintRequested||keyboard!=null&&(keyboard.leftShiftKey.isPressed||keyboard.rightShiftKey.isPressed));
             var step=move*(IsSprinting?6.6f:4)*speed*frameDelta;
             var horizontal=InCave?Cave.Constrain(before,step):grid.ConstrainMovement(before,step,World.Controller.radius,true);

@@ -6,6 +6,7 @@ namespace StarfieldEra
     {
         public const int MaxHealth=100;
         public int health=MaxHealth;
+        public float wetness,cold;
         public float invulnerable,recoveryDelay,recoverySeconds;
         public bool Damage(int amount)
         {
@@ -21,8 +22,8 @@ namespace StarfieldEra
             recoverySeconds+=healingTime;int heal=(int)(recoverySeconds/2);
             if(heal>0){health=Math.Min(MaxHealth,health+heal);recoverySeconds-=heal*2;}
         }
-        public void Rest(){health=MaxHealth;invulnerable=recoveryDelay=recoverySeconds=0;}
-        public bool Valid()=>health>=0&&health<=MaxHealth&&Finite(invulnerable)&&invulnerable>=0&&invulnerable<=.8f&&Finite(recoveryDelay)&&recoveryDelay>=0&&recoveryDelay<=15&&Finite(recoverySeconds)&&recoverySeconds>=0&&recoverySeconds<2;
+        public void Rest(){health=MaxHealth;invulnerable=recoveryDelay=recoverySeconds=wetness=cold=0;}
+        public bool Valid()=>Finite(wetness)&&wetness>=0&&wetness<=100&&Finite(cold)&&cold>=0&&cold<=100&&health>=0&&health<=MaxHealth&&Finite(invulnerable)&&invulnerable>=0&&invulnerable<=.8f&&Finite(recoveryDelay)&&recoveryDelay>=0&&recoveryDelay<=15&&Finite(recoverySeconds)&&recoverySeconds>=0&&recoverySeconds<2;
         public static bool Finite(float n)=>!float.IsNaN(n)&&!float.IsInfinity(n);
     }
     [Serializable] public sealed class WorldClockState
