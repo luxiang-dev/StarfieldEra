@@ -19,11 +19,12 @@ namespace StarfieldEra
     }
     [Serializable] public sealed class GardenDefenseState
     {
+        public const int MaxZombies=48;
         public bool initialized;public int nextId,lastWaveDay=-1,kills;
         public List<GardenUnit> units=new List<GardenUnit>();public List<GardenZombie> zombies=new List<GardenZombie>();
         public static readonly int[] WoodCost={8,2},StoneCost={2,12},GoldCost={15,5};
         public void Upgrade(){if(units==null)units=new List<GardenUnit>();if(zombies==null)zombies=new List<GardenZombie>();}
-        public bool Valid()=>nextId>=0&&lastWaveDay>=-1&&kills>=0&&units!=null&&units.Count<=64&&units.All(u=>u!=null&&u.Valid())&&zombies!=null&&zombies.Count<=24&&zombies.All(z=>z!=null&&z.Valid())&&units.Select(u=>u.id).Concat(zombies.Select(z=>z.id)).Distinct().Count()==units.Count+zombies.Count;
+        public bool Valid()=>nextId>=0&&lastWaveDay>=-1&&kills>=0&&units!=null&&units.Count<=64&&units.All(u=>u!=null&&u.Valid())&&zombies!=null&&zombies.Count<=MaxZombies&&zombies.All(z=>z!=null&&z.Valid())&&units.Select(u=>u.id).Concat(zombies.Select(z=>z.id)).Distinct().Count()==units.Count+zombies.Count;
         public GardenUnit Add(int kind,Vector3 point,float yaw=0)
         {var u=new GardenUnit{id=nextId++,kind=kind,x=point.x,z=point.z,yaw=yaw};u.health=u.MaxHealth;units.Add(u);return u;}
         public GardenUnit Build(FarmState farm,int kind,Vector3 point,float yaw=0)

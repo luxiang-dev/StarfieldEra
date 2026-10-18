@@ -6,7 +6,9 @@ namespace StarfieldEra
 {
     public sealed class GardenDefense:MonoBehaviour
     {
-        public const float ShootRange=12;
+        public const float ShootRange=12,ChaseRange=18,ChaseSpeed=2.2f,WanderSpeed=1.3f;
+        const int WaveSize=6;const float SpawnInterval=20;
+        float spawnClock;
         public FarmGame Game {get;private set;}
         public GardenDefenseState State=>Game.State.garden;
         public bool Placing=>placing>=0;
@@ -94,7 +96,13 @@ namespace StarfieldEra
         {
             if(!Game)return;if(Placing)PlacementUpdate();if(Game.SimulationPaused)return;
             float dt=Mathf.Min(Time.deltaTime,.1f);playerCooldown=Mathf.Max(0,playerCooldown-dt);
-            if(Game.State.clock.IsNight&&State.lastWaveDay!=Game.State.day){State.lastWaveDay=Game.State.day;foreach(var tomb in State.units.Where(u=>u.kind==2).ToArray())Raise(tomb,2);Game.Persist();}
+            if(Game.State.clock.IsNight)
+            {
+                bool firstWave=State.lastWaveDay!=Game.State.day;spawnClock+=dt;
+                if(firstWave||spawnClock>=SpawnInterval)
+                {spawnClock=0;State.lastWaveDay=Game.State.day;foreach(var tomb in State.units.Where(u=>u.kind==2).ToArray())Raise(tomb,firstWave?WaveSize:2);Game.Persist();}
+            }
+            else spawnClock=0;
             tickActors.Clear();foreach(var current in actors.Values)tickActors.Add(current);
             foreach(var a in tickActors)
             {
@@ -115,11 +123,11 @@ namespace StarfieldEra
             var d=to-from;int count=Physics.RaycastNonAlloc(from,d.normalized,hits,d.magnitude,~0,QueryTriggerInteraction.Ignore);
             for(int i=0;i<count;i++){var c=hits[i].collider;if(c.transform.IsChildOf(source.transform)||c.transform.IsChildOf(Game.World.Player))continue;return false;}return count<hits.Length;
         }
-        public void Raise(GardenUnit tomb,int count=2)
+        public void Raise(GardenUnit tomb,int count=WaveSize)
         {
             if(tomb==null||tomb.kind!=2||!State.units.Contains(tomb))return;
-            for(int i=0;i<count&&State.zombies.Count<24;i++)
-            {var p=Game.World.HexGrid.SafeLand(tomb.Position+new Vector3((i%2==0?1:-1)*1.8f,0,-1.5f),.3f);var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z};State.zombies.Add(z);Spawn(null,z);}
+            for(int i=0;i<count&&State.zombies.Count<GardenDefenseState.MaxZombies;i++)
+            {float angle=(i*137.508f+State.nextId*17)*Mathf.Deg2Rad;float radius=1.8f+(i%3)*.35f;var p=Game.World.HexGrid.SafeLand(tomb.Position+new Vector3(Mathf.Cos(angle)*radius,0,Mathf.Sin(angle)*radius),.3f);var z=new GardenZombie{id=State.nextId++,x=p.x,z=p.z};State.zombies.Add(z);Spawn(null,z);}
         }
         void Fire(GardenActor source,GardenZombie target)
         {
@@ -146,21 +154,23 @@ namespace StarfieldEra
         void MoveZombie(GardenActor actor,float dt)
         {
             var p=actor.transform.position;var z=actor.zombie;
+            bool chasing=GardenDefenseState.InRange(p,Game.World.Player.position,ChaseRange);
+            float speed=chasing?ChaseSpeed:WanderSpeed;
             GardenUnit goal=null;float nearest=float.MaxValue;
-            foreach(var unit in State.units)if(unit.kind==0){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
-            Vector3 target=goal!=null?actors[goal.id].transform.position:Game.World.Player.position;GardenActor victim=goal!=null?actors[goal.id]:null;
+            foreach(var unit in State.units)if(!chasing&&unit.kind==0){float d=(unit.Position-new Vector3(p.x,0,p.z)).sqrMagnitude;if(d<nearest){nearest=d;goal=unit;}}
+            Vector3 target=chasing?Game.World.Player.position:goal!=null?actors[goal.id].transform.position:p;GardenActor victim=goal!=null?actors[goal.id]:null;
             bool playerNear=GardenDefenseState.InRange(p,Game.World.Player.position,1.4f);var direction=target-p;direction.y=0;float distance=direction.magnitude;direction=direction.normalized;
-            var move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*.85f),.28f);
+            var move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*speed),.28f);
             bool stopped=distance<1.2f||playerNear;Collider obstacle=null;
             int count=Physics.SphereCastNonAlloc(p+Vector3.up*.65f,.22f,direction,hits,.8f,~0,QueryTriggerInteraction.Ignore);
             for(int i=0;i<count;i++){var c=hits[i].collider;if(Game.World.HexGrid.IsGroundCollider(c)||c.transform.IsChildOf(actor.transform)||c is CharacterController)continue;obstacle=c;break;}
             if(obstacle){var other=obstacle.GetComponentInParent<GardenActor>();if(other&&other.unit!=null&&other.unit.kind!=2){victim=other;stopped=true;}
                 else{var fence=obstacle.GetComponentInParent<FenceTarget>();if(fence){stopped=true;if(cooldowns[z.id]<=0){Game.Fences.Damage(fence.record);cooldowns[z.id]=1.5f;}}
-                    else{direction=Quaternion.Euler(0,(z.id%2==0?65:-65),0)*direction;move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*.85f),.28f);var ray=new Ray(p+Vector3.up*.65f,direction);if(Physics.SphereCast(ray,.22f,.65f,~0,QueryTriggerInteraction.Ignore))stopped=true;}}}
+                    else{direction=Quaternion.Euler(0,(z.id%2==0?65:-65),0)*direction;move=Game.World.HexGrid.ConstrainMovement(p,direction*(dt*speed),.28f);var ray=new Ray(p+Vector3.up*.65f,direction);if(Physics.SphereCast(ray,.22f,.65f,~0,QueryTriggerInteraction.Ignore))stopped=true;}}}
             if(stopped&&cooldowns[z.id]<=0){if(playerNear)Game.DamagePlayer(10);else if(victim)Damage(victim,10);cooldowns[z.id]=1.5f;}
             if(!stopped){var next=p+move;actor.transform.position=Game.World.HexGrid.SurfacePoint(next);}
             if(direction.sqrMagnitude>.01f)actor.transform.rotation=Quaternion.Slerp(actor.transform.rotation,Quaternion.LookRotation(direction),dt*6);
-            actor.Animate(dt,!stopped&&move.sqrMagnitude>.000001f);z.x=actor.transform.position.x;z.z=actor.transform.position.z;
+            actor.Animate(dt*Mathf.Min(1.6f,speed/.85f),!stopped&&move.sqrMagnitude>.000001f);z.x=actor.transform.position.x;z.z=actor.transform.position.z;
         }
         public void Damage(GardenActor actor,int amount)
         {
